@@ -58,7 +58,6 @@ model ParentDetails {
 model AdminDetails {
   id         String  @id @db.Uuid
   department String?
-  jobTitle   String?
 
   profile Profile @relation(fields: [id], references: [id], onDelete: Cascade)
 }
