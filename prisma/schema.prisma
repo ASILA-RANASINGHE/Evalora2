@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  STUDENT
+  TEACHER
+  PARENT
+  ADMIN
+}
+
+model Profile {
+  id        String   @id @db.Uuid
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  role      UserRole @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  studentDetails StudentDetails?
+  teacherDetails TeacherDetails?
+  parentDetails  ParentDetails?
+  adminDetails   AdminDetails?
+}
+
+model StudentDetails {
+  id        String   @id @db.Uuid
+  grade     String
+  dob       DateTime?
+  studentId String?
+
+  profile Profile @relation(fields: [id], references: [id], onDelete: Cascade)
+}
+
+model TeacherDetails {
+  id         String  @id @db.Uuid
+  subject    String
+  employeeId String?
+  department String?
+
+  profile Profile @relation(fields: [id], references: [id], onDelete: Cascade)
+}
+
+model ParentDetails {
+  id           String @id @db.Uuid
+  phoneNumber  String
+  relationship String
+
+  profile Profile @relation(fields: [id], references: [id], onDelete: Cascade)
+}
+
+model AdminDetails {
+  id         String  @id @db.Uuid
+  department String?
+
+  profile Profile @relation(fields: [id], references: [id], onDelete: Cascade)
+}
