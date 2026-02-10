@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import type { UserRole } from "@/lib/generated/prisma/enums";
 
-export default async function ProtectedPage() {
+export async function requireRole(allowedRole: UserRole) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -17,20 +18,9 @@ export default async function ProtectedPage() {
     select: { role: true },
   });
 
-  if (!profile) {
-    redirect("/auth/login");
+  if (!profile || profile.role !== allowedRole) {
+    redirect("/protected");
   }
 
-  switch (profile.role) {
-    case "STUDENT":
-      redirect("/protected/student");
-    case "TEACHER":
-      redirect("/protected/teacher");
-    case "PARENT":
-      redirect("/protected/parent");
-    case "ADMIN":
-      redirect("/protected/admin");
-    default:
-      redirect("/auth/login");
-  }
+  return { user, role: profile.role };
 }
