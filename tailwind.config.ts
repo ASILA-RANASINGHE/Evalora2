@@ -10,6 +10,10 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        "space-grotesk": ["var(--font-space-grotesk)", "sans-serif"],
+        "source-sans": ["var(--font-source-sans)", "sans-serif"],
+      },
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
