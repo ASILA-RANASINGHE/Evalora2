@@ -38,7 +38,7 @@ const TabsList = React.forwardRef<
       if (React.isValidElement(child)) {
         return React.cloneElement(child as any, { 
           selectedValue: value, 
-          onClick: () => setValue && setValue(child.props.value) 
+          onClick: () => setValue && setValue((child as any).props.value)
         });
       }
       return child;
