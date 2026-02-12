@@ -1,10 +1,12 @@
-import { requireRole } from "@/lib/auth/require-role";
+import { ParentShell } from "@/components/parent/parent-shell";
 
-export default async function ParentLayout({
+export default function ParentLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  await requireRole("PARENT");
-  return <>{children}</>;
+  // Authentication check skipped for UI demo
+  // await requireRole("PARENT");
+
+  return <ParentShell>{children}</ParentShell>;
 }
