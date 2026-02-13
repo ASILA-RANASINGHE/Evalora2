@@ -821,7 +821,7 @@ const Footer = () => {
         </div>
 
         <div className="pt-8 border-t border-slate-900 flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-medium text-slate-600">
-           <p>© {new Date().getFullYear()} Evalora Inc. All rights reserved.</p>
+           <p>© 2026 Evalora Inc. All rights reserved.</p>
            <div className="flex gap-6">
               <a href="#" className="hover:text-slate-400 transition-colors">Privacy</a>
               <a href="#" className="hover:text-slate-400 transition-colors">Terms</a>
