@@ -29,7 +29,6 @@ const uploadTypes = [
     href: "/protected/admin/upload/quizzes",
     color: "from-amber-500 to-amber-700",
     count: 215,
-    comingSoon: true,
   },
 ];
 

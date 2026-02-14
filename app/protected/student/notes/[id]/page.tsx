@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Share2, Bookmark, Printer, Clock, User, Tag } from "lucide-react";
+import { ChevronLeft, Share2, Bookmark, Clock, User, BrainCircuit, Play } from "lucide-react";
 
-export default function NoteViewerPage({ params }: { params: { id: string } }) {
+export default async function NoteViewerPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   // Mock data based on ID
   const note = {
     title: "Introduction to Calculus: Limits and Continuity",
@@ -55,7 +56,7 @@ export default function NoteViewerPage({ params }: { params: { id: string } }) {
         <header className="border-b pb-6 mb-8">
             <div className="flex gap-2 mb-4">
                 <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">{note.subject}</Badge>
-                <Badge variant="secondary">Note {params.id}</Badge>
+                <Badge variant="secondary">Note {id}</Badge>
             </div>
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{note.title}</h1>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
@@ -73,6 +74,24 @@ export default function NoteViewerPage({ params }: { params: { id: string } }) {
         <article className="prose prose-purple max-w-none text-gray-800">
             <div dangerouslySetInnerHTML={{ __html: note.content }} />
         </article>
+
+        {/* Quiz CTA */}
+        <div className="mt-10 pt-8 border-t">
+          <div className="flex items-center gap-5 p-6 rounded-xl bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30 border border-purple-200 dark:border-purple-800">
+            <div className="p-3 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 shrink-0">
+              <BrainCircuit className="h-7 w-7" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">Test Your Knowledge</h3>
+              <p className="text-sm text-muted-foreground mt-0.5">Take a quiz on this topic to reinforce what you&apos;ve learned.</p>
+            </div>
+            <Link href={`/protected/student/quizzes/subject/${note.subject.toLowerCase()}`}>
+              <Button className="bg-purple-600 hover:bg-purple-700 text-white shrink-0">
+                <Play className="h-4 w-4 mr-2" /> Take Quiz
+              </Button>
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

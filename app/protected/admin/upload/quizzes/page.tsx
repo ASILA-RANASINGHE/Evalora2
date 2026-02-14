@@ -54,7 +54,7 @@ const emptyQuestion = (): QuizQuestion => ({
   correctAnswer: "",
 });
 
-export default function UploadQuizzesPage() {
+export default function AdminUploadQuizzesPage() {
   const [title, setTitle] = useState("");
   const [grade, setGrade] = useState("");
   const [subject, setSubject] = useState("");
@@ -143,7 +143,7 @@ export default function UploadQuizzesPage() {
           <Button variant="outline" onClick={() => { setSubmitted(false); setTitle(""); setGrade(""); setSubject(""); setTopic(""); setQuizType(""); setDuration(""); setQuestions([emptyQuestion()]); }}>
             Create Another
           </Button>
-          <Link href="/protected/teacher/upload">
+          <Link href="/protected/admin/upload">
             <Button>Back to Upload Hub</Button>
           </Link>
         </div>
@@ -154,12 +154,12 @@ export default function UploadQuizzesPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-3">
-        <Link href="/protected/teacher/upload" className="text-muted-foreground hover:text-foreground transition-colors">
+        <Link href="/protected/admin/upload" className="text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
           <h2 className="font-space-grotesk text-2xl font-bold">Create Quiz</h2>
-          <p className="text-muted-foreground text-sm mt-0.5">Build interactive quizzes for your students</p>
+          <p className="text-muted-foreground text-sm mt-0.5">Build interactive quizzes for students</p>
         </div>
       </div>
 
@@ -391,7 +391,7 @@ export default function UploadQuizzesPage() {
                 </div>
               </div>
               <div className="flex gap-3">
-                <Link href="/protected/teacher/upload">
+                <Link href="/protected/admin/upload">
                   <Button variant="outline" type="button">Cancel</Button>
                 </Link>
                 <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white">

@@ -4,8 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Play, Clock, BarChart, CheckCircle2 } from "lucide-react";
 
-export default function SubjectQuizzesPage({ params }: { params: { subject: string } }) {
-  const subjectName = params.subject.charAt(0).toUpperCase() + params.subject.slice(1);
+export default async function SubjectQuizzesPage({ params }: { params: Promise<{ subject: string }> }) {
+  const { subject } = await params;
+  const subjectName = subject.charAt(0).toUpperCase() + subject.slice(1);
   
   // Mock data
   const quizzes = Array.from({ length: 6 }).map((_, i) => ({
@@ -13,7 +14,6 @@ export default function SubjectQuizzesPage({ params }: { params: { subject: stri
     title: `${subjectName} Assessment ${i + 1}`,
     questions: 10 + (i * 2),
     duration: "15 mins",
-    difficulty: i % 3 === 0 ? "Easy" : i % 3 === 1 ? "Medium" : "Hard",
     completed: i < 2,
     score: i < 2 ? 85 + i * 5 : null
   }));
@@ -49,13 +49,6 @@ export default function SubjectQuizzesPage({ params }: { params: { subject: stri
                     </div>
                     <div className="flex items-center gap-1">
                         <BarChart className="w-4 h-4" /> {quiz.questions} Questions
-                    </div>
-                    <div>
-                        Difficulty: <span className={
-                            quiz.difficulty === 'Hard' ? 'text-red-500 font-medium' : 
-                            quiz.difficulty === 'Medium' ? 'text-yellow-600 font-medium' : 
-                            'text-green-600 font-medium'
-                        }>{quiz.difficulty}</span>
                     </div>
                   </div>
                 </div>

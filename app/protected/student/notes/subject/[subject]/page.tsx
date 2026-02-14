@@ -3,8 +3,9 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, FileText, Clock, User } from "lucide-react";
 
-export default function SubjectNotesPage({ params }: { params: { subject: string } }) {
-  const subjectName = params.subject.charAt(0).toUpperCase() + params.subject.slice(1);
+export default async function SubjectNotesPage({ params }: { params: Promise<{ subject: string }> }) {
+  const { subject } = await params;
+  const subjectName = subject.charAt(0).toUpperCase() + subject.slice(1);
   
   // Mock data
   const notes = Array.from({ length: 8 }).map((_, i) => ({

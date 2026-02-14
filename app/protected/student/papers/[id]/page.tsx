@@ -4,7 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronLeft, Clock, AlertCircle, FileText, CheckCircle2 } from "lucide-react";
 
-export default function PaperViewPage({ params }: { params: { id: string } }) {
+export default async function PaperViewPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <Link href="/protected/student/papers" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
