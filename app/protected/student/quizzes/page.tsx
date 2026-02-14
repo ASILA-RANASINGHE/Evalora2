@@ -5,12 +5,7 @@ import { Shuffle } from "lucide-react";
 
 export default function QuizzesPage() {
   const subjects = [
-    { name: "Geography", emoji: "🌍", color: "bg-emerald-100 border-emerald-200" },
-    { name: "Physics", emoji: "⚡", color: "bg-yellow-100 border-yellow-200" },
-    { name: "Chemistry", emoji: "🧪", color: "bg-purple-100 border-purple-200" },
-    { name: "English", emoji: "📚", color: "bg-red-100 border-red-200" },
-    { name: "Biology", emoji: "🧬", color: "bg-green-100 border-green-200" },
-    { name: "History", emoji: "🏛️", color: "bg-orange-100 border-orange-200" },
+    { name: "History", emoji: "\u{1F3DB}\u{FE0F}", color: "bg-orange-100 border-orange-200" },
   ];
 
   return (
@@ -22,7 +17,7 @@ export default function QuizzesPage() {
         </div>
         <Link href="/protected/student/quizzes/random">
             <Button size="lg" className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white shadow-md">
-            <Shuffle className="mr-2 h-4 w-4" /> I'm Feeling Lucky
+            <Shuffle className="mr-2 h-4 w-4" /> I&apos;m Feeling Lucky
             </Button>
         </Link>
       </div>

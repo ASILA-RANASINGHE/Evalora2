@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { subjects, subjectTopics } from "@/lib/teacher-mock-data";
+import { createNote } from "@/lib/actions/note";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "text/plain"];
@@ -44,6 +45,7 @@ export default function UploadNotesPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const availableTopics = subject ? subjectTopics[subject] || [] : [];
@@ -80,10 +82,24 @@ export default function UploadNotesPage() {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    setSubmitted(true);
+    setSaving(true);
+    try {
+      await createNote({
+        title,
+        subject,
+        topic,
+        content,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Failed to upload note:", err);
+      alert("Failed to upload note. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (submitted) {
@@ -263,9 +279,9 @@ export default function UploadNotesPage() {
                 <Link href="/protected/teacher/upload">
                   <Button variant="outline" type="button">Cancel</Button>
                 </Link>
-                <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white">
+                <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white" disabled={saving}>
                   <Upload className="h-4 w-4 mr-2" />
-                  Upload Notes
+                  {saving ? "Uploading..." : "Upload Notes"}
                 </Button>
               </div>
             </div>
