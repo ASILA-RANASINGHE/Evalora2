@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e:*)",
+      "Bash(npx next build:*)",
+      "Bash(timeout 20 npx next dev:*)",
+      "Bash(curl:*)",
+      "Bash(cat:*)"
+    ]
+  }
+}
