@@ -9,9 +9,19 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Check, Upload } from "lucide-react";
 import Link from "next/link";
 import { subjects } from "@/lib/teacher-mock-data";
+import { createPaper } from "@/lib/actions/paper";
+import type { PaperTerm } from "@/lib/generated/prisma/enums";
 
 const grades = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
 const terms = ["Term 1", "Term 2", "Term 3", "Mid-Year", "End-of-Year"];
+
+const termMap: Record<string, PaperTerm> = {
+  "Term 1": "TERM_1",
+  "Term 2": "TERM_2",
+  "Term 3": "TERM_3",
+  "Mid-Year": "MID_YEAR",
+  "End-of-Year": "END_OF_YEAR",
+};
 
 interface FormErrors {
   title?: string;
@@ -38,6 +48,7 @@ export default function UploadPapersPage() {
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const totalQuestions = (parseInt(mcqCount) || 0) + (parseInt(essayCount) || 0);
   const totalMarks = useMemo(() => {
@@ -58,10 +69,33 @@ export default function UploadPapersPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    setSubmitted(true);
+    setSaving(true);
+    try {
+      await createPaper({
+        title,
+        subject,
+        term: termMap[term] || "TERM_1",
+        grade,
+        duration: parseInt(duration),
+        isModel,
+        mcqCount: parseInt(mcqCount) || 0,
+        mcqMarks: parseInt(mcqMarks) || 0,
+        essayCount: parseInt(essayCount) || 0,
+        essayMarks: parseInt(essayMarks) || 0,
+        totalMarks,
+        passPercentage: parseInt(passPercentage) || 35,
+        instructions: notes || undefined,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Failed to create paper:", err);
+      alert("Failed to create paper. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (submitted) {
@@ -328,9 +362,9 @@ export default function UploadPapersPage() {
           <Link href="/protected/teacher/upload">
             <Button variant="outline" type="button">Cancel</Button>
           </Link>
-          <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white">
+          <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white" disabled={saving}>
             <Upload className="h-4 w-4 mr-2" />
-            Create Paper
+            {saving ? "Creating..." : "Create Paper"}
           </Button>
         </div>
       </form>

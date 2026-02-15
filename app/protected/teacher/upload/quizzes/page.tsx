@@ -17,9 +17,18 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { subjects, subjectTopics } from "@/lib/teacher-mock-data";
+import { createQuiz } from "@/lib/actions/quiz";
+import type { QuizType, QuestionType } from "@/lib/generated/prisma/enums";
 
 const quizTypes = ["Subject", "Topic"];
 const grades = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
+
+const quizTypeMap: Record<string, QuizType> = {
+  "Topic-based": "TOPIC_BASED",
+  "Unit Review": "UNIT_REVIEW",
+  "Diagnostic": "DIAGNOSTIC",
+  "Practice": "PRACTICE",
+};
 
 interface QuizQuestion {
   id: string;
@@ -64,6 +73,7 @@ export default function UploadQuizzesPage() {
   const [questions, setQuestions] = useState<QuizQuestion[]>([emptyQuestion()]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const availableTopics = subject ? subjectTopics[subject] || [] : [];
   const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
@@ -123,10 +133,32 @@ export default function UploadQuizzesPage() {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    setSubmitted(true);
+    setSaving(true);
+    try {
+      await createQuiz({
+        title,
+        subject,
+        topic,
+        type: quizTypeMap[quizType] || "TOPIC_BASED",
+        duration: parseInt(duration),
+        questions: questions.map((q) => ({
+          text: q.text,
+          type: (q.type === "mcq" ? "MCQ" : "SHORT") as QuestionType,
+          points: q.points,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+        })),
+      });
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Failed to create quiz:", err);
+      alert("Failed to create quiz. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (submitted) {
@@ -394,9 +426,9 @@ export default function UploadQuizzesPage() {
                 <Link href="/protected/teacher/upload">
                   <Button variant="outline" type="button">Cancel</Button>
                 </Link>
-                <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white">
+                <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white" disabled={saving}>
                   <Upload className="h-4 w-4 mr-2" />
-                  Create Quiz
+                  {saving ? "Creating..." : "Create Quiz"}
                 </Button>
               </div>
             </div>

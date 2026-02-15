@@ -35,13 +35,10 @@ export const todayGlance = {
 };
 
 export const subjectTopics: Record<string, string[]> = {
-  Mathematics: ["Algebra", "Geometry", "Trigonometry", "Calculus", "Statistics", "Number Theory"],
-  Physics: ["Mechanics", "Thermodynamics", "Optics", "Electromagnetism", "Waves", "Nuclear Physics"],
-  Chemistry: ["Organic Chemistry", "Inorganic Chemistry", "Physical Chemistry", "Biochemistry", "Electrochemistry"],
-  Biology: ["Cell Biology", "Genetics", "Ecology", "Human Anatomy", "Plant Biology", "Evolution"],
+  History: ["Ancient Civilizations", "Medieval Period", "World Wars", "Industrial Revolution", "Cold War Era", "Sri Lankan History"],
 };
 
-export const subjects = ["Mathematics", "Physics", "Chemistry", "Biology"];
+export const subjects = ["History"];
 
 export const analyticsData = {
   averageMastery: 74,

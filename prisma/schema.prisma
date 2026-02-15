@@ -14,6 +14,39 @@ enum UserRole {
   ADMIN
 }
 
+enum QuestionType {
+  MCQ
+  SHORT
+}
+
+enum QuizType {
+  TOPIC_BASED
+  UNIT_REVIEW
+  DIAGNOSTIC
+  PRACTICE
+}
+
+enum ContentStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  FLAGGED
+}
+
+enum ContentVisibility {
+  PUBLIC
+  PRIVATE
+  STUDENTS_ONLY
+}
+
+enum PaperTerm {
+  TERM_1
+  TERM_2
+  TERM_3
+  MID_YEAR
+  END_OF_YEAR
+}
+
 model Profile {
   id        String   @id @db.Uuid
   email     String   @unique
@@ -27,6 +60,18 @@ model Profile {
   teacherDetails TeacherDetails?
   parentDetails  ParentDetails?
   adminDetails   AdminDetails?
+
+  // Content created by this user (teacher/admin)
+  createdQuizzes Quiz[]
+  createdPapers  Paper[]
+  createdNotes   Note[]
+
+  // Student attempts
+  quizAttempts  QuizAttempt[]
+  paperAttempts PaperAttempt[]
+
+  // Student progress
+  progress StudentProgress?
 }
 
 model StudentDetails {
@@ -60,4 +105,154 @@ model AdminDetails {
   department String?
 
   profile Profile @relation(fields: [id], references: [id], onDelete: Cascade)
+}
+
+// ─── Content: Subjects ───────────────────────────────────────────
+
+model Subject {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @unique // "Mathematics", "Physics", etc.
+  code String @unique // "MATH", "PHY", etc.
+
+  quizzes Quiz[]
+  papers  Paper[]
+  notes   Note[]
+}
+
+// ─── Content: Quizzes ────────────────────────────────────────────
+
+model Quiz {
+  id        String     @id @default(uuid()) @db.Uuid
+  title     String
+  subjectId String     @db.Uuid
+  topic     String
+  type      QuizType   @default(TOPIC_BASED)
+  duration  Int        // minutes
+  status    ContentStatus @default(DRAFT)
+
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subject   Subject       @relation(fields: [subjectId], references: [id])
+  createdBy Profile       @relation(fields: [createdById], references: [id])
+  questions QuizQuestion[]
+  attempts  QuizAttempt[]
+}
+
+model QuizQuestion {
+  id            String       @id @default(uuid()) @db.Uuid
+  quizId        String       @db.Uuid
+  text          String
+  type          QuestionType @default(MCQ)
+  points        Int          @default(1)
+  options       String[]     // e.g. ["Option A", "Option B", "Option C", "Option D"]
+  correctAnswer String
+  order         Int          @default(0)
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+}
+
+model QuizAttempt {
+  id        String    @id @default(uuid()) @db.Uuid
+  quizId    String    @db.Uuid
+  studentId String    @db.Uuid
+  answers   Json?     // { "questionId": "selectedAnswer", ... }
+  score     Float?
+  startedAt DateTime  @default(now())
+  submittedAt DateTime?
+
+  quiz    Quiz    @relation(fields: [quizId], references: [id])
+  student Profile @relation(fields: [studentId], references: [id])
+}
+
+// ─── Content: Papers ─────────────────────────────────────────────
+
+model Paper {
+  id             String    @id @default(uuid()) @db.Uuid
+  title          String
+  subjectId      String    @db.Uuid
+  term           PaperTerm
+  grade          String    // "Grade 10", etc.
+  year           Int?      // e.g. 2024
+  duration       Int       // minutes
+  isModel        Boolean   @default(false)
+
+  mcqCount       Int       @default(0)
+  mcqMarks       Int       @default(1) // marks per MCQ
+  essayCount     Int       @default(0)
+  essayMarks     Int       @default(10) // marks per essay
+  totalMarks     Int
+  passPercentage Int       @default(35)
+
+  instructions   String?
+  status         ContentStatus @default(DRAFT)
+
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subject   Subject        @relation(fields: [subjectId], references: [id])
+  createdBy Profile        @relation(fields: [createdById], references: [id])
+  attempts  PaperAttempt[]
+}
+
+model PaperAttempt {
+  id          String    @id @default(uuid()) @db.Uuid
+  paperId     String    @db.Uuid
+  studentId   String    @db.Uuid
+  score       Float?
+  startedAt   DateTime  @default(now())
+  submittedAt DateTime?
+
+  paper   Paper   @relation(fields: [paperId], references: [id])
+  student Profile @relation(fields: [studentId], references: [id])
+}
+
+// ─── Content: Notes ──────────────────────────────────────────────
+
+model Note {
+  id         String            @id @default(uuid()) @db.Uuid
+  title      String
+  subjectId  String            @db.Uuid
+  topic      String
+  content    String            // markdown or rich text — TEXT has no size limit
+  visibility ContentVisibility @default(STUDENTS_ONLY)
+  status     ContentStatus     @default(DRAFT)
+
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subject     Subject          @relation(fields: [subjectId], references: [id])
+  createdBy   Profile          @relation(fields: [createdById], references: [id])
+  attachments NoteAttachment[]
+}
+
+model NoteAttachment {
+  id     String @id @default(uuid()) @db.Uuid
+  noteId String @db.Uuid
+  name   String
+  url    String // Supabase Storage URL
+  size   Int    // bytes
+  type   String // MIME type
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+}
+
+// ─── Student Progress & Gamification ─────────────────────────────
+
+model StudentProgress {
+  id               String @id @default(uuid()) @db.Uuid
+  studentId        String @unique @db.Uuid
+  quizzesCompleted Int    @default(0)
+  papersAttempted  Int    @default(0)
+  averageScore     Float  @default(0)
+  studyStreak      Int    @default(0)
+  totalPoints      Int    @default(0)
+  totalLearningMin Int    @default(0) // total minutes spent
+  topicsMastered   Int    @default(0)
+  updatedAt        DateTime @updatedAt
+
+  student Profile @relation(fields: [studentId], references: [id])
 }

@@ -89,6 +89,10 @@ const recommended = [
 ];
 
 export default function QuizzesPage() {
+  const subjects = [
+    { name: "History", emoji: "\u{1F3DB}\u{FE0F}", color: "bg-orange-100 border-orange-200" },
+  ];
+
   return (
     <div className="space-y-8">
       {/* Header */}
