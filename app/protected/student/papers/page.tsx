@@ -5,10 +5,7 @@ import { FileText, CalendarDays } from "lucide-react";
 
 export default function PapersPage() {
   const subjects = [
-    { name: "Mathematics", terms: [1, 2, 3] },
-    { name: "Science", terms: [1, 2] },
-    { name: "English", terms: [1, 2, 3] },
-    { name: "History", terms: [1] },
+    { name: "History", terms: [1, 2, 3] },
   ];
 
   return (
@@ -30,8 +27,8 @@ export default function PapersPage() {
             <CardContent className="pt-6">
               <div className="space-y-3">
                 {subject.terms.map((term) => (
-                  <Link 
-                    key={term} 
+                  <Link
+                    key={term}
                     href={`/protected/student/papers/subject/${subject.name.toLowerCase()}/term/${term}`}
                     className="flex items-center justify-between p-3 rounded-lg border hover:bg-purple-50 hover:border-purple-200 transition-colors group"
                   >

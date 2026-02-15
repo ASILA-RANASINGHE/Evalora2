@@ -17,18 +17,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { subjects, subjectTopics } from "@/lib/teacher-mock-data";
-import { createQuiz } from "@/lib/actions/quiz";
-import type { QuizType, QuestionType } from "@/lib/generated/prisma/enums";
 
 const quizTypes = ["Subject", "Topic"];
 const grades = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
-
-const quizTypeMap: Record<string, QuizType> = {
-  "Topic-based": "TOPIC_BASED",
-  "Unit Review": "UNIT_REVIEW",
-  "Diagnostic": "DIAGNOSTIC",
-  "Practice": "PRACTICE",
-};
 
 interface QuizQuestion {
   id: string;
@@ -63,7 +54,7 @@ const emptyQuestion = (): QuizQuestion => ({
   correctAnswer: "",
 });
 
-export default function UploadQuizzesPage() {
+export default function AdminUploadQuizzesPage() {
   const [title, setTitle] = useState("");
   const [grade, setGrade] = useState("");
   const [subject, setSubject] = useState("");
@@ -73,7 +64,6 @@ export default function UploadQuizzesPage() {
   const [questions, setQuestions] = useState<QuizQuestion[]>([emptyQuestion()]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   const availableTopics = subject ? subjectTopics[subject] || [] : [];
   const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
@@ -133,32 +123,10 @@ export default function UploadQuizzesPage() {
     );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    setSaving(true);
-    try {
-      await createQuiz({
-        title,
-        subject,
-        topic,
-        type: quizTypeMap[quizType] || "TOPIC_BASED",
-        duration: parseInt(duration),
-        questions: questions.map((q) => ({
-          text: q.text,
-          type: (q.type === "mcq" ? "MCQ" : "SHORT") as QuestionType,
-          points: q.points,
-          options: q.options,
-          correctAnswer: q.correctAnswer,
-        })),
-      });
-      setSubmitted(true);
-    } catch (err) {
-      console.error("Failed to create quiz:", err);
-      alert("Failed to create quiz. Please try again.");
-    } finally {
-      setSaving(false);
-    }
+    setSubmitted(true);
   };
 
   if (submitted) {
@@ -175,7 +143,7 @@ export default function UploadQuizzesPage() {
           <Button variant="outline" onClick={() => { setSubmitted(false); setTitle(""); setGrade(""); setSubject(""); setTopic(""); setQuizType(""); setDuration(""); setQuestions([emptyQuestion()]); }}>
             Create Another
           </Button>
-          <Link href="/protected/teacher/upload">
+          <Link href="/protected/admin/upload">
             <Button>Back to Upload Hub</Button>
           </Link>
         </div>
@@ -186,12 +154,12 @@ export default function UploadQuizzesPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-3">
-        <Link href="/protected/teacher/upload" className="text-muted-foreground hover:text-foreground transition-colors">
+        <Link href="/protected/admin/upload" className="text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
           <h2 className="font-space-grotesk text-2xl font-bold">Create Quiz</h2>
-          <p className="text-muted-foreground text-sm mt-0.5">Build interactive quizzes for your students</p>
+          <p className="text-muted-foreground text-sm mt-0.5">Build interactive quizzes for students</p>
         </div>
       </div>
 
@@ -423,12 +391,12 @@ export default function UploadQuizzesPage() {
                 </div>
               </div>
               <div className="flex gap-3">
-                <Link href="/protected/teacher/upload">
+                <Link href="/protected/admin/upload">
                   <Button variant="outline" type="button">Cancel</Button>
                 </Link>
-                <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white" disabled={saving}>
+                <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white">
                   <Upload className="h-4 w-4 mr-2" />
-                  {saving ? "Creating..." : "Create Quiz"}
+                  Create Quiz
                 </Button>
               </div>
             </div>
