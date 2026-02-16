@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   BookOpen,
+  StickyNote,
   BrainCircuit,
   FileText,
   TrendingUp,
@@ -24,6 +25,11 @@ const navItems = [
     title: "Notes",
     href: "/protected/student/notes",
     icon: BookOpen,
+  },
+  {
+    title: "Short Notes",
+    href: "/protected/student/short-notes",
+    icon: StickyNote,
   },
   {
     title: "Quizzes",

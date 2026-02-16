@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { FileText, ClipboardList, BrainCircuit, ChevronRight } from "lucide-react";
+import { FileText, ClipboardList, BrainCircuit, StickyNote, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 const uploadCards = [
@@ -29,6 +29,15 @@ const uploadCards = [
     color: "from-amber-500 to-orange-500",
     iconBg: "bg-amber-500/10 text-amber-600",
     count: "5 quizzes uploaded",
+  },
+  {
+    title: "Upload Short Notes",
+    description: "Create quick reference cards and summary notes for student revision.",
+    icon: StickyNote,
+    href: "/protected/teacher/upload/short-notes",
+    color: "from-teal-500 to-emerald-500",
+    iconBg: "bg-teal-500/10 text-teal-600",
+    count: "0 short notes uploaded",
   },
 ];
 

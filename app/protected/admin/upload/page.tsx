@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { FileText, ClipboardList, HelpCircle, ArrowRight } from "lucide-react";
+import { FileText, ClipboardList, HelpCircle, StickyNote, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 const uploadTypes = [
@@ -20,7 +20,6 @@ const uploadTypes = [
     href: "/protected/admin/upload/papers",
     color: "from-emerald-500 to-emerald-700",
     count: 128,
-    comingSoon: true,
   },
   {
     title: "Quizzes",
@@ -29,6 +28,14 @@ const uploadTypes = [
     href: "/protected/admin/upload/quizzes",
     color: "from-amber-500 to-amber-700",
     count: 215,
+  },
+  {
+    title: "Short Notes",
+    description: "Create quick reference and summary cards for student revision.",
+    icon: StickyNote,
+    href: "/protected/admin/upload/short-notes",
+    color: "from-teal-500 to-teal-700",
+    count: 0,
   },
 ];
 
@@ -45,17 +52,9 @@ export default function UploadHubPage() {
       <div className="grid gap-6 md:grid-cols-3">
         {uploadTypes.map((type) => {
           const Icon = type.icon;
-          const Wrapper = type.comingSoon ? "div" : Link;
-          const wrapperProps = type.comingSoon ? {} : { href: type.href };
-
           return (
-            <Wrapper key={type.title} {...(wrapperProps as any)}>
-              <Card className={`group relative overflow-hidden transition-shadow ${type.comingSoon ? "opacity-70" : "cursor-pointer hover:shadow-lg"}`}>
-                {type.comingSoon && (
-                  <div className="absolute right-3 top-3 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                    Coming Soon
-                  </div>
-                )}
+            <Link key={type.title} href={type.href}>
+              <Card className="group relative overflow-hidden transition-shadow cursor-pointer hover:shadow-lg">
                 <CardHeader className="pb-3">
                   <div
                     className={`mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br ${type.color} text-white`}
@@ -72,15 +71,13 @@ export default function UploadHubPage() {
                     <span className="text-sm text-muted-foreground">
                       {type.count} uploaded
                     </span>
-                    {!type.comingSoon && (
-                      <span className="flex items-center gap-1 text-sm font-medium text-purple-600 group-hover:underline dark:text-purple-400">
-                        Upload <ArrowRight className="h-3 w-3" />
-                      </span>
-                    )}
+                    <span className="flex items-center gap-1 text-sm font-medium text-purple-600 group-hover:underline dark:text-purple-400">
+                      Upload <ArrowRight className="h-3 w-3" />
+                    </span>
                   </div>
                 </CardContent>
               </Card>
-            </Wrapper>
+            </Link>
           );
         })}
       </div>

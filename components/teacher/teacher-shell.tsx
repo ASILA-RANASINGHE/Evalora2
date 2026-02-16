@@ -12,12 +12,15 @@ import {
   Menu,
   X,
   GraduationCap,
+  FolderOpen,
 } from "lucide-react";
 import { useState } from "react";
+import { LogoutButton } from "@/components/logout-button";
 
 const navItems = [
   { label: "Dashboard", href: "/protected/teacher", icon: LayoutDashboard },
   { label: "Upload Hub", href: "/protected/teacher/upload", icon: Upload },
+  { label: "My Content", href: "/protected/teacher/my-content", icon: FolderOpen },
   { label: "Review Flagged", href: "/protected/teacher/flagged", icon: Flag },
   { label: "Analytics", href: "/protected/teacher/analysis", icon: BarChart3 },
   { label: "Settings", href: "/protected/teacher/settings", icon: Settings },
@@ -83,7 +86,7 @@ export function TeacherShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="border-t p-4">
+        <div className="border-t p-4 space-y-3">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">
               SJ
@@ -93,6 +96,7 @@ export function TeacherShell({ children }: { children: React.ReactNode }) {
               <p className="text-xs text-muted-foreground">Senior Teacher</p>
             </div>
           </div>
+          <LogoutButton variant="ghost" size="sm" className="w-full justify-start text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20" />
         </div>
       </aside>
 

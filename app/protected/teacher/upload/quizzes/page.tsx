@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,8 @@ import {
   BrainCircuit,
 } from "lucide-react";
 import Link from "next/link";
-import { subjects, subjectTopics } from "@/lib/teacher-mock-data";
+import { subjectTopics } from "@/lib/teacher-mock-data";
+import { getTeacherSubjects } from "@/lib/actions/teacher";
 import { createQuiz } from "@/lib/actions/quiz";
 import type { QuizType, QuestionType } from "@/lib/generated/prisma/enums";
 
@@ -74,6 +75,11 @@ export default function UploadQuizzesPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [allowedSubjects, setAllowedSubjects] = useState<string[]>([]);
+
+  useEffect(() => {
+    getTeacherSubjects().then(setAllowedSubjects);
+  }, []);
 
   const availableTopics = subject ? subjectTopics[subject] || [] : [];
   const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
@@ -251,7 +257,7 @@ export default function UploadQuizzesPage() {
                   className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${errors.subject ? "border-red-500" : "border-input"}`}
                 >
                   <option value="">Select subject</option>
-                  {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
+                  {allowedSubjects.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
                 {errors.subject && <p className="text-xs text-red-500">{errors.subject}</p>}
               </div>

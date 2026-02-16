@@ -62,9 +62,10 @@ model Profile {
   adminDetails   AdminDetails?
 
   // Content created by this user (teacher/admin)
-  createdQuizzes Quiz[]
-  createdPapers  Paper[]
-  createdNotes   Note[]
+  createdQuizzes    Quiz[]
+  createdPapers     Paper[]
+  createdNotes      Note[]
+  createdShortNotes ShortNote[]
 
   // Student attempts
   quizAttempts  QuizAttempt[]
@@ -114,9 +115,10 @@ model Subject {
   name String @unique // "Mathematics", "Physics", etc.
   code String @unique // "MATH", "PHY", etc.
 
-  quizzes Quiz[]
-  papers  Paper[]
-  notes   Note[]
+  quizzes    Quiz[]
+  papers     Paper[]
+  notes      Note[]
+  shortNotes ShortNote[]
 }
 
 // ─── Content: Quizzes ────────────────────────────────────────────
@@ -238,6 +240,24 @@ model NoteAttachment {
   type   String // MIME type
 
   note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+}
+
+// ─── Content: Short Notes ───────────────────────────────────────
+
+model ShortNote {
+  id          String        @id @default(uuid()) @db.Uuid
+  title       String
+  subjectId   String        @db.Uuid
+  topic       String
+  content     String
+  status      ContentStatus @default(DRAFT)
+
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subject   Subject @relation(fields: [subjectId], references: [id])
+  createdBy Profile @relation(fields: [createdById], references: [id])
 }
 
 // ─── Student Progress & Gamification ─────────────────────────────
