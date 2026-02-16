@@ -34,43 +34,17 @@ export interface ContentItem {
 }
 
 export const SUBJECTS = [
-  "Mathematics",
-  "Physics",
-  "Chemistry",
-  "Biology",
+  "History",
 ] as const;
 
 export const TOPICS_BY_SUBJECT: Record<string, string[]> = {
-  Mathematics: [
-    "Algebra",
-    "Geometry",
-    "Calculus",
-    "Trigonometry",
-    "Statistics",
-    "Number Theory",
-  ],
-  Physics: [
-    "Mechanics",
-    "Thermodynamics",
-    "Optics",
-    "Electromagnetism",
-    "Quantum Physics",
-    "Waves",
-  ],
-  Chemistry: [
-    "Organic Chemistry",
-    "Inorganic Chemistry",
-    "Physical Chemistry",
-    "Biochemistry",
-    "Analytical Chemistry",
-  ],
-  Biology: [
-    "Cell Biology",
-    "Genetics",
-    "Ecology",
-    "Evolution",
-    "Human Anatomy",
-    "Microbiology",
+  History: [
+    "Ancient Civilizations",
+    "Medieval Period",
+    "World Wars",
+    "Industrial Revolution",
+    "Cold War Era",
+    "Sri Lankan History",
   ],
 };
 

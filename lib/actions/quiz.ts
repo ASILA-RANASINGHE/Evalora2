@@ -26,6 +26,21 @@ export async function createQuiz(input: CreateQuizInput) {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
+  // Teacher subject restriction
+  const profile = await prisma.profile.findUnique({
+    where: { id: user.id },
+    select: { role: true },
+  });
+  if (profile?.role === "TEACHER") {
+    const teacherDetails = await prisma.teacherDetails.findUnique({
+      where: { id: user.id },
+    });
+    if (!teacherDetails) throw new Error("Teacher details not found");
+    if (teacherDetails.subject !== input.subject) {
+      throw new Error(`You are not authorized to upload content for "${input.subject}".`);
+    }
+  }
+
   // Find subject by name
   const subject = await prisma.subject.findUnique({
     where: { name: input.subject },

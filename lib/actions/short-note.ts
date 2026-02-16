@@ -3,14 +3,14 @@
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 
-interface CreateNoteInput {
+interface CreateShortNoteInput {
   title: string;
   subject: string;
   topic: string;
   content: string;
 }
 
-export async function createNote(input: CreateNoteInput) {
+export async function createShortNote(input: CreateShortNoteInput) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -22,13 +22,16 @@ export async function createNote(input: CreateNoteInput) {
     where: { id: user.id },
     select: { role: true },
   });
+
   if (profile?.role === "TEACHER") {
     const teacherDetails = await prisma.teacherDetails.findUnique({
       where: { id: user.id },
     });
     if (!teacherDetails) throw new Error("Teacher details not found");
     if (teacherDetails.subject !== input.subject) {
-      throw new Error(`You are not authorized to upload content for "${input.subject}".`);
+      throw new Error(
+        `You are not authorized to upload content for "${input.subject}". Your assigned subject is "${teacherDetails.subject}".`
+      );
     }
   }
 
@@ -37,28 +40,27 @@ export async function createNote(input: CreateNoteInput) {
   });
   if (!subject) throw new Error(`Subject "${input.subject}" not found`);
 
-  const note = await prisma.note.create({
+  const shortNote = await prisma.shortNote.create({
     data: {
       title: input.title,
       subjectId: subject.id,
       topic: input.topic,
       content: input.content,
-      visibility: "STUDENTS_ONLY",
       status: "APPROVED",
       createdById: user.id,
     },
   });
 
-  return { id: note.id };
+  return { id: shortNote.id };
 }
 
-export async function getNotesBySubject(subjectName: string) {
+export async function getShortNotesBySubject(subjectName: string) {
   const subject = await prisma.subject.findFirst({
     where: { name: { equals: subjectName, mode: "insensitive" } },
   });
   if (!subject) return [];
 
-  const notes = await prisma.note.findMany({
+  const shortNotes = await prisma.shortNote.findMany({
     where: {
       subjectId: subject.id,
       status: "APPROVED",
@@ -69,42 +71,38 @@ export async function getNotesBySubject(subjectName: string) {
     orderBy: { createdAt: "desc" },
   });
 
-  return notes.map((n) => ({
+  return shortNotes.map((n) => ({
     id: n.id,
     title: n.title,
     topic: n.topic,
-    author: `${n.createdBy.firstName ?? ""} ${n.createdBy.lastName ?? ""}`.trim() || "Teacher",
+    author:
+      `${n.createdBy.firstName ?? ""} ${n.createdBy.lastName ?? ""}`.trim() ||
+      "Teacher",
     createdAt: n.createdAt,
     contentLength: n.content.length,
   }));
 }
 
-export async function getNoteById(id: string) {
-  const note = await prisma.note.findUnique({
+export async function getShortNoteById(id: string) {
+  const shortNote = await prisma.shortNote.findUnique({
     where: { id },
     include: {
       subject: { select: { name: true } },
       createdBy: { select: { firstName: true, lastName: true } },
-      attachments: true,
     },
   });
 
-  if (!note) return null;
+  if (!shortNote) return null;
 
   return {
-    id: note.id,
-    title: note.title,
-    subject: note.subject.name,
-    topic: note.topic,
-    content: note.content,
-    author: `${note.createdBy.firstName ?? ""} ${note.createdBy.lastName ?? ""}`.trim() || "Teacher",
-    createdAt: note.createdAt,
-    attachments: note.attachments.map((a) => ({
-      id: a.id,
-      name: a.name,
-      url: a.url,
-      size: a.size,
-      type: a.type,
-    })),
+    id: shortNote.id,
+    title: shortNote.title,
+    subject: shortNote.subject.name,
+    topic: shortNote.topic,
+    content: shortNote.content,
+    author:
+      `${shortNote.createdBy.firstName ?? ""} ${shortNote.createdBy.lastName ?? ""}`.trim() ||
+      "Teacher",
+    createdAt: shortNote.createdAt,
   };
 }
