@@ -1,0 +1,64 @@
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, Share2, Bookmark, Clock, User } from "lucide-react";
+import { getNoteById } from "@/lib/actions/note";
+import { notFound } from "next/navigation";
+
+export default async function NoteViewerPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const note = await getNoteById(id);
+
+  if (!note) {
+    notFound();
+  }
+
+  const readTime = Math.max(1, Math.ceil(note.content.length / 1000));
+  const formattedDate = new Date(note.createdAt).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <Link href="/protected/student/notes" className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground">
+          <ChevronLeft className="h-4 w-4" /> Back to Notes
+        </Link>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="gap-2">
+            <Bookmark className="h-4 w-4" /> Save
+          </Button>
+          <Button variant="outline" size="sm" className="gap-2">
+            <Share2 className="h-4 w-4" /> Share
+          </Button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border p-8 md:p-12">
+        <header className="border-b pb-6 mb-8">
+          <div className="flex gap-2 mb-4">
+            <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">{note.subject}</Badge>
+            <Badge variant="secondary">{note.topic}</Badge>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{note.title}</h1>
+          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              <span>{note.author}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              <span>{formattedDate} &bull; {readTime} min read</span>
+            </div>
+          </div>
+        </header>
+
+        <article className="prose prose-purple max-w-none text-gray-800 whitespace-pre-wrap">
+          {note.content}
+        </article>
+      </div>
+    </div>
+  );
+}

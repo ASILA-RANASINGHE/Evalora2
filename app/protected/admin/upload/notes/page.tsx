@@ -1,0 +1,339 @@
+"use client";
+
+import { useState, useRef } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { SUBJECTS, TOPICS_BY_SUBJECT } from "@/lib/admin-mock-data";
+import {
+  ArrowLeft,
+  Upload,
+  FileUp,
+  X,
+  Bold,
+  Italic,
+  Underline,
+  List,
+  ListOrdered,
+  AlignLeft,
+  AlignCenter,
+  Heading2,
+  Link as LinkIcon,
+  Check,
+} from "lucide-react";
+import Link from "next/link";
+
+const ACCEPTED_TYPES = ".pdf,.docx,.ppt,.pptx,.txt";
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+export default function UploadNotesPage() {
+  const [title, setTitle] = useState("");
+  const [subject, setSubject] = useState("");
+  const [topic, setTopic] = useState("");
+  const [content, setContent] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [submitted, setSubmitted] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const topics = subject ? TOPICS_BY_SUBJECT[subject] || [] : [];
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files;
+    if (!selected) return;
+    const valid = Array.from(selected).filter((f) => f.size <= MAX_FILE_SIZE);
+    setFiles((prev) => [...prev, ...valid]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitted(true);
+    setTimeout(() => setSubmitted(false), 3000);
+  };
+
+  const insertFormatting = (tag: string) => {
+    setContent((prev) => prev + tag);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header with back link */}
+      <div className="flex items-center gap-3">
+        <Link href="/protected/admin/upload">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div>
+          <h2 className="font-space-grotesk text-2xl font-bold">
+            Upload Notes
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Create and publish study notes for students.
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Main content area */}
+          <div className="space-y-6 lg:col-span-2">
+            {/* Title */}
+            <Card>
+              <CardContent className="p-5">
+                <Label htmlFor="title" className="mb-1.5 block text-sm font-medium">
+                  Note Title
+                </Label>
+                <Input
+                  id="title"
+                  placeholder="Enter a descriptive title..."
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                />
+              </CardContent>
+            </Card>
+
+            {/* Rich Text Editor */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Content</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* Toolbar */}
+                <div className="mb-2 flex flex-wrap gap-1 rounded-t-md border border-b-0 bg-muted/50 p-1.5">
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting("**bold**")}
+                    className="rounded p-1.5 hover:bg-muted"
+                    title="Bold"
+                  >
+                    <Bold className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting("*italic*")}
+                    className="rounded p-1.5 hover:bg-muted"
+                    title="Italic"
+                  >
+                    <Italic className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting("__underline__")}
+                    className="rounded p-1.5 hover:bg-muted"
+                    title="Underline"
+                  >
+                    <Underline className="h-4 w-4" />
+                  </button>
+                  <div className="mx-1 w-px bg-border" />
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting("\n## Heading\n")}
+                    className="rounded p-1.5 hover:bg-muted"
+                    title="Heading"
+                  >
+                    <Heading2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting("\n- item\n")}
+                    className="rounded p-1.5 hover:bg-muted"
+                    title="Bullet List"
+                  >
+                    <List className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting("\n1. item\n")}
+                    className="rounded p-1.5 hover:bg-muted"
+                    title="Numbered List"
+                  >
+                    <ListOrdered className="h-4 w-4" />
+                  </button>
+                  <div className="mx-1 w-px bg-border" />
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting("[link](url)")}
+                    className="rounded p-1.5 hover:bg-muted"
+                    title="Link"
+                  >
+                    <LinkIcon className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded p-1.5 hover:bg-muted"
+                    title="Align Left"
+                  >
+                    <AlignLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded p-1.5 hover:bg-muted"
+                    title="Align Center"
+                  >
+                    <AlignCenter className="h-4 w-4" />
+                  </button>
+                </div>
+                <textarea
+                  className="min-h-[250px] w-full rounded-b-md border bg-transparent p-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  placeholder="Write your note content here... (Supports Markdown)"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  required
+                />
+              </CardContent>
+            </Card>
+
+            {/* File Attachments */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">File Attachments</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div
+                  className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed p-6 text-center transition-colors hover:border-purple-400 hover:bg-purple-50/50 dark:hover:bg-purple-900/10"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <FileUp className="h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm font-medium">
+                    Click to upload or drag and drop
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    PDF, DOCX, PPT, TXT (max 10MB)
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={ACCEPTED_TYPES}
+                    multiple
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                </div>
+
+                {files.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {files.map((file, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between rounded-md border px-3 py-2"
+                      >
+                        <span className="truncate text-sm">{file.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {(file.size / 1024 / 1024).toFixed(1)} MB
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeFile(i)}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar options */}
+          <div className="space-y-6">
+            {/* Subject & Topic */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Classification</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium">
+                    Subject
+                  </Label>
+                  <select
+                    value={subject}
+                    onChange={(e) => {
+                      setSubject(e.target.value);
+                      setTopic("");
+                    }}
+                    required
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="">Select subject...</option>
+                    {SUBJECTS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium">
+                    Topic
+                  </Label>
+                  <select
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                    disabled={!subject}
+                    required
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Select topic...</option>
+                    {topics.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Visibility */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Visibility</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Badge className="border-0 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                  Admin (Public)
+                </Badge>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Content uploaded by admins is visible to all platform users by
+                  default.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Submit */}
+            <Button
+              type="submit"
+              className="w-full bg-purple-600 hover:bg-purple-700"
+              disabled={!title || !subject || !topic || !content}
+            >
+              {submitted ? (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  Published!
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Publish Note
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}
