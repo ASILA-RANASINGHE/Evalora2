@@ -14,9 +14,11 @@ import {
   Check,
   Upload,
   BrainCircuit,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { subjects, subjectTopics } from "@/lib/teacher-mock-data";
+import { createQuiz } from "@/lib/actions/quiz";
 
 const quizTypes = ["Subject", "Topic"];
 const grades = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
@@ -64,6 +66,8 @@ export default function AdminUploadQuizzesPage() {
   const [questions, setQuestions] = useState<QuizQuestion[]>([emptyQuestion()]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const availableTopics = subject ? subjectTopics[subject] || [] : [];
   const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
@@ -123,10 +127,32 @@ export default function AdminUploadQuizzesPage() {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    setSubmitted(true);
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await createQuiz({
+        title,
+        subject,
+        topic: topic || subject,
+        type: quizType === "Topic" ? "TOPIC_BASED" : "UNIT_REVIEW",
+        duration: parseInt(duration),
+        questions: questions.map((q) => ({
+          text: q.text,
+          type: q.type === "mcq" ? "MCQ" : "SHORT",
+          points: q.points,
+          options: q.options.filter((o) => o.trim() !== ""),
+          correctAnswer: q.correctAnswer,
+        })),
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to create quiz");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (submitted) {
@@ -378,6 +404,9 @@ export default function AdminUploadQuizzesPage() {
         {/* Summary & Submit */}
         <Card className="border-border/50 shadow-sm">
           <CardContent className="p-6">
+            {saveError && (
+              <p className="text-sm text-red-500 mb-4">{saveError}</p>
+            )}
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-4">
                 <div className="p-2 rounded-lg bg-purple-500/10">
@@ -394,9 +423,18 @@ export default function AdminUploadQuizzesPage() {
                 <Link href="/protected/admin/upload">
                   <Button variant="outline" type="button">Cancel</Button>
                 </Link>
-                <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Create Quiz
+                <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white" disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Create Quiz
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
