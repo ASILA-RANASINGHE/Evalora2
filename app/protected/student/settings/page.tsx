@@ -1,10 +1,17 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Bell, Shield, Palette } from "lucide-react";
+import { User, Bell, Shield, Palette, Users, Send, Inbox } from "lucide-react";
+import { SearchUsersDialog } from "@/components/relationships/search-users-dialog";
+import { RequestsTab } from "@/components/relationships/requests-tab";
+import { AcceptTab } from "@/components/relationships/accept-tab";
+import { MyConnections } from "@/components/relationships/my-connections";
+import { UserRole, RelationshipType } from "@/lib/generated/prisma/enums";
 
 export default function SettingsPage() {
   return (
@@ -17,6 +24,9 @@ export default function SettingsPage() {
       <Tabs defaultValue="profile" className="space-y-4">
         <TabsList>
             <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="connections">Connections</TabsTrigger>
+            <TabsTrigger value="requests">Requests</TabsTrigger>
+            <TabsTrigger value="accept">Accept</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
             <TabsTrigger value="appearance">Appearance</TabsTrigger>
             <TabsTrigger value="privacy">Privacy</TabsTrigger>
@@ -55,6 +65,61 @@ export default function SettingsPage() {
                 <CardFooter className="border-t px-6 py-4">
                     <Button>Save Changes</Button>
                 </CardFooter>
+            </Card>
+        </TabsContent>
+
+        <TabsContent value="connections" className="space-y-4">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5" />
+                        My Connections
+                    </CardTitle>
+                    <CardDescription>Manage your connections with teachers and parents.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <MyConnections />
+                    <div className="flex gap-2 pt-4">
+                        <SearchUsersDialog
+                            targetRole={"TEACHER" as UserRole}
+                            relationshipType={"TEACHER_STUDENT" as RelationshipType}
+                        />
+                        <SearchUsersDialog
+                            targetRole={"PARENT" as UserRole}
+                            relationshipType={"PARENT_STUDENT" as RelationshipType}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
+        </TabsContent>
+
+        <TabsContent value="requests" className="space-y-4">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Send className="h-5 w-5" />
+                        My Requests
+                    </CardTitle>
+                    <CardDescription>View and manage your sent connection requests.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <RequestsTab />
+                </CardContent>
+            </Card>
+        </TabsContent>
+
+        <TabsContent value="accept" className="space-y-4">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Inbox className="h-5 w-5" />
+                        Accept Requests
+                    </CardTitle>
+                    <CardDescription>Review and accept incoming connection requests.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <AcceptTab />
+                </CardContent>
             </Card>
         </TabsContent>
 
