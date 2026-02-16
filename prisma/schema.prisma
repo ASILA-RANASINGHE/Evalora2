@@ -47,6 +47,17 @@ enum PaperTerm {
   END_OF_YEAR
 }
 
+enum RelationshipType {
+  TEACHER_STUDENT
+  PARENT_STUDENT
+}
+
+enum RelationshipStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
 model Profile {
   id        String   @id @db.Uuid
   email     String   @unique
@@ -73,6 +84,18 @@ model Profile {
 
   // Student progress
   progress StudentProgress?
+
+  // Relationship requests
+  sentRequests     RelationshipRequest[] @relation("SentRequests")
+  receivedRequests RelationshipRequest[] @relation("ReceivedRequests")
+
+  // Teacher-Student links
+  teacherStudents TeacherStudentLink[] @relation("TeacherToStudents")
+  studentTeachers TeacherStudentLink[] @relation("StudentToTeachers")
+
+  // Parent-Student links
+  parentStudents ParentStudentLink[] @relation("ParentToStudents")
+  studentParents ParentStudentLink[] @relation("StudentToParents")
 }
 
 model StudentDetails {
@@ -106,6 +129,49 @@ model AdminDetails {
   department String?
 
   profile Profile @relation(fields: [id], references: [id], onDelete: Cascade)
+}
+
+// ─── Relationships ──────────────────────────────────────────────
+
+model RelationshipRequest {
+  id          String             @id @default(uuid()) @db.Uuid
+  type        RelationshipType
+  status      RelationshipStatus @default(PENDING)
+  requesterId String             @db.Uuid
+  receiverId  String             @db.Uuid
+  createdAt   DateTime           @default(now())
+  respondedAt DateTime?
+
+  requester Profile @relation("SentRequests", fields: [requesterId], references: [id], onDelete: Cascade)
+  receiver  Profile @relation("ReceivedRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, receiverId, type])
+  @@index([requesterId, status])
+  @@index([receiverId, status])
+}
+
+model TeacherStudentLink {
+  id        String   @id @default(uuid()) @db.Uuid
+  teacherId String   @db.Uuid
+  studentId String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  teacher Profile @relation("TeacherToStudents", fields: [teacherId], references: [id], onDelete: Cascade)
+  student Profile @relation("StudentToTeachers", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, studentId])
+}
+
+model ParentStudentLink {
+  id        String   @id @default(uuid()) @db.Uuid
+  parentId  String   @db.Uuid
+  studentId String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  parent  Profile @relation("ParentToStudents", fields: [parentId], references: [id], onDelete: Cascade)
+  student Profile @relation("StudentToParents", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, studentId])
 }
 
 // ─── Content: Subjects ───────────────────────────────────────────
