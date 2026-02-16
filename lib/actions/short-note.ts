@@ -58,7 +58,7 @@ export async function getShortNotesBySubject(subjectName: string) {
   const subject = await prisma.subject.findFirst({
     where: { name: { equals: subjectName, mode: "insensitive" } },
   });
-  if (!subject) return [];
+  if (!subject) return { adminContent: [], teacherContent: [] };
 
   const shortNotes = await prisma.shortNote.findMany({
     where: {
@@ -66,12 +66,12 @@ export async function getShortNotesBySubject(subjectName: string) {
       status: "APPROVED",
     },
     include: {
-      createdBy: { select: { firstName: true, lastName: true } },
+      createdBy: { select: { firstName: true, lastName: true, role: true } },
     },
     orderBy: { createdAt: "desc" },
   });
 
-  return shortNotes.map((n) => ({
+  const mapShortNote = (n: typeof shortNotes[0]) => ({
     id: n.id,
     title: n.title,
     topic: n.topic,
@@ -80,7 +80,12 @@ export async function getShortNotesBySubject(subjectName: string) {
       "Teacher",
     createdAt: n.createdAt,
     contentLength: n.content.length,
-  }));
+  });
+
+  const adminContent = shortNotes.filter((n) => n.createdBy.role === "ADMIN").map(mapShortNote);
+  const teacherContent = shortNotes.filter((n) => n.createdBy.role === "TEACHER").map(mapShortNote);
+
+  return { adminContent, teacherContent };
 }
 
 export async function getShortNoteById(id: string) {

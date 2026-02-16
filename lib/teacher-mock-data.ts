@@ -35,7 +35,18 @@ export const todayGlance = {
 };
 
 export const subjectTopics: Record<string, string[]> = {
-  History: ["Ancient Civilizations", "Medieval Period", "World Wars", "Industrial Revolution", "Cold War Era", "Sri Lankan History"],
+  History: [
+    "Ancient Civilizations of Sri Lanka",
+    "Medieval Kingdoms of Sri Lanka",
+    "Colonial Era in Sri Lanka",
+    "Independence Movement of Sri Lanka",
+    "Ancient Egypt and Mesopotamia",
+    "Greek and Roman Civilizations",
+    "World War I",
+    "World War II",
+    "Industrial Revolution",
+    "Cold War Era",
+  ],
 };
 
 export const subjects = ["History"];
