@@ -2,7 +2,16 @@
 
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
-import type { PaperTerm } from "@/lib/generated/prisma/enums";
+import type { PaperTerm, QuestionType } from "@/lib/generated/prisma/enums";
+
+interface PaperQuestionInput {
+  text: string;
+  type: QuestionType;
+  points: number;
+  options: string[];
+  correctAnswer: string;
+  order: number;
+}
 
 interface CreatePaperInput {
   title: string;
@@ -19,6 +28,8 @@ interface CreatePaperInput {
   totalMarks: number;
   passPercentage: number;
   instructions?: string;
+  visibility?: string;
+  questions?: PaperQuestionInput[];
 }
 
 export async function createPaper(input: CreatePaperInput) {
@@ -64,8 +75,21 @@ export async function createPaper(input: CreatePaperInput) {
       totalMarks: input.totalMarks,
       passPercentage: input.passPercentage,
       instructions: input.instructions,
+      visibility: profile?.role === "ADMIN" ? "PUBLIC" : (input.visibility === "PUBLIC" ? "PUBLIC" : "STUDENTS_ONLY"),
       status: "APPROVED",
       createdById: user.id,
+      ...(input.questions && input.questions.length > 0 && {
+        questions: {
+          create: input.questions.map((q, i) => ({
+            text: q.text,
+            type: q.type,
+            points: q.points,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
+            order: q.order ?? i,
+          })),
+        },
+      }),
     },
   });
 

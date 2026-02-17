@@ -10,6 +10,7 @@ interface CreateQuizInput {
   topic: string;
   type: QuizType;
   duration: number;
+  visibility?: string;
   questions: {
     text: string;
     type: QuestionType;
@@ -54,6 +55,7 @@ export async function createQuiz(input: CreateQuizInput) {
       topic: input.topic,
       type: input.type,
       duration: input.duration,
+      visibility: profile?.role === "ADMIN" ? "PUBLIC" : (input.visibility === "PUBLIC" ? "PUBLIC" : "STUDENTS_ONLY"),
       status: "APPROVED",
       createdById: user.id,
       questions: {

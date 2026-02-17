@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Check, Upload, Eye, GripVertical } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Check, Upload, GripVertical, Globe, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { getTeacherSubjects } from "@/lib/actions/teacher";
+import { subjects } from "@/lib/teacher-mock-data";
 import { createPaper } from "@/lib/actions/paper";
 import type { PaperTerm } from "@/lib/generated/prisma/enums";
 
@@ -40,10 +41,9 @@ interface FormErrors {
   grade?: string;
   duration?: string;
   mcqCount?: string;
-  essayCount?: string;
 }
 
-export default function UploadPapersPage() {
+export default function AdminUploadPapersPage() {
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
   const [term, setTerm] = useState("");
@@ -56,21 +56,15 @@ export default function UploadPapersPage() {
   const [isModel, setIsModel] = useState(false);
   const [passPercentage, setPassPercentage] = useState("35");
   const [notes, setNotes] = useState("");
-  const [visibility, setVisibility] = useState<"STUDENTS_ONLY" | "PUBLIC">("STUDENTS_ONLY");
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [allowedSubjects, setAllowedSubjects] = useState<string[]>([]);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Question builders
   const [mcqQuestions, setMcqQuestions] = useState<McqQuestion[]>([]);
   const [structuredQuestions, setStructuredQuestions] = useState<StructuredQuestion[]>([]);
 
-  useEffect(() => {
-    getTeacherSubjects().then(setAllowedSubjects);
-  }, []);
-
-  // Sync MCQ question array with count
   const mcqCountNum = parseInt(mcqCount) || 0;
   useEffect(() => {
     setMcqQuestions((prev) => {
@@ -82,7 +76,6 @@ export default function UploadPapersPage() {
     });
   }, [mcqCountNum]);
 
-  // Sync structured question array with count
   const essayCountNum = parseInt(essayCount) || 0;
   useEffect(() => {
     setStructuredQuestions((prev) => {
@@ -96,9 +89,7 @@ export default function UploadPapersPage() {
 
   const totalQuestions = mcqCountNum + essayCountNum;
   const totalMarks = useMemo(() => {
-    const mcqTotal = mcqCountNum * (parseInt(mcqMarks) || 0);
-    const essayTotal = essayCountNum * (parseInt(essayMarks) || 0);
-    return mcqTotal + essayTotal;
+    return mcqCountNum * (parseInt(mcqMarks) || 0) + essayCountNum * (parseInt(essayMarks) || 0);
   }, [mcqCountNum, mcqMarks, essayCountNum, essayMarks]);
 
   const validate = (): boolean => {
@@ -117,8 +108,8 @@ export default function UploadPapersPage() {
     e.preventDefault();
     if (!validate()) return;
     setSaving(true);
+    setSaveError(null);
     try {
-      // Build questions array
       const questions = [
         ...mcqQuestions.map((q, i) => ({
           text: q.text,
@@ -152,13 +143,12 @@ export default function UploadPapersPage() {
         totalMarks,
         passPercentage: parseInt(passPercentage) || 35,
         instructions: notes || undefined,
-        visibility,
+        visibility: "PUBLIC",
         questions: questions.length > 0 ? questions : undefined,
       });
       setSubmitted(true);
     } catch (err) {
-      console.error("Failed to create paper:", err);
-      alert("Failed to create paper. Please try again.");
+      setSaveError(err instanceof Error ? err.message : "Failed to create paper");
     } finally {
       setSaving(false);
     }
@@ -178,7 +168,7 @@ export default function UploadPapersPage() {
           <Button variant="outline" onClick={() => { setSubmitted(false); setTitle(""); setSubject(""); setTerm(""); setGrade(""); setDuration(""); setMcqCount(""); setMcqMarks(""); setEssayCount(""); setEssayMarks(""); setIsModel(false); setPassPercentage("35"); setNotes(""); setMcqQuestions([]); setStructuredQuestions([]); }}>
             Create Another
           </Button>
-          <Link href="/protected/teacher/upload">
+          <Link href="/protected/admin/upload">
             <Button>Back to Upload Hub</Button>
           </Link>
         </div>
@@ -189,12 +179,12 @@ export default function UploadPapersPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-3">
-        <Link href="/protected/teacher/upload" className="text-muted-foreground hover:text-foreground transition-colors">
+        <Link href="/protected/admin/upload" className="text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
           <h2 className="font-space-grotesk text-2xl font-bold">Upload Papers</h2>
-          <p className="text-muted-foreground text-sm mt-0.5">Create structured exam papers</p>
+          <p className="text-muted-foreground text-sm mt-0.5">Create structured exam papers for all students</p>
         </div>
       </div>
 
@@ -226,7 +216,7 @@ export default function UploadPapersPage() {
                   className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${errors.subject ? "border-red-500" : "border-input"}`}
                 >
                   <option value="">Select</option>
-                  {allowedSubjects.map((s) => <option key={s} value={s}>{s}</option>)}
+                  {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
                 {errors.subject && <p className="text-xs text-red-500">{errors.subject}</p>}
               </div>
@@ -282,7 +272,6 @@ export default function UploadPapersPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid gap-6 sm:grid-cols-2">
-              {/* MCQ Section */}
               <div className="p-4 rounded-lg border bg-muted/20 space-y-3">
                 <h4 className="font-semibold text-sm flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-blue-500"></span>
@@ -291,31 +280,16 @@ export default function UploadPapersPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Number of MCQs</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={mcqCount}
-                      onChange={(e) => { setMcqCount(e.target.value); if (errors.mcqCount) setErrors((p) => ({ ...p, mcqCount: undefined })); }}
-                    />
+                    <Input type="number" min="0" placeholder="0" value={mcqCount} onChange={(e) => { setMcqCount(e.target.value); if (errors.mcqCount) setErrors((p) => ({ ...p, mcqCount: undefined })); }} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Marks per MCQ</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={mcqMarks}
-                      onChange={(e) => setMcqMarks(e.target.value)}
-                    />
+                    <Input type="number" min="0" placeholder="0" value={mcqMarks} onChange={(e) => setMcqMarks(e.target.value)} />
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Subtotal: {mcqCountNum * (parseInt(mcqMarks) || 0)} marks
-                </p>
+                <p className="text-xs text-muted-foreground">Subtotal: {mcqCountNum * (parseInt(mcqMarks) || 0)} marks</p>
               </div>
 
-              {/* Essay Section */}
               <div className="p-4 rounded-lg border bg-muted/20 space-y-3">
                 <h4 className="font-semibold text-sm flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-purple-500"></span>
@@ -324,33 +298,18 @@ export default function UploadPapersPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Number of Questions</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={essayCount}
-                      onChange={(e) => { setEssayCount(e.target.value); if (errors.mcqCount) setErrors((p) => ({ ...p, mcqCount: undefined })); }}
-                    />
+                    <Input type="number" min="0" placeholder="0" value={essayCount} onChange={(e) => { setEssayCount(e.target.value); if (errors.mcqCount) setErrors((p) => ({ ...p, mcqCount: undefined })); }} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Marks per Question</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={essayMarks}
-                      onChange={(e) => setEssayMarks(e.target.value)}
-                    />
+                    <Input type="number" min="0" placeholder="0" value={essayMarks} onChange={(e) => setEssayMarks(e.target.value)} />
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Subtotal: {essayCountNum * (parseInt(essayMarks) || 0)} marks
-                </p>
+                <p className="text-xs text-muted-foreground">Subtotal: {essayCountNum * (parseInt(essayMarks) || 0)} marks</p>
               </div>
             </div>
             {errors.mcqCount && <p className="text-xs text-red-500">{errors.mcqCount}</p>}
 
-            {/* Auto-calculated summary */}
             <div className="flex flex-wrap gap-4 p-4 rounded-lg bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800">
               <div>
                 <p className="text-xs text-muted-foreground">Total Questions</p>
@@ -509,15 +468,7 @@ export default function UploadPapersPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="pass">Pass Percentage (%)</Label>
-                <Input
-                  id="pass"
-                  type="number"
-                  min="1"
-                  max="100"
-                  value={passPercentage}
-                  onChange={(e) => setPassPercentage(e.target.value)}
-                  className="max-w-32"
-                />
+                <Input id="pass" type="number" min="1" max="100" value={passPercentage} onChange={(e) => setPassPercentage(e.target.value)} className="max-w-32" />
               </div>
             </div>
 
@@ -538,36 +489,30 @@ export default function UploadPapersPage() {
         {/* Visibility & Submit */}
         <Card className="border-border/50 shadow-sm">
           <CardContent className="p-6">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Eye className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Visibility</span>
+            {saveError && <p className="text-sm text-red-500 mb-4">{saveError}</p>}
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-purple-500" />
+                <Badge className="border-0 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                  All Evalora Students
+                </Badge>
               </div>
               <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setVisibility("STUDENTS_ONLY")}
-                  className={`flex-1 p-3 rounded-lg border-2 text-left transition-colors ${visibility === "STUDENTS_ONLY" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" : "border-border hover:border-purple-300"}`}
-                >
-                  <p className="text-sm font-semibold">Your Students Only</p>
-                  <p className="text-xs text-muted-foreground">Only students assigned to you can see this</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setVisibility("PUBLIC")}
-                  className={`flex-1 p-3 rounded-lg border-2 text-left transition-colors ${visibility === "PUBLIC" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" : "border-border hover:border-purple-300"}`}
-                >
-                  <p className="text-sm font-semibold">All Evalora Students</p>
-                  <p className="text-xs text-muted-foreground">Visible to every student on the platform</p>
-                </button>
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <Link href="/protected/teacher/upload">
+                <Link href="/protected/admin/upload">
                   <Button variant="outline" type="button">Cancel</Button>
                 </Link>
                 <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white" disabled={saving}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  {saving ? "Creating..." : "Create Paper"}
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Create Paper
+                    </>
+                  )}
                 </Button>
               </div>
             </div>

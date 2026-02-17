@@ -8,6 +8,7 @@ interface CreateShortNoteInput {
   subject: string;
   topic: string;
   content: string;
+  visibility?: string;
 }
 
 export async function createShortNote(input: CreateShortNoteInput) {
@@ -47,6 +48,7 @@ export async function createShortNote(input: CreateShortNoteInput) {
       topic: input.topic,
       content: input.content,
       status: "APPROVED",
+      visibility: profile?.role === "ADMIN" ? "PUBLIC" : (input.visibility === "PUBLIC" ? "PUBLIC" : "STUDENTS_ONLY"),
       createdById: user.id,
     },
   });

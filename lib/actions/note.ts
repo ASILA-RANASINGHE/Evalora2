@@ -8,6 +8,7 @@ interface CreateNoteInput {
   subject: string;
   topic: string;
   content: string;
+  visibility?: string;
 }
 
 export async function createNote(input: CreateNoteInput) {
@@ -43,7 +44,7 @@ export async function createNote(input: CreateNoteInput) {
       subjectId: subject.id,
       topic: input.topic,
       content: input.content,
-      visibility: "STUDENTS_ONLY",
+      visibility: profile?.role === "ADMIN" ? "PUBLIC" : (input.visibility === "PUBLIC" ? "PUBLIC" : "STUDENTS_ONLY"),
       status: "APPROVED",
       createdById: user.id,
     },
