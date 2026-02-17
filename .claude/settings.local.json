@@ -12,7 +12,11 @@
       "Bash(timeout 20 npx next dev:*)",
       "Bash(curl:*)",
       "Bash(cat:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(npm ls:*)",
+      "Bash(npx prisma version:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm add:*)"
     ]
   }
 }

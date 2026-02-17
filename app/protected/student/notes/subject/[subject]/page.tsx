@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, FileText, Clock, User, Shield, GraduationCap } from "lucide-react";
+import { ChevronLeft, FileText, Clock, User } from "lucide-react";
 import { getNotesBySubject } from "@/lib/actions/note";
+import { ContentSourceFilter } from "@/components/content-source-filter";
 
 function timeAgo(date: Date): string {
   const now = new Date();
@@ -71,37 +72,13 @@ export default async function SubjectNotesPage({ params }: { params: Promise<{ s
           <p className="text-sm text-muted-foreground mt-1">Check back later or ask your teacher to upload some!</p>
         </div>
       ) : (
-        <div className="space-y-8">
-          {/* Admin Content Section */}
-          {adminContent.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Shield className="h-5 w-5 text-blue-600" />
-                <h3 className="text-xl font-semibold text-blue-600">Admin Notes</h3>
-              </div>
-              <div className="grid gap-4">
-                {adminContent.map((note) => (
-                  <NoteCard key={note.id} note={note} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Teacher Content Section */}
-          {teacherContent.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <GraduationCap className="h-5 w-5 text-green-600" />
-                <h3 className="text-xl font-semibold text-green-600">Teacher Notes</h3>
-              </div>
-              <div className="grid gap-4">
-                {teacherContent.map((note) => (
-                  <NoteCard key={note.id} note={note} />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        <ContentSourceFilter
+          adminCount={adminContent.length}
+          teacherCount={teacherContent.length}
+          contentLabel="notes"
+          adminSection={adminContent.map((note) => <NoteCard key={note.id} note={note} />)}
+          teacherSection={teacherContent.map((note) => <NoteCard key={note.id} note={note} />)}
+        />
       )}
     </div>
   );

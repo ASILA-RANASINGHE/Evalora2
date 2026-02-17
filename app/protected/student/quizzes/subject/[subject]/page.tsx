@@ -97,7 +97,7 @@ export default async function SubjectQuizzesPage({ params }: { params: Promise<{
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <Shield className="h-5 w-5 text-blue-600" />
-                <h3 className="text-xl font-semibold text-blue-600">Admin Quizzes</h3>
+                <h3 className="text-xl font-semibold text-blue-600">Evalora Quizzes</h3>
               </div>
               <div className="grid gap-4">
                 {adminContent.map((quiz) => (
