@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ChevronDown, ChevronRight, Table2 } from "lucide-react";
 import type { TopicDifficultyRow, Student } from "@/lib/teacher-mock-data";
@@ -74,9 +74,8 @@ export function TopicDifficulty({ topics, students }: TopicDifficultyProps) {
                 const isExpanded = expandedTopic === topic.topic;
                 const strugglingStudents = students.filter((s) => topic.strugglingStudentIds.includes(s.id));
                 return (
-                  <>
+                  <React.Fragment key={topic.topic}>
                     <tr
-                      key={topic.topic}
                       onClick={() => setExpandedTopic(isExpanded ? null : topic.topic)}
                       className="border-b border-border/50 hover:bg-muted/40 cursor-pointer transition-colors"
                     >
@@ -132,7 +131,7 @@ export function TopicDifficulty({ topics, students }: TopicDifficultyProps) {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 );
               })}
             </tbody>
