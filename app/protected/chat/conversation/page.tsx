@@ -1,21 +1,115 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot, ArrowLeft, User } from "lucide-react";
-import Link from "next/link";
+import { AnimatePresence } from "framer-motion";
+import { Sidebar } from "./components/sidebar";
+import { ChatHeader } from "./components/chat-header";
+import { MessageBubble, type ChatMessage } from "./components/message-bubble";
+import { ChatInput } from "./components/chat-input";
+import { ReferencePanel } from "./components/reference-panel";
+import "katex/dist/katex.min.css";
 
-interface Message {
-  id: number;
-  text: string;
-  sender: "user" | "bot";
-}
+const initialMessages: ChatMessage[] = [
+  {
+    id: 1,
+    sender: "bot",
+    timestamp: "10:00 AM",
+    text: `## Welcome to EduBot! 👋
+
+I'm your **Senior Academic Advisor**. I can help you with:
+
+- [ ] Reviewing course material
+- [ ] Solving math problems step-by-step
+- [ ] Formatting essays and theses
+- [x] Getting started with your session
+
+Feel free to ask me anything — from algebra to essay writing!`,
+  },
+  {
+    id: 2,
+    sender: "user",
+    timestamp: "10:01 AM",
+    text: "Can you explain the quadratic formula and show me how to solve x² + 5x + 6 = 0?",
+  },
+  {
+    id: 3,
+    sender: "bot",
+    timestamp: "10:01 AM",
+    text: `### The Quadratic Formula
+
+For any equation of the form $ax^2 + bx + c = 0$, the solutions are given by:
+
+$$\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$
+
+### Solving $x^2 + 5x + 6 = 0$
+
+Here, $a = 1$, $b = 5$, $c = 6$. Substituting:
+
+$$x = \\frac{-5 \\pm \\sqrt{25 - 24}}{2} = \\frac{-5 \\pm 1}{2}$$
+
+This gives us two solutions:
+
+| Step | Calculation | Result |
+|------|------------|--------|
+| $x_1$ | $(-5 + 1) / 2$ | $-2$ |
+| $x_2$ | $(-5 - 1) / 2$ | $-3$ |
+
+> **Tip:** You can verify by factoring: $x^2 + 5x + 6 = (x + 2)(x + 3)$, which confirms $x = -2$ and $x = -3$.
+
+We can also check: $(-2)^2 + 5(-2) + 6 = 4 - 10 + 6 = 0$ ✓`,
+  },
+  {
+    id: 4,
+    sender: "user",
+    timestamp: "10:03 AM",
+    text: "Can you give me a study plan for my algebra test next week?",
+  },
+  {
+    id: 5,
+    sender: "bot",
+    timestamp: "10:03 AM",
+    text: `### 📚 Algebra II Study Plan
+
+Here's a structured plan for your upcoming test:
+
+- [x] Review quadratic formula & factoring
+- [ ] Practice completing the square
+- [ ] Study polynomial long division
+- [ ] Review systems of equations
+- [ ] Take a practice test
+
+### Key Formulas to Memorize
+
+$$a^2 - b^2 = (a+b)(a-b)$$
+
+$$ax^2 + bx + c = a(x - x_1)(x - x_2)$$
+
+### Common Mistakes to Avoid
+
+> Always check the discriminant $b^2 - 4ac$ first. If it's negative, there are no real solutions!
+
+Here's a quick Python snippet to verify your answers:
+
+\`\`\`python
+import math
+
+def solve_quadratic(a, b, c):
+    disc = b**2 - 4*a*c
+    if disc < 0:
+        return "No real solutions"
+    x1 = (-b + math.sqrt(disc)) / (2*a)
+    x2 = (-b - math.sqrt(disc)) / (2*a)
+    return x1, x2
+\`\`\`
+
+Would you like me to dive deeper into any of these topics?`,
+  },
+];
 
 export default function ConversationPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    { id: 1, text: "Hi! I'm Robo. How can I help you today?", sender: "bot" },
-  ]);
-  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [referenceOpen, setReferenceOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -26,114 +120,69 @@ export default function ConversationPage() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = () => {
-    const trimmed = input.trim();
-    if (!trimmed) return;
-
-    const userMessage: Message = {
+  const handleSend = (text: string) => {
+    const userMessage: ChatMessage = {
       id: Date.now(),
-      text: trimmed,
+      text,
       sender: "user",
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     };
 
     setMessages((prev) => [...prev, userMessage]);
-    setInput("");
 
     // Simulate bot response
     setTimeout(() => {
-      const botMessage: Message = {
+      const botMessage: ChatMessage = {
         id: Date.now() + 1,
-        text: "Thanks for your message! I'm a demo bot — real AI integration coming soon.",
+        text: "Thanks for your question! I'm analyzing it now. In a full implementation, this would connect to an AI backend for real academic support.\n\n> This is a **demo response** showcasing the markdown rendering capabilities.",
         sender: "bot",
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
       };
       setMessages((prev) => [...prev, botMessage]);
-    }, 1000);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+    }, 1200);
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      {/* Header */}
-      <header className="flex items-center gap-3 px-4 sm:px-6 py-4 bg-[#0066FF] text-white shadow-md">
-        <Link
-          href="/protected/chat"
-          className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
-            <Bot className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="font-semibold text-sm leading-tight">Zenbot</p>
-            <p className="text-xs text-white/70">Online</p>
+    <div className="flex h-screen overflow-hidden bg-slate-50">
+      {/* Sidebar */}
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <ChatHeader
+          referenceOpen={referenceOpen}
+          onToggleReference={() => setReferenceOpen(!referenceOpen)}
+        />
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="max-w-3xl mx-auto space-y-6">
+            {messages.map((msg) => (
+              <MessageBubble key={msg.id} message={msg} />
+            ))}
+            <div ref={messagesEndRef} />
           </div>
         </div>
-      </header>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-4">
-        <AnimatePresence initial={false}>
-          {messages.map((msg) => (
-            <motion.div
-              key={msg.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className={`flex items-end gap-2 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
-            >
-              {msg.sender === "bot" && (
-                <div className="w-7 h-7 rounded-full bg-[#0066FF] flex items-center justify-center flex-shrink-0">
-                  <Bot className="h-4 w-4 text-white" />
-                </div>
-              )}
-              <div
-                className={`max-w-[75%] sm:max-w-md px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                  msg.sender === "user"
-                    ? "bg-[#0066FF] text-white rounded-br-sm"
-                    : "bg-white text-gray-800 border border-gray-200 rounded-bl-sm shadow-sm"
-                }`}
-              >
-                {msg.text}
-              </div>
-              {msg.sender === "user" && (
-                <div className="w-7 h-7 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
-                  <User className="h-4 w-4 text-gray-600" />
-                </div>
-              )}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-        <div ref={messagesEndRef} />
+        {/* Input */}
+        <ChatInput onSend={handleSend} />
       </div>
 
-      {/* Input */}
-      <div className="border-t border-gray-200 bg-white px-4 sm:px-6 py-4">
-        <div className="flex items-center gap-3 max-w-3xl mx-auto">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your message..."
-            className="flex-1 px-4 py-2.5 rounded-full border border-gray-300 bg-gray-50 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0066FF] focus:border-transparent"
-          />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim()}
-            className="w-10 h-10 rounded-full bg-[#0066FF] text-white flex items-center justify-center hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Send className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
+      {/* Reference Panel */}
+      <AnimatePresence>
+        {referenceOpen && (
+          <ReferencePanel onClose={() => setReferenceOpen(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
