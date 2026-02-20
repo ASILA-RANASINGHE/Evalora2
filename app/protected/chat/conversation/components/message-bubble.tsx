@@ -1,16 +1,24 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { motion } from "framer-motion";
 import { Bot, User, Copy, Check } from "lucide-react";
 import { useState } from "react";
 import katex from "katex";
+
+export interface CitationRef {
+  label: string; // e.g. "p. 12" or "Sec 2.1"
+  page: number;
+  snippet: string;
+  source: string;
+}
 
 export interface ChatMessage {
   id: number;
   sender: "user" | "bot";
   text: string;
   timestamp: string;
+  citations?: CitationRef[];
 }
 
 function renderLatex(text: string): string {
@@ -109,20 +117,110 @@ function renderMarkdown(text: string): string {
   return html;
 }
 
-function processContent(text: string): string {
-  const withLatex = renderLatex(text);
-  return renderMarkdown(withLatex);
+function renderCitationTags(text: string): string {
+  // Match patterns like [p. 12], [Sec 2.1], [p. 4], [Section 3]
+  return text.replace(
+    /\[(p\.\s*\d+|Sec(?:tion)?\s*[\d.]+)\]/g,
+    (match, ref) => {
+      const page = parseInt(ref.replace(/\D+/g, ""), 10) || 1;
+      return `<button class="citation-tag inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-0.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded text-[10px] font-semibold text-blue-600 cursor-pointer transition-colors align-baseline" data-page="${page}" data-label="${ref}">${match}</button>`;
+    }
+  );
 }
 
-export function MessageBubble({ message }: { message: ChatMessage }) {
+function processContent(text: string): string {
+  const withLatex = renderLatex(text);
+  const withMarkdown = renderMarkdown(withLatex);
+  return renderCitationTags(withMarkdown);
+}
+
+// Citation tooltip component
+function CitationTooltip({
+  citation,
+  position,
+}: {
+  citation: CitationRef;
+  position: { x: number; y: number };
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      className="fixed z-50 w-64 p-3 bg-slate-800 text-white rounded-xl shadow-xl border border-slate-700"
+      style={{ left: position.x, top: position.y - 8, transform: "translate(-50%, -100%)" }}
+    >
+      <p className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold mb-1">
+        {citation.source} — {citation.label}
+      </p>
+      <p className="text-xs leading-relaxed text-slate-300">
+        &quot;{citation.snippet}&quot;
+      </p>
+      <div className="absolute left-1/2 -bottom-1.5 -translate-x-1/2 w-3 h-3 bg-slate-800 rotate-45 border-r border-b border-slate-700" />
+    </motion.div>
+  );
+}
+
+interface MessageBubbleProps {
+  message: ChatMessage;
+  onCitationClick?: (page: number, source: string) => void;
+}
+
+export function MessageBubble({ message, onCitationClick }: MessageBubbleProps) {
   const isBot = message.sender === "bot";
   const [copied, setCopied] = useState(false);
+  const [hoveredCitation, setHoveredCitation] = useState<CitationRef | null>(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const contentRef = useRef<HTMLDivElement>(null);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleContentClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const citationBtn = target.closest(".citation-tag") as HTMLElement | null;
+    if (citationBtn) {
+      const page = parseInt(citationBtn.dataset.page || "1", 10);
+      const label = citationBtn.dataset.label || "";
+
+      // Find matching citation from metadata
+      const citation = message.citations?.find(
+        (c) => c.page === page || c.label === label
+      );
+
+      if (onCitationClick) {
+        onCitationClick(page, citation?.source || "CS201_Syllabus.pdf");
+      }
+    }
+  };
+
+  const handleContentMouseOver = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const citationBtn = target.closest(".citation-tag") as HTMLElement | null;
+    if (citationBtn && message.citations) {
+      const page = parseInt(citationBtn.dataset.page || "1", 10);
+      const label = citationBtn.dataset.label || "";
+
+      const citation = message.citations.find(
+        (c) => c.page === page || c.label === label
+      );
+
+      if (citation) {
+        const rect = citationBtn.getBoundingClientRect();
+        setTooltipPos({ x: rect.left + rect.width / 2, y: rect.top });
+        setHoveredCitation(citation);
+      }
+    }
+  };
+
+  const handleContentMouseOut = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest(".citation-tag")) {
+      setHoveredCitation(null);
+    }
   };
 
   return (
@@ -151,6 +249,9 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
               ref={contentRef}
               className="text-sm leading-relaxed font-merriweather prose-sm"
               dangerouslySetInnerHTML={{ __html: processContent(message.text) }}
+              onClick={handleContentClick}
+              onMouseOver={handleContentMouseOver}
+              onMouseOut={handleContentMouseOut}
             />
           ) : (
             <p className="text-sm leading-relaxed">{message.text}</p>
@@ -182,6 +283,11 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
         <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center flex-shrink-0 mt-1">
           <User className="h-4 w-4 text-slate-600" />
         </div>
+      )}
+
+      {/* Citation Tooltip */}
+      {hoveredCitation && (
+        <CitationTooltip citation={hoveredCitation} position={tooltipPos} />
       )}
     </motion.div>
   );
