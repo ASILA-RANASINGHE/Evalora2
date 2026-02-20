@@ -3,11 +3,14 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   FileText,
   StickyNote,
   BrainCircuit,
   ClipboardList,
+  Eye,
 } from "lucide-react";
 
 interface ContentItem {
@@ -36,6 +39,13 @@ const tabs = [
   { key: "papers", label: "Papers", icon: ClipboardList },
 ] as const;
 
+const routeMap: Record<string, string> = {
+  notes: "notes",
+  shortNotes: "short-notes",
+  quizzes: "quizzes",
+  papers: "papers",
+};
+
 const statusColors: Record<string, string> = {
   APPROVED: "bg-green-100 text-green-700",
   PENDING: "bg-yellow-100 text-yellow-700",
@@ -58,6 +68,11 @@ export function ContentTabs({
   papers,
 }: ContentTabsProps) {
   const [activeTab, setActiveTab] = useState<string>("notes");
+  const pathname = usePathname();
+
+  const basePath = pathname.startsWith("/protected/admin")
+    ? "/protected/admin/my-content"
+    : "/protected/teacher/my-content";
 
   const contentMap: Record<string, ContentItem[]> = {
     notes,
@@ -116,33 +131,44 @@ export function ContentTabs({
       ) : (
         <div className="grid gap-3">
           {items.map((item) => (
-            <Card key={item.id}>
-              <CardContent className="flex items-center justify-between p-4">
-                <div className="space-y-1">
-                  <p className="font-medium">{item.title}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {item.subject}
-                    {item.topic && ` \u00b7 ${item.topic}`}
-                    {item.grade && ` \u00b7 Grade ${item.grade}`}
-                    {item.questionCount != null &&
-                      ` \u00b7 ${item.questionCount} questions`}
-                    {item.totalMarks != null &&
-                      ` \u00b7 ${item.totalMarks} marks`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Badge
-                    variant="secondary"
-                    className={statusColors[item.status] ?? ""}
-                  >
-                    {item.status}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {formatDate(item.createdAt)}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+            <Link
+              key={item.id}
+              href={`${basePath}/${routeMap[activeTab]}/${item.id}`}
+              className="block group"
+            >
+              <Card className="hover:border-purple-300 transition-all hover:shadow-sm">
+                <CardContent className="flex items-center justify-between p-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium group-hover:text-purple-700 transition-colors">
+                        {item.title}
+                      </p>
+                      <Eye className="h-3 w-3 opacity-0 group-hover:opacity-100 text-purple-600 transition-opacity" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {item.subject}
+                      {item.topic && ` \u00b7 ${item.topic}`}
+                      {item.grade && ` \u00b7 Grade ${item.grade}`}
+                      {item.questionCount != null &&
+                        ` \u00b7 ${item.questionCount} questions`}
+                      {item.totalMarks != null &&
+                        ` \u00b7 ${item.totalMarks} marks`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Badge
+                      variant="secondary"
+                      className={statusColors[item.status] ?? ""}
+                    >
+                      {item.status}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {formatDate(item.createdAt)}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       )}

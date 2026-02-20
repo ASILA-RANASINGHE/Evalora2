@@ -9,12 +9,14 @@ import {
   Menu,
   X,
   Heart,
+  TrendingUp,
 } from "lucide-react";
 import { useState } from "react";
 import { LogoutButton } from "@/components/logout-button";
 
 const navItems = [
   { label: "Dashboard", href: "/protected/parent", icon: LayoutDashboard },
+  { label: "Progress", href: "/protected/parent/progress", icon: TrendingUp },
   { label: "Settings", href: "/protected/parent/settings", icon: Settings },
 ];
 

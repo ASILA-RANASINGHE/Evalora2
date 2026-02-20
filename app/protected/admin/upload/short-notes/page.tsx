@@ -156,11 +156,10 @@ export default function UploadShortNotesPage() {
               </CardHeader>
               <CardContent>
                 <Badge className="border-0 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                  Admin (Public)
+                  All Evalora Students
                 </Badge>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Content uploaded by admins is visible to all platform users by
-                  default.
+                  Admin content is visible to all students on the platform.
                 </p>
               </CardContent>
             </Card>

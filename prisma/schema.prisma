@@ -196,6 +196,7 @@ model Quiz {
   topic     String
   type      QuizType   @default(TOPIC_BASED)
   duration  Int        // minutes
+  visibility ContentVisibility @default(STUDENTS_ONLY)
   status    ContentStatus @default(DRAFT)
 
   createdById String   @db.Uuid
@@ -254,15 +255,30 @@ model Paper {
   passPercentage Int       @default(35)
 
   instructions   String?
+  visibility     ContentVisibility @default(STUDENTS_ONLY)
   status         ContentStatus @default(DRAFT)
 
   createdById String   @db.Uuid
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  subject   Subject        @relation(fields: [subjectId], references: [id])
-  createdBy Profile        @relation(fields: [createdById], references: [id])
+  subject   Subject          @relation(fields: [subjectId], references: [id])
+  createdBy Profile          @relation(fields: [createdById], references: [id])
+  questions PaperQuestion[]
   attempts  PaperAttempt[]
+}
+
+model PaperQuestion {
+  id            String       @id @default(uuid()) @db.Uuid
+  paperId       String       @db.Uuid
+  text          String
+  type          QuestionType @default(MCQ)
+  points        Int          @default(1)
+  options       String[]
+  correctAnswer String
+  order         Int          @default(0)
+
+  paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
 }
 
 model PaperAttempt {
@@ -316,7 +332,8 @@ model ShortNote {
   subjectId   String        @db.Uuid
   topic       String
   content     String
-  status      ContentStatus @default(DRAFT)
+  visibility  ContentVisibility @default(STUDENTS_ONLY)
+  status      ContentStatus     @default(DRAFT)
 
   createdById String   @db.Uuid
   createdAt   DateTime @default(now())

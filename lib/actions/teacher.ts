@@ -26,12 +26,16 @@ export async function getTeacherSubjectTopics(): Promise<
   // Return topics for the teacher's subject(s)
   const topicsMap: Record<string, string[]> = {
     History: [
-      "Ancient Civilizations",
-      "Medieval Period",
-      "World Wars",
+      "Ancient Civilizations of Sri Lanka",
+      "Medieval Kingdoms of Sri Lanka",
+      "Colonial Era in Sri Lanka",
+      "Independence Movement of Sri Lanka",
+      "Ancient Egypt and Mesopotamia",
+      "Greek and Roman Civilizations",
+      "World War I",
+      "World War II",
       "Industrial Revolution",
       "Cold War Era",
-      "Sri Lankan History",
     ],
   };
 

@@ -45,6 +45,7 @@ export default function UploadNotesPage() {
   const [allowedSubjects, setAllowedSubjects] = useState<string[]>([]);
   const [content, setContent] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [visibility, setVisibility] = useState<"STUDENTS_ONLY" | "PUBLIC">("STUDENTS_ONLY");
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -98,6 +99,7 @@ export default function UploadNotesPage() {
         subject,
         topic,
         content,
+        visibility,
       });
       setSubmitted(true);
     } catch (err) {
@@ -273,15 +275,30 @@ export default function UploadNotesPage() {
         {/* Visibility & Submit */}
         <Card className="border-border/50 shadow-sm">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-2">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
                 <Eye className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Visibility:</span>
-                <Badge variant="secondary" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-0">
-                  Your Students Only
-                </Badge>
+                <span className="text-sm font-medium">Visibility</span>
               </div>
               <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setVisibility("STUDENTS_ONLY")}
+                  className={`flex-1 p-3 rounded-lg border-2 text-left transition-colors ${visibility === "STUDENTS_ONLY" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" : "border-border hover:border-purple-300"}`}
+                >
+                  <p className="text-sm font-semibold">Your Students Only</p>
+                  <p className="text-xs text-muted-foreground">Only students assigned to you can see this</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibility("PUBLIC")}
+                  className={`flex-1 p-3 rounded-lg border-2 text-left transition-colors ${visibility === "PUBLIC" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" : "border-border hover:border-purple-300"}`}
+                >
+                  <p className="text-sm font-semibold">All Evalora Students</p>
+                  <p className="text-xs text-muted-foreground">Visible to every student on the platform</p>
+                </button>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
                 <Link href="/protected/teacher/upload">
                   <Button variant="outline" type="button">Cancel</Button>
                 </Link>
