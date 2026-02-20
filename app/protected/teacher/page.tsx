@@ -44,7 +44,7 @@ export default function TeacherDashboard() {
         <StatsCard
           title="Recent Uploads"
           value={String(dashboardStats.recentUploads)}
-          subtitle={dashboardStats.uploadPeriod}
+          subtitle="This week"
           icon={FileUp}
           iconColor="bg-purple-500/10 text-purple-600"
         />
