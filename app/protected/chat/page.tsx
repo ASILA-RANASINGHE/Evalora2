@@ -79,7 +79,7 @@ export default function ChatPage() {
               className="mt-8"
             >
               <Link
-                href="#"
+                href="/protected/chat/conversation"
                 className="inline-flex items-center gap-2 bg-white text-[#0066FF] font-semibold px-7 py-3.5 rounded-full text-base hover:bg-gray-100 transition-colors"
               >
                 Get Started
