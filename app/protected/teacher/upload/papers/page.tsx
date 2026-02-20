@@ -13,6 +13,7 @@ import type { PaperTerm } from "@/lib/generated/prisma/enums";
 
 const grades = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
 const terms = ["Term 1", "Term 2", "Term 3", "Mid-Year", "End-of-Year"];
+const EXTRA_SUBJECTS = ["Geography", "Health"];
 
 const termMap: Record<string, PaperTerm> = {
   "Term 1": "TERM_1",
@@ -69,6 +70,8 @@ export default function UploadPapersPage() {
   useEffect(() => {
     getTeacherSubjects().then(setAllowedSubjects);
   }, []);
+
+  const subjectOptions = [...new Set([...allowedSubjects, ...EXTRA_SUBJECTS])];
 
   // Sync MCQ question array with count
   const mcqCountNum = parseInt(mcqCount) || 0;
@@ -226,7 +229,7 @@ export default function UploadPapersPage() {
                   className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${errors.subject ? "border-red-500" : "border-input"}`}
                 >
                   <option value="">Select</option>
-                  {allowedSubjects.map((s) => <option key={s} value={s}>{s}</option>)}
+                  {subjectOptions.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
                 {errors.subject && <p className="text-xs text-red-500">{errors.subject}</p>}
               </div>

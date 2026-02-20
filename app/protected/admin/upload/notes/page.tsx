@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { SUBJECTS, TOPICS_BY_SUBJECT } from "@/lib/admin-mock-data";
+import { SUBJECTS } from "@/lib/admin-mock-data";
+
+const GRADES = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
 import {
   ArrowLeft,
   Upload,
@@ -33,6 +35,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 export default function UploadNotesPage() {
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
+  const [grade, setGrade] = useState("");
   const [topic, setTopic] = useState("");
   const [content, setContent] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -40,8 +43,6 @@ export default function UploadNotesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const topics = subject ? TOPICS_BY_SUBJECT[subject] || [] : [];
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files;
@@ -60,10 +61,11 @@ export default function UploadNotesPage() {
     setSaving(true);
     setError(null);
     try {
-      await createNote({ title, subject, topic, content });
+      await createNote({ title, subject, grade, topic, content });
       setSubmitted(true);
       setTitle("");
       setSubject("");
+      setGrade("");
       setTopic("");
       setContent("");
       setFiles([]);
@@ -266,7 +268,7 @@ export default function UploadNotesPage() {
 
           {/* Sidebar options */}
           <div className="space-y-6">
-            {/* Subject & Topic */}
+            {/* Subject, Grade & Topic */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Classification</CardTitle>
@@ -278,10 +280,7 @@ export default function UploadNotesPage() {
                   </Label>
                   <select
                     value={subject}
-                    onChange={(e) => {
-                      setSubject(e.target.value);
-                      setTopic("");
-                    }}
+                    onChange={(e) => setSubject(e.target.value)}
                     required
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   >
@@ -295,22 +294,32 @@ export default function UploadNotesPage() {
                 </div>
                 <div>
                   <Label className="mb-1.5 block text-sm font-medium">
-                    Topic
+                    Grade
                   </Label>
                   <select
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                    disabled={!subject}
+                    value={grade}
+                    onChange={(e) => setGrade(e.target.value)}
                     required
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   >
-                    <option value="">Select topic...</option>
-                    {topics.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
+                    <option value="">Select grade...</option>
+                    {GRADES.map((g) => (
+                      <option key={g} value={g}>
+                        {g}
                       </option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium">
+                    Topic
+                  </Label>
+                  <Input
+                    placeholder="e.g. World War II"
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                    required
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -337,7 +346,7 @@ export default function UploadNotesPage() {
             <Button
               type="submit"
               className="w-full bg-purple-600 hover:bg-purple-700"
-              disabled={!title || !subject || !topic || !content || saving}
+              disabled={!title || !subject || !grade || !topic || !content || saving}
             >
               {saving ? (
                 <>

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 interface CreateShortNoteInput {
   title: string;
   subject: string;
+  grade?: string;
   topic: string;
   content: string;
   visibility?: string;
@@ -45,6 +46,7 @@ export async function createShortNote(input: CreateShortNoteInput) {
     data: {
       title: input.title,
       subjectId: subject.id,
+      grade: input.grade || null,
       topic: input.topic,
       content: input.content,
       status: "APPROVED",

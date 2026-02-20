@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 interface CreateNoteInput {
   title: string;
   subject: string;
+  grade?: string;
   topic: string;
   content: string;
   visibility?: string;
@@ -42,6 +43,7 @@ export async function createNote(input: CreateNoteInput) {
     data: {
       title: input.title,
       subjectId: subject.id,
+      grade: input.grade || null,
       topic: input.topic,
       content: input.content,
       visibility: profile?.role === "ADMIN" ? "PUBLIC" : (input.visibility === "PUBLIC" ? "PUBLIC" : "STUDENTS_ONLY"),

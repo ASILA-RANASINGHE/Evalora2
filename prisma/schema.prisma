@@ -299,6 +299,7 @@ model Note {
   id         String            @id @default(uuid()) @db.Uuid
   title      String
   subjectId  String            @db.Uuid
+  grade      String?
   topic      String
   content    String            // markdown or rich text — TEXT has no size limit
   visibility ContentVisibility @default(STUDENTS_ONLY)
@@ -330,6 +331,7 @@ model ShortNote {
   id          String        @id @default(uuid()) @db.Uuid
   title       String
   subjectId   String        @db.Uuid
+  grade       String?
   topic       String
   content     String
   visibility  ContentVisibility @default(STUDENTS_ONLY)
