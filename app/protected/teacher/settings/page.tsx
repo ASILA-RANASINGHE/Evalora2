@@ -30,7 +30,7 @@ export default function SettingsPage() {
   const [name, setName] = useState(teacherProfile.name);
   const [email, setEmail] = useState(teacherProfile.email);
   const [role, setRole] = useState(teacherProfile.role);
-  const [primarySubject, setPrimarySubject] = useState(teacherProfile.primarySubject);
+  const [primarySubject, setPrimarySubject] = useState("History");
 
   const [gradingWindow, setGradingWindow] = useState("7");
   const [autoRelease, setAutoRelease] = useState(true);
