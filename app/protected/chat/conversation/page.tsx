@@ -1,20 +1,23 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { AnimatePresence } from "framer-motion";
-import { Sidebar } from "./components/sidebar";
+import { Sidebar, type Session } from "./components/sidebar";
 import { ChatHeader } from "./components/chat-header";
 import { MessageBubble, type ChatMessage } from "./components/message-bubble";
 import { ChatInput } from "./components/chat-input";
 import { ReferencePanel } from "./components/reference-panel";
+import { StudyToolsSidebar } from "./components/study-tools/study-tools-sidebar";
 import "katex/dist/katex.min.css";
 
-const initialMessages: ChatMessage[] = [
-  {
-    id: 1,
-    sender: "bot",
-    timestamp: "10:00 AM",
-    text: `## Welcome to EduBot! 👋
+const welcomeMessage: ChatMessage = {
+  id: 1,
+  sender: "bot",
+  timestamp: new Date().toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  }),
+  text: `## Welcome to EduBot! 👋
 
 I'm your **Senior Academic Advisor**. I can help you with:
 
@@ -24,7 +27,10 @@ I'm your **Senior Academic Advisor**. I can help you with:
 - [x] Getting started with your session
 
 Feel free to ask me anything — from algebra to essay writing!`,
-  },
+};
+
+const demoMessages: ChatMessage[] = [
+  { ...welcomeMessage, timestamp: "10:00 AM" },
   {
     id: 2,
     sender: "user",
@@ -106,11 +112,43 @@ Would you like me to dive deeper into any of these topics?`,
   },
 ];
 
+// Initial sessions with pre-loaded demo data
+const initialSessions: Session[] = [
+  { id: "1", title: "Algebra II Review", date: "Today" },
+  { id: "2", title: "Thesis Formatting Guide", date: "Today" },
+  { id: "3", title: "Physics: Wave Equations", date: "Yesterday" },
+  { id: "4", title: "Essay Structure Help", date: "Yesterday" },
+  { id: "5", title: "Calculus Integration", date: "2 days ago" },
+  { id: "6", title: "History: World War II", date: "3 days ago" },
+];
+
+// Store messages per session
+const initialChatHistories: Record<string, ChatMessage[]> = {
+  "1": demoMessages,
+  "2": [welcomeMessage],
+  "3": [welcomeMessage],
+  "4": [welcomeMessage],
+  "5": [welcomeMessage],
+  "6": [welcomeMessage],
+};
+
+function generateTitle(text: string): string {
+  const cleaned = text.replace(/\[Attached:.*?\]\n?/g, "").trim();
+  if (!cleaned) return "New Chat";
+  return cleaned.length > 30 ? cleaned.slice(0, 30) + "..." : cleaned;
+}
+
 export default function ConversationPage() {
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [sessions, setSessions] = useState<Session[]>(initialSessions);
+  const [activeSessionId, setActiveSessionId] = useState("1");
+  const [chatHistories, setChatHistories] =
+    useState<Record<string, ChatMessage[]>>(initialChatHistories);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [referenceOpen, setReferenceOpen] = useState(false);
+  const [studyToolsOpen, setStudyToolsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const messages = chatHistories[activeSessionId] || [];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -120,18 +158,80 @@ export default function ConversationPage() {
     scrollToBottom();
   }, [messages]);
 
+  const handleNewChat = useCallback(() => {
+    const newId = Date.now().toString();
+    const now = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const newWelcome: ChatMessage = { ...welcomeMessage, id: Date.now(), timestamp: now };
+
+    setSessions((prev) => [
+      { id: newId, title: "New Chat", date: "Just now" },
+      ...prev,
+    ]);
+    setChatHistories((prev) => ({
+      ...prev,
+      [newId]: [newWelcome],
+    }));
+    setActiveSessionId(newId);
+  }, []);
+
+  const handleSelectSession = useCallback((id: string) => {
+    setActiveSessionId(id);
+  }, []);
+
+  const handleDeleteSession = useCallback(
+    (id: string) => {
+      setSessions((prev) => {
+        const filtered = prev.filter((s) => s.id !== id);
+        // If we're deleting the active session, switch to the first remaining one
+        if (id === activeSessionId && filtered.length > 0) {
+          setActiveSessionId(filtered[0].id);
+        }
+        // If no sessions left, create a fresh one
+        if (filtered.length === 0) {
+          handleNewChat();
+          return [];
+        }
+        return filtered;
+      });
+      setChatHistories((prev) => {
+        const updated = { ...prev };
+        delete updated[id];
+        return updated;
+      });
+    },
+    [activeSessionId, handleNewChat]
+  );
+
   const handleSend = (text: string) => {
+    const now = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
     const userMessage: ChatMessage = {
       id: Date.now(),
       text,
       sender: "user",
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      timestamp: now,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    // Update the session title if it's still "New Chat" (first user message)
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeSessionId && s.title === "New Chat"
+          ? { ...s, title: generateTitle(text), date: "Just now" }
+          : s
+      )
+    );
+
+    setChatHistories((prev) => ({
+      ...prev,
+      [activeSessionId]: [...(prev[activeSessionId] || []), userMessage],
+    }));
 
     // Simulate bot response
     setTimeout(() => {
@@ -144,7 +244,10 @@ export default function ConversationPage() {
           minute: "2-digit",
         }),
       };
-      setMessages((prev) => [...prev, botMessage]);
+      setChatHistories((prev) => ({
+        ...prev,
+        [activeSessionId]: [...(prev[activeSessionId] || []), botMessage],
+      }));
     }, 1200);
   };
 
@@ -154,6 +257,11 @@ export default function ConversationPage() {
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onSelectSession={handleSelectSession}
+        onNewChat={handleNewChat}
+        onDeleteSession={handleDeleteSession}
       />
 
       {/* Main Chat Area */}
@@ -161,6 +269,8 @@ export default function ConversationPage() {
         <ChatHeader
           referenceOpen={referenceOpen}
           onToggleReference={() => setReferenceOpen(!referenceOpen)}
+          studyToolsOpen={studyToolsOpen}
+          onToggleStudyTools={() => setStudyToolsOpen(!studyToolsOpen)}
         />
 
         {/* Messages */}
@@ -183,6 +293,12 @@ export default function ConversationPage() {
           <ReferencePanel onClose={() => setReferenceOpen(false)} />
         )}
       </AnimatePresence>
+
+      {/* Study Tools Sidebar */}
+      <StudyToolsSidebar
+        open={studyToolsOpen}
+        onToggle={() => setStudyToolsOpen(!studyToolsOpen)}
+      />
     </div>
   );
 }
