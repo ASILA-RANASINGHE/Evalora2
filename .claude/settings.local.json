@@ -11,8 +11,20 @@
       "Bash(npx next build:*)",
       "Bash(timeout 20 npx next dev:*)",
       "Bash(curl:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npm ls:*)",
+      "Bash(npx prisma version:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm add:*)",
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(ls:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(set \"DIRECT_URL=postgresql://postgres:xAzpum-midxit-muvpi7@db.cdeeednvnloleknbnipr.supabase.co:5432/postgres\")",
+      "Bash(npx dotenv:*)",
+      "Bash($env:DATABASE_URL=\"postgresql://postgres.cdeeednvnloleknbnipr:xAzpum-midxit-muvpi7@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres\")",
+      "Bash(pnpm tsx:*)"
     ]
   }
 }
-

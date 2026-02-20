@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,8 +23,9 @@ import {
   Eye,
 } from "lucide-react";
 import Link from "next/link";
-import { subjects, subjectTopics } from "@/lib/teacher-mock-data";
+import { subjectTopics as fallbackTopics } from "@/lib/teacher-mock-data";
 import { createNote } from "@/lib/actions/note";
+import { getTeacherSubjects } from "@/lib/actions/teacher";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "text/plain"];
@@ -41,14 +42,20 @@ export default function UploadNotesPage() {
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
   const [topic, setTopic] = useState("");
+  const [allowedSubjects, setAllowedSubjects] = useState<string[]>([]);
   const [content, setContent] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [visibility, setVisibility] = useState<"STUDENTS_ONLY" | "PUBLIC">("STUDENTS_ONLY");
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const availableTopics = subject ? subjectTopics[subject] || [] : [];
+  useEffect(() => {
+    getTeacherSubjects().then(setAllowedSubjects);
+  }, []);
+
+  const availableTopics = subject ? fallbackTopics[subject] || [] : [];
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
@@ -92,6 +99,7 @@ export default function UploadNotesPage() {
         subject,
         topic,
         content,
+        visibility,
       });
       setSubmitted(true);
     } catch (err) {
@@ -163,7 +171,7 @@ export default function UploadNotesPage() {
                   className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${errors.subject ? "border-red-500" : "border-input"}`}
                 >
                   <option value="">Select subject</option>
-                  {subjects.map((s) => (
+                  {allowedSubjects.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
@@ -267,15 +275,30 @@ export default function UploadNotesPage() {
         {/* Visibility & Submit */}
         <Card className="border-border/50 shadow-sm">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-2">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
                 <Eye className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Visibility:</span>
-                <Badge variant="secondary" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-0">
-                  Your Students Only
-                </Badge>
+                <span className="text-sm font-medium">Visibility</span>
               </div>
               <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setVisibility("STUDENTS_ONLY")}
+                  className={`flex-1 p-3 rounded-lg border-2 text-left transition-colors ${visibility === "STUDENTS_ONLY" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" : "border-border hover:border-purple-300"}`}
+                >
+                  <p className="text-sm font-semibold">Your Students Only</p>
+                  <p className="text-xs text-muted-foreground">Only students assigned to you can see this</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibility("PUBLIC")}
+                  className={`flex-1 p-3 rounded-lg border-2 text-left transition-colors ${visibility === "PUBLIC" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" : "border-border hover:border-purple-300"}`}
+                >
+                  <p className="text-sm font-semibold">All Evalora Students</p>
+                  <p className="text-xs text-muted-foreground">Visible to every student on the platform</p>
+                </button>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
                 <Link href="/protected/teacher/upload">
                   <Button variant="outline" type="button">Cancel</Button>
                 </Link>

@@ -2,7 +2,16 @@
 
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
-import type { PaperTerm } from "@/lib/generated/prisma/enums";
+import type { PaperTerm, QuestionType } from "@/lib/generated/prisma/enums";
+
+interface PaperQuestionInput {
+  text: string;
+  type: QuestionType;
+  points: number;
+  options: string[];
+  correctAnswer: string;
+  order: number;
+}
 
 interface CreatePaperInput {
   title: string;
@@ -19,6 +28,8 @@ interface CreatePaperInput {
   totalMarks: number;
   passPercentage: number;
   instructions?: string;
+  visibility?: string;
+  questions?: PaperQuestionInput[];
 }
 
 export async function createPaper(input: CreatePaperInput) {
@@ -27,6 +38,21 @@ export async function createPaper(input: CreatePaperInput) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
+
+  // Teacher subject restriction
+  const profile = await prisma.profile.findUnique({
+    where: { id: user.id },
+    select: { role: true },
+  });
+  if (profile?.role === "TEACHER") {
+    const teacherDetails = await prisma.teacherDetails.findUnique({
+      where: { id: user.id },
+    });
+    if (!teacherDetails) throw new Error("Teacher details not found");
+    if (teacherDetails.subject !== input.subject) {
+      throw new Error(`You are not authorized to upload content for "${input.subject}".`);
+    }
+  }
 
   const subject = await prisma.subject.findUnique({
     where: { name: input.subject },
@@ -49,8 +75,21 @@ export async function createPaper(input: CreatePaperInput) {
       totalMarks: input.totalMarks,
       passPercentage: input.passPercentage,
       instructions: input.instructions,
+      visibility: profile?.role === "ADMIN" ? "PUBLIC" : (input.visibility === "PUBLIC" ? "PUBLIC" : "STUDENTS_ONLY"),
       status: "APPROVED",
       createdById: user.id,
+      ...(input.questions && input.questions.length > 0 && {
+        questions: {
+          create: input.questions.map((q, i) => ({
+            text: q.text,
+            type: q.type,
+            points: q.points,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
+            order: q.order ?? i,
+          })),
+        },
+      }),
     },
   });
 
@@ -64,7 +103,7 @@ export async function getPapersBySubjectAndTerm(
   const subject = await prisma.subject.findFirst({
     where: { name: { equals: subjectName, mode: "insensitive" } },
   });
-  if (!subject) return [];
+  if (!subject) return { adminContent: [], teacherContent: [] };
 
   // Map term number to PaperTerm enum
   const termMap: Record<string, PaperTerm> = {
@@ -73,7 +112,7 @@ export async function getPapersBySubjectAndTerm(
     "3": "TERM_3",
   };
   const paperTerm = termMap[term];
-  if (!paperTerm) return [];
+  if (!paperTerm) return { adminContent: [], teacherContent: [] };
 
   const papers = await prisma.paper.findMany({
     where: {
@@ -81,10 +120,13 @@ export async function getPapersBySubjectAndTerm(
       term: paperTerm,
       status: "APPROVED",
     },
+    include: {
+      createdBy: { select: { role: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 
-  return papers.map((p) => ({
+  const mapPaper = (p: typeof papers[0]) => ({
     id: p.id,
     title: p.title,
     year: p.year,
@@ -92,7 +134,12 @@ export async function getPapersBySubjectAndTerm(
     totalMarks: p.totalMarks,
     grade: p.grade,
     isModel: p.isModel,
-  }));
+  });
+
+  const adminContent = papers.filter((p) => p.createdBy.role === "ADMIN").map(mapPaper);
+  const teacherContent = papers.filter((p) => p.createdBy.role === "TEACHER").map(mapPaper);
+
+  return { adminContent, teacherContent };
 }
 
 export async function getPaperById(id: string) {

@@ -10,6 +10,7 @@ interface CreateQuizInput {
   topic: string;
   type: QuizType;
   duration: number;
+  visibility?: string;
   questions: {
     text: string;
     type: QuestionType;
@@ -26,6 +27,21 @@ export async function createQuiz(input: CreateQuizInput) {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
+  // Teacher subject restriction
+  const profile = await prisma.profile.findUnique({
+    where: { id: user.id },
+    select: { role: true },
+  });
+  if (profile?.role === "TEACHER") {
+    const teacherDetails = await prisma.teacherDetails.findUnique({
+      where: { id: user.id },
+    });
+    if (!teacherDetails) throw new Error("Teacher details not found");
+    if (teacherDetails.subject !== input.subject) {
+      throw new Error(`You are not authorized to upload content for "${input.subject}".`);
+    }
+  }
+
   // Find subject by name
   const subject = await prisma.subject.findUnique({
     where: { name: input.subject },
@@ -39,6 +55,7 @@ export async function createQuiz(input: CreateQuizInput) {
       topic: input.topic,
       type: input.type,
       duration: input.duration,
+      visibility: profile?.role === "ADMIN" ? "PUBLIC" : (input.visibility === "PUBLIC" ? "PUBLIC" : "STUDENTS_ONLY"),
       status: "APPROVED",
       createdById: user.id,
       questions: {
@@ -61,7 +78,7 @@ export async function getQuizzesBySubject(subjectName: string) {
   const subject = await prisma.subject.findFirst({
     where: { name: { equals: subjectName, mode: "insensitive" } },
   });
-  if (!subject) return [];
+  if (!subject) return { adminContent: [], teacherContent: [] };
 
   const quizzes = await prisma.quiz.findMany({
     where: {
@@ -70,7 +87,7 @@ export async function getQuizzesBySubject(subjectName: string) {
     },
     include: {
       _count: { select: { questions: true } },
-      createdBy: { select: { firstName: true, lastName: true } },
+      createdBy: { select: { firstName: true, lastName: true, role: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -91,7 +108,7 @@ export async function getQuizzesBySubject(subjectName: string) {
 
   const attemptMap = new Map(attempts.map((a) => [a.quizId, a.score]));
 
-  return quizzes.map((q) => ({
+  const mapQuiz = (q: typeof quizzes[0]) => ({
     id: q.id,
     title: q.title,
     topic: q.topic,
@@ -101,7 +118,12 @@ export async function getQuizzesBySubject(subjectName: string) {
     createdBy: `${q.createdBy.firstName ?? ""} ${q.createdBy.lastName ?? ""}`.trim() || "Teacher",
     completed: attemptMap.has(q.id),
     score: attemptMap.get(q.id) ?? null,
-  }));
+  });
+
+  const adminContent = quizzes.filter((q) => q.createdBy.role === "ADMIN").map(mapQuiz);
+  const teacherContent = quizzes.filter((q) => q.createdBy.role === "TEACHER").map(mapQuiz);
+
+  return { adminContent, teacherContent };
 }
 
 export async function getQuizById(id: string) {
@@ -128,6 +150,53 @@ export async function getQuizById(id: string) {
       points: q.points,
       options: q.options,
       // Don't send correct answer to client during quiz-taking
+    })),
+  };
+}
+
+export async function getQuizDetails(id: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const quiz = await prisma.quiz.findUnique({
+    where: { id },
+    include: {
+      questions: { orderBy: { order: "asc" } },
+      subject: { select: { name: true } },
+      createdBy: { select: { id: true, firstName: true, lastName: true } }
+    },
+  });
+
+  if (!quiz) return null;
+
+  // Check permissions: Owner or Admin
+  // (Assuming caller handles redirect if null, or we could throw)
+  
+  // For now, let's return it. Logic suggests only owner/admin calls this via protected routes.
+  // Ideally we double check here.
+  const profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true } });
+  
+  if (quiz.createdById !== user.id && profile?.role !== "ADMIN") {
+      return null;
+  }
+
+  return {
+    id: quiz.id,
+    title: quiz.title,
+    subject: quiz.subject.name,
+    topic: quiz.topic,
+    duration: quiz.duration,
+    createdById: quiz.createdById, // to show "You" vs others
+    createdBy: `${quiz.createdBy.firstName ?? ""} ${quiz.createdBy.lastName ?? ""}`.trim() || "Teacher",
+    createdAt: quiz.createdAt, // Added
+    questions: quiz.questions.map((q) => ({
+      id: q.id,
+      text: q.text,
+      type: q.type === "MCQ" ? ("mc" as const) : ("short" as const),
+      points: q.points,
+      options: q.options,
+      correctAnswer: q.correctAnswer, // INCLUDE ANSWER
     })),
   };
 }

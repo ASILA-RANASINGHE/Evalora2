@@ -22,8 +22,10 @@ import {
   Heading2,
   Link as LinkIcon,
   Check,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { createNote } from "@/lib/actions/note";
 
 const ACCEPTED_TYPES = ".pdf,.docx,.ppt,.pptx,.txt";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -35,6 +37,8 @@ export default function UploadNotesPage() {
   const [content, setContent] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const topics = subject ? TOPICS_BY_SUBJECT[subject] || [] : [];
@@ -51,10 +55,24 @@ export default function UploadNotesPage() {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 3000);
+    setSaving(true);
+    setError(null);
+    try {
+      await createNote({ title, subject, topic, content });
+      setSubmitted(true);
+      setTitle("");
+      setSubject("");
+      setTopic("");
+      setContent("");
+      setFiles([]);
+      setTimeout(() => setSubmitted(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create note");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const insertFormatting = (tag: string) => {
@@ -304,22 +322,29 @@ export default function UploadNotesPage() {
               </CardHeader>
               <CardContent>
                 <Badge className="border-0 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                  Admin (Public)
+                  All Evalora Students
                 </Badge>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Content uploaded by admins is visible to all platform users by
-                  default.
+                  Admin content is visible to all students on the platform.
                 </p>
               </CardContent>
             </Card>
 
             {/* Submit */}
+            {error && (
+              <p className="text-sm text-red-500 mb-2">{error}</p>
+            )}
             <Button
               type="submit"
               className="w-full bg-purple-600 hover:bg-purple-700"
-              disabled={!title || !subject || !topic || !content}
+              disabled={!title || !subject || !topic || !content || saving}
             >
-              {submitted ? (
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Publishing...
+                </>
+              ) : submitted ? (
                 <>
                   <Check className="mr-2 h-4 w-4" />
                   Published!

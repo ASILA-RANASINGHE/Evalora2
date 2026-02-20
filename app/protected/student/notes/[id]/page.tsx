@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Share2, Bookmark, Clock, User } from "lucide-react";
+import { ChevronLeft, Share2, Bookmark, Clock, User, BrainCircuit, Play } from "lucide-react";
 import { getNoteById } from "@/lib/actions/note";
 import { notFound } from "next/navigation";
 
@@ -58,6 +58,25 @@ export default async function NoteViewerPage({ params }: { params: Promise<{ id:
         <article className="prose prose-purple max-w-none text-gray-800 whitespace-pre-wrap">
           {note.content}
         </article>
+
+        <div className="mt-10 pt-8 border-t">
+          <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-purple-100 rounded-lg">
+                <BrainCircuit className="h-6 w-6 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Test Your Knowledge</h3>
+                <p className="text-sm text-muted-foreground">Take a quiz on {note.topic} to reinforce what you&apos;ve learned</p>
+              </div>
+            </div>
+            <Link href={`/protected/student/quizzes/subject/${note.subject.toLowerCase()}`}>
+              <Button className="bg-purple-600 hover:bg-purple-700 gap-2">
+                <Play className="h-4 w-4" /> Take Quiz
+              </Button>
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Check, Upload } from "lucide-react";
+import { ArrowLeft, Check, Upload, Eye, GripVertical } from "lucide-react";
 import Link from "next/link";
-import { subjects } from "@/lib/teacher-mock-data";
+import { getTeacherSubjects } from "@/lib/actions/teacher";
 import { createPaper } from "@/lib/actions/paper";
 import type { PaperTerm } from "@/lib/generated/prisma/enums";
 
@@ -22,6 +21,17 @@ const termMap: Record<string, PaperTerm> = {
   "Mid-Year": "MID_YEAR",
   "End-of-Year": "END_OF_YEAR",
 };
+
+interface McqQuestion {
+  text: string;
+  options: string[];
+  correctAnswer: string;
+}
+
+interface StructuredQuestion {
+  text: string;
+  answer: string;
+}
 
 interface FormErrors {
   title?: string;
@@ -46,16 +56,50 @@ export default function UploadPapersPage() {
   const [isModel, setIsModel] = useState(false);
   const [passPercentage, setPassPercentage] = useState("35");
   const [notes, setNotes] = useState("");
+  const [visibility, setVisibility] = useState<"STUDENTS_ONLY" | "PUBLIC">("STUDENTS_ONLY");
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [allowedSubjects, setAllowedSubjects] = useState<string[]>([]);
 
-  const totalQuestions = (parseInt(mcqCount) || 0) + (parseInt(essayCount) || 0);
+  // Question builders
+  const [mcqQuestions, setMcqQuestions] = useState<McqQuestion[]>([]);
+  const [structuredQuestions, setStructuredQuestions] = useState<StructuredQuestion[]>([]);
+
+  useEffect(() => {
+    getTeacherSubjects().then(setAllowedSubjects);
+  }, []);
+
+  // Sync MCQ question array with count
+  const mcqCountNum = parseInt(mcqCount) || 0;
+  useEffect(() => {
+    setMcqQuestions((prev) => {
+      if (mcqCountNum === 0) return [];
+      if (mcqCountNum > prev.length) {
+        return [...prev, ...Array.from({ length: mcqCountNum - prev.length }, () => ({ text: "", options: ["", "", "", ""], correctAnswer: "" }))];
+      }
+      return prev.slice(0, mcqCountNum);
+    });
+  }, [mcqCountNum]);
+
+  // Sync structured question array with count
+  const essayCountNum = parseInt(essayCount) || 0;
+  useEffect(() => {
+    setStructuredQuestions((prev) => {
+      if (essayCountNum === 0) return [];
+      if (essayCountNum > prev.length) {
+        return [...prev, ...Array.from({ length: essayCountNum - prev.length }, () => ({ text: "", answer: "" }))];
+      }
+      return prev.slice(0, essayCountNum);
+    });
+  }, [essayCountNum]);
+
+  const totalQuestions = mcqCountNum + essayCountNum;
   const totalMarks = useMemo(() => {
-    const mcqTotal = (parseInt(mcqCount) || 0) * (parseInt(mcqMarks) || 0);
-    const essayTotal = (parseInt(essayCount) || 0) * (parseInt(essayMarks) || 0);
+    const mcqTotal = mcqCountNum * (parseInt(mcqMarks) || 0);
+    const essayTotal = essayCountNum * (parseInt(essayMarks) || 0);
     return mcqTotal + essayTotal;
-  }, [mcqCount, mcqMarks, essayCount, essayMarks]);
+  }, [mcqCountNum, mcqMarks, essayCountNum, essayMarks]);
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
@@ -74,6 +118,26 @@ export default function UploadPapersPage() {
     if (!validate()) return;
     setSaving(true);
     try {
+      // Build questions array
+      const questions = [
+        ...mcqQuestions.map((q, i) => ({
+          text: q.text,
+          type: "MCQ" as const,
+          points: parseInt(mcqMarks) || 1,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          order: i,
+        })),
+        ...structuredQuestions.map((q, i) => ({
+          text: q.text,
+          type: "SHORT" as const,
+          points: parseInt(essayMarks) || 1,
+          options: [] as string[],
+          correctAnswer: q.answer,
+          order: mcqCountNum + i,
+        })),
+      ];
+
       await createPaper({
         title,
         subject,
@@ -81,13 +145,15 @@ export default function UploadPapersPage() {
         grade,
         duration: parseInt(duration),
         isModel,
-        mcqCount: parseInt(mcqCount) || 0,
+        mcqCount: mcqCountNum,
         mcqMarks: parseInt(mcqMarks) || 0,
-        essayCount: parseInt(essayCount) || 0,
+        essayCount: essayCountNum,
         essayMarks: parseInt(essayMarks) || 0,
         totalMarks,
         passPercentage: parseInt(passPercentage) || 35,
         instructions: notes || undefined,
+        visibility,
+        questions: questions.length > 0 ? questions : undefined,
       });
       setSubmitted(true);
     } catch (err) {
@@ -109,7 +175,7 @@ export default function UploadPapersPage() {
           &quot;{title}&quot; — {totalQuestions} questions, {totalMarks} total marks
         </p>
         <div className="flex gap-3 pt-2">
-          <Button variant="outline" onClick={() => { setSubmitted(false); setTitle(""); setSubject(""); setTerm(""); setGrade(""); setDuration(""); setMcqCount(""); setMcqMarks(""); setEssayCount(""); setEssayMarks(""); setIsModel(false); setPassPercentage("35"); setNotes(""); }}>
+          <Button variant="outline" onClick={() => { setSubmitted(false); setTitle(""); setSubject(""); setTerm(""); setGrade(""); setDuration(""); setMcqCount(""); setMcqMarks(""); setEssayCount(""); setEssayMarks(""); setIsModel(false); setPassPercentage("35"); setNotes(""); setMcqQuestions([]); setStructuredQuestions([]); }}>
             Create Another
           </Button>
           <Link href="/protected/teacher/upload">
@@ -160,7 +226,7 @@ export default function UploadPapersPage() {
                   className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${errors.subject ? "border-red-500" : "border-input"}`}
                 >
                   <option value="">Select</option>
-                  {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
+                  {allowedSubjects.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
                 {errors.subject && <p className="text-xs text-red-500">{errors.subject}</p>}
               </div>
@@ -245,7 +311,7 @@ export default function UploadPapersPage() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Subtotal: {(parseInt(mcqCount) || 0) * (parseInt(mcqMarks) || 0)} marks
+                  Subtotal: {mcqCountNum * (parseInt(mcqMarks) || 0)} marks
                 </p>
               </div>
 
@@ -253,11 +319,11 @@ export default function UploadPapersPage() {
               <div className="p-4 rounded-lg border bg-muted/20 space-y-3">
                 <h4 className="font-semibold text-sm flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-purple-500"></span>
-                  Essay Questions
+                  Structured Questions
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs">Number of Essays</Label>
+                    <Label className="text-xs">Number of Questions</Label>
                     <Input
                       type="number"
                       min="0"
@@ -267,7 +333,7 @@ export default function UploadPapersPage() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Marks per Essay</Label>
+                    <Label className="text-xs">Marks per Question</Label>
                     <Input
                       type="number"
                       min="0"
@@ -278,7 +344,7 @@ export default function UploadPapersPage() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Subtotal: {(parseInt(essayCount) || 0) * (parseInt(essayMarks) || 0)} marks
+                  Subtotal: {essayCountNum * (parseInt(essayMarks) || 0)} marks
                 </p>
               </div>
             </div>
@@ -305,6 +371,118 @@ export default function UploadPapersPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* MCQ Question Builder */}
+        {mcqCountNum > 0 && (
+          <div className="space-y-4">
+            <h3 className="font-semibold text-lg flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-blue-500"></span>
+              MCQ Questions ({mcqCountNum})
+            </h3>
+            {mcqQuestions.map((q, i) => (
+              <Card key={i} className="border-border/50 shadow-sm">
+                <CardContent className="p-5 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex items-center gap-1 pt-2 text-muted-foreground">
+                      <GripVertical className="h-4 w-4" />
+                      <span className="text-sm font-bold min-w-6">{i + 1}.</span>
+                    </div>
+                    <div className="flex-1 space-y-3">
+                      <Input
+                        placeholder="Enter question text..."
+                        value={q.text}
+                        onChange={(e) => {
+                          const updated = [...mcqQuestions];
+                          updated[i] = { ...updated[i], text: e.target.value };
+                          setMcqQuestions(updated);
+                        }}
+                      />
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Options (click circle to mark correct answer)</Label>
+                        {q.options.map((opt, optIdx) => (
+                          <div key={optIdx} className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground w-5">{String.fromCharCode(65 + optIdx)}.</span>
+                            <Input
+                              placeholder={`Option ${String.fromCharCode(65 + optIdx)}`}
+                              value={opt}
+                              onChange={(e) => {
+                                const updated = [...mcqQuestions];
+                                const newOpts = [...updated[i].options];
+                                newOpts[optIdx] = e.target.value;
+                                updated[i] = { ...updated[i], options: newOpts };
+                                setMcqQuestions(updated);
+                              }}
+                              className="h-8 text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = [...mcqQuestions];
+                                updated[i] = { ...updated[i], correctAnswer: opt };
+                                setMcqQuestions(updated);
+                              }}
+                              className={`shrink-0 h-6 w-6 rounded-full border-2 flex items-center justify-center transition-colors ${q.correctAnswer === opt && opt ? "bg-emerald-500 border-emerald-500 text-white" : "border-input hover:border-emerald-400"}`}
+                              title="Mark as correct"
+                            >
+                              {q.correctAnswer === opt && opt && <Check className="h-3 w-3" />}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Structured Question Builder */}
+        {essayCountNum > 0 && (
+          <div className="space-y-4">
+            <h3 className="font-semibold text-lg flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-purple-500"></span>
+              Structured Questions ({essayCountNum})
+            </h3>
+            {structuredQuestions.map((q, i) => (
+              <Card key={i} className="border-border/50 shadow-sm">
+                <CardContent className="p-5 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex items-center gap-1 pt-2 text-muted-foreground">
+                      <GripVertical className="h-4 w-4" />
+                      <span className="text-sm font-bold min-w-6">{i + 1}.</span>
+                    </div>
+                    <div className="flex-1 space-y-3">
+                      <Input
+                        placeholder="Enter question text..."
+                        value={q.text}
+                        onChange={(e) => {
+                          const updated = [...structuredQuestions];
+                          updated[i] = { ...updated[i], text: e.target.value };
+                          setStructuredQuestions(updated);
+                        }}
+                      />
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Reference Answer (for automated marking)</Label>
+                        <textarea
+                          placeholder="Enter the expected answer or marking guide..."
+                          value={q.answer}
+                          onChange={(e) => {
+                            const updated = [...structuredQuestions];
+                            updated[i] = { ...updated[i], answer: e.target.value };
+                            setStructuredQuestions(updated);
+                          }}
+                          rows={3}
+                          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Additional Options */}
         <Card className="border-border/50 shadow-sm">
@@ -357,16 +535,44 @@ export default function UploadPapersPage() {
           </CardContent>
         </Card>
 
-        {/* Submit */}
-        <div className="flex justify-end gap-3">
-          <Link href="/protected/teacher/upload">
-            <Button variant="outline" type="button">Cancel</Button>
-          </Link>
-          <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white" disabled={saving}>
-            <Upload className="h-4 w-4 mr-2" />
-            {saving ? "Creating..." : "Create Paper"}
-          </Button>
-        </div>
+        {/* Visibility & Submit */}
+        <Card className="border-border/50 shadow-sm">
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Eye className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Visibility</span>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setVisibility("STUDENTS_ONLY")}
+                  className={`flex-1 p-3 rounded-lg border-2 text-left transition-colors ${visibility === "STUDENTS_ONLY" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" : "border-border hover:border-purple-300"}`}
+                >
+                  <p className="text-sm font-semibold">Your Students Only</p>
+                  <p className="text-xs text-muted-foreground">Only students assigned to you can see this</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibility("PUBLIC")}
+                  className={`flex-1 p-3 rounded-lg border-2 text-left transition-colors ${visibility === "PUBLIC" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" : "border-border hover:border-purple-300"}`}
+                >
+                  <p className="text-sm font-semibold">All Evalora Students</p>
+                  <p className="text-xs text-muted-foreground">Visible to every student on the platform</p>
+                </button>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <Link href="/protected/teacher/upload">
+                  <Button variant="outline" type="button">Cancel</Button>
+                </Link>
+                <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white" disabled={saving}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  {saving ? "Creating..." : "Create Paper"}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </form>
     </div>
   );

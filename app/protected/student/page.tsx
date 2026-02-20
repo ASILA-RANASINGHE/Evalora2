@@ -12,6 +12,8 @@ import {
   FileText
 } from "lucide-react";
 import Link from "next/link";
+import { InsightsPanel } from "./components/insights-panel";
+import { DailyRecommendations } from "./components/daily-recommendations";
 
 export default function StudentDashboard() {
   return (
@@ -96,6 +98,9 @@ export default function StudentDashboard() {
               />
             </CardContent>
           </Card>
+
+          {/* Insights */}
+          <InsightsPanel />
         </div>
 
         {/* Side Column */}
@@ -115,6 +120,9 @@ export default function StudentDashboard() {
               <span className="font-semibold text-sm text-foreground">Read Notes</span>
             </Link>
           </div>
+
+          {/* Daily Practice Plan */}
+          <DailyRecommendations />
 
           {/*  Achievements */}
           <Card className="overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm shadow-sm">

@@ -8,6 +8,7 @@ interface CreateNoteInput {
   subject: string;
   topic: string;
   content: string;
+  visibility?: string;
 }
 
 export async function createNote(input: CreateNoteInput) {
@@ -16,6 +17,21 @@ export async function createNote(input: CreateNoteInput) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
+
+  // Teacher subject restriction
+  const profile = await prisma.profile.findUnique({
+    where: { id: user.id },
+    select: { role: true },
+  });
+  if (profile?.role === "TEACHER") {
+    const teacherDetails = await prisma.teacherDetails.findUnique({
+      where: { id: user.id },
+    });
+    if (!teacherDetails) throw new Error("Teacher details not found");
+    if (teacherDetails.subject !== input.subject) {
+      throw new Error(`You are not authorized to upload content for "${input.subject}".`);
+    }
+  }
 
   const subject = await prisma.subject.findUnique({
     where: { name: input.subject },
@@ -28,7 +44,7 @@ export async function createNote(input: CreateNoteInput) {
       subjectId: subject.id,
       topic: input.topic,
       content: input.content,
-      visibility: "STUDENTS_ONLY",
+      visibility: profile?.role === "ADMIN" ? "PUBLIC" : (input.visibility === "PUBLIC" ? "PUBLIC" : "STUDENTS_ONLY"),
       status: "APPROVED",
       createdById: user.id,
     },
@@ -41,7 +57,7 @@ export async function getNotesBySubject(subjectName: string) {
   const subject = await prisma.subject.findFirst({
     where: { name: { equals: subjectName, mode: "insensitive" } },
   });
-  if (!subject) return [];
+  if (!subject) return { adminContent: [], teacherContent: [] };
 
   const notes = await prisma.note.findMany({
     where: {
@@ -49,19 +65,24 @@ export async function getNotesBySubject(subjectName: string) {
       status: "APPROVED",
     },
     include: {
-      createdBy: { select: { firstName: true, lastName: true } },
+      createdBy: { select: { firstName: true, lastName: true, role: true } },
     },
     orderBy: { createdAt: "desc" },
   });
 
-  return notes.map((n) => ({
+  const mapNote = (n: typeof notes[0]) => ({
     id: n.id,
     title: n.title,
     topic: n.topic,
     author: `${n.createdBy.firstName ?? ""} ${n.createdBy.lastName ?? ""}`.trim() || "Teacher",
     createdAt: n.createdAt,
     contentLength: n.content.length,
-  }));
+  });
+
+  const adminContent = notes.filter((n) => n.createdBy.role === "ADMIN").map(mapNote);
+  const teacherContent = notes.filter((n) => n.createdBy.role === "TEACHER").map(mapNote);
+
+  return { adminContent, teacherContent };
 }
 
 export async function getNoteById(id: string) {

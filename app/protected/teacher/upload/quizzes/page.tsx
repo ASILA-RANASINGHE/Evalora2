@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
   Plus,
@@ -14,11 +13,13 @@ import {
   Check,
   Upload,
   BrainCircuit,
+  Eye,
 } from "lucide-react";
 import Link from "next/link";
-import { subjects, subjectTopics } from "@/lib/teacher-mock-data";
+import { subjectTopics } from "@/lib/teacher-mock-data";
+import { getTeacherSubjects } from "@/lib/actions/teacher";
 import { createQuiz } from "@/lib/actions/quiz";
-import type { QuizType, QuestionType } from "@/lib/generated/prisma/enums";
+import type { QuizType } from "@/lib/generated/prisma/enums";
 
 const quizTypes = ["Subject", "Topic"];
 const grades = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
@@ -33,7 +34,6 @@ const quizTypeMap: Record<string, QuizType> = {
 interface QuizQuestion {
   id: string;
   text: string;
-  type: "mcq" | "short";
   points: number;
   options: string[];
   correctAnswer: string;
@@ -57,7 +57,6 @@ function generateId() {
 const emptyQuestion = (): QuizQuestion => ({
   id: generateId(),
   text: "",
-  type: "mcq",
   points: 1,
   options: ["", "", "", ""],
   correctAnswer: "",
@@ -70,10 +69,16 @@ export default function UploadQuizzesPage() {
   const [topic, setTopic] = useState("");
   const [quizType, setQuizType] = useState("");
   const [duration, setDuration] = useState("");
+  const [visibility, setVisibility] = useState<"STUDENTS_ONLY" | "PUBLIC">("STUDENTS_ONLY");
   const [questions, setQuestions] = useState<QuizQuestion[]>([emptyQuestion()]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [allowedSubjects, setAllowedSubjects] = useState<string[]>([]);
+
+  useEffect(() => {
+    getTeacherSubjects().then(setAllowedSubjects);
+  }, []);
 
   const availableTopics = subject ? subjectTopics[subject] || [] : [];
   const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
@@ -91,8 +96,8 @@ export default function UploadQuizzesPage() {
     const qErrors: Record<string, string> = {};
     questions.forEach((q) => {
       if (!q.text.trim()) qErrors[q.id] = "Question text is required";
-      else if (!q.correctAnswer.trim()) qErrors[q.id] = "Correct answer is required";
-      else if (q.type === "mcq" && q.options.filter((o) => o.trim()).length < 2)
+      else if (!q.correctAnswer.trim()) qErrors[q.id] = "Please mark the correct answer";
+      else if (q.options.filter((o) => o.trim()).length < 2)
         qErrors[q.id] = "MCQ needs at least 2 options";
     });
     if (Object.keys(qErrors).length > 0) newErrors.questionErrors = qErrors;
@@ -144,9 +149,10 @@ export default function UploadQuizzesPage() {
         topic,
         type: quizTypeMap[quizType] || "TOPIC_BASED",
         duration: parseInt(duration),
+        visibility,
         questions: questions.map((q) => ({
           text: q.text,
-          type: (q.type === "mcq" ? "MCQ" : "SHORT") as QuestionType,
+          type: "MCQ" as const,
           points: q.points,
           options: q.options,
           correctAnswer: q.correctAnswer,
@@ -191,7 +197,7 @@ export default function UploadQuizzesPage() {
         </Link>
         <div>
           <h2 className="font-space-grotesk text-2xl font-bold">Create Quiz</h2>
-          <p className="text-muted-foreground text-sm mt-0.5">Build interactive quizzes for your students</p>
+          <p className="text-muted-foreground text-sm mt-0.5">Build interactive MCQ quizzes for your students</p>
         </div>
       </div>
 
@@ -251,7 +257,7 @@ export default function UploadQuizzesPage() {
                   className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${errors.subject ? "border-red-500" : "border-input"}`}
                 >
                   <option value="">Select subject</option>
-                  {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
+                  {allowedSubjects.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
                 {errors.subject && <p className="text-xs text-red-500">{errors.subject}</p>}
               </div>
@@ -289,12 +295,12 @@ export default function UploadQuizzesPage() {
           </CardContent>
         </Card>
 
-        {/* Questions Builder */}
+        {/* Questions Builder — MCQ Only */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-semibold text-lg">Questions</h3>
-              <p className="text-sm text-muted-foreground">{questions.length} question{questions.length !== 1 ? "s" : ""} &middot; {totalPoints} total points</p>
+              <p className="text-sm text-muted-foreground">{questions.length} question{questions.length !== 1 ? "s" : ""} &middot; {totalPoints} total points &middot; All MCQ</p>
             </div>
             <Button type="button" variant="outline" size="sm" onClick={addQuestion}>
               <Plus className="h-4 w-4 mr-1" /> Add Question
@@ -311,29 +317,17 @@ export default function UploadQuizzesPage() {
                     <span className="text-sm font-bold min-w-6">{qIndex + 1}.</span>
                   </div>
                   <div className="flex-1 space-y-4">
-                    <div className="space-y-2">
-                      <Input
-                        placeholder="Enter question text..."
-                        value={q.text}
-                        onChange={(e) => updateQuestion(q.id, { text: e.target.value })}
-                        className={errors.questionErrors?.[q.id] ? "border-red-500" : ""}
-                      />
-                      {errors.questionErrors?.[q.id] && (
-                        <p className="text-xs text-red-500">{errors.questionErrors[q.id]}</p>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap gap-3 items-center">
-                      <div className="flex items-center gap-2">
-                        <Label className="text-xs whitespace-nowrap">Type:</Label>
-                        <select
-                          value={q.type}
-                          onChange={(e) => updateQuestion(q.id, { type: e.target.value as "mcq" | "short" })}
-                          className="h-8 rounded-md border border-input bg-transparent px-2 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        >
-                          <option value="mcq">Multiple Choice</option>
-                          <option value="short">Short Answer</option>
-                        </select>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 space-y-2">
+                        <Input
+                          placeholder="Enter question text..."
+                          value={q.text}
+                          onChange={(e) => updateQuestion(q.id, { text: e.target.value })}
+                          className={errors.questionErrors?.[q.id] ? "border-red-500" : ""}
+                        />
+                        {errors.questionErrors?.[q.id] && (
+                          <p className="text-xs text-red-500">{errors.questionErrors[q.id]}</p>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <Label className="text-xs whitespace-nowrap">Points:</Label>
@@ -347,42 +341,28 @@ export default function UploadQuizzesPage() {
                       </div>
                     </div>
 
-                    {q.type === "mcq" && (
-                      <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground">Options</Label>
-                        {q.options.map((opt, optIndex) => (
-                          <div key={optIndex} className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground w-5">{String.fromCharCode(65 + optIndex)}.</span>
-                            <Input
-                              placeholder={`Option ${String.fromCharCode(65 + optIndex)}`}
-                              value={opt}
-                              onChange={(e) => updateOption(q.id, optIndex, e.target.value)}
-                              className="h-8 text-sm"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => updateQuestion(q.id, { correctAnswer: opt })}
-                              className={`shrink-0 h-6 w-6 rounded-full border-2 flex items-center justify-center transition-colors ${q.correctAnswer === opt && opt ? "bg-emerald-500 border-emerald-500 text-white" : "border-input hover:border-emerald-400"}`}
-                              title="Mark as correct"
-                            >
-                              {q.correctAnswer === opt && opt && <Check className="h-3 w-3" />}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {q.type === "short" && (
-                      <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground">Correct Answer</Label>
-                        <Input
-                          placeholder="Enter the expected answer..."
-                          value={q.correctAnswer}
-                          onChange={(e) => updateQuestion(q.id, { correctAnswer: e.target.value })}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                    )}
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">Options (click circle to mark correct answer)</Label>
+                      {q.options.map((opt, optIndex) => (
+                        <div key={optIndex} className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground w-5">{String.fromCharCode(65 + optIndex)}.</span>
+                          <Input
+                            placeholder={`Option ${String.fromCharCode(65 + optIndex)}`}
+                            value={opt}
+                            onChange={(e) => updateOption(q.id, optIndex, e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => updateQuestion(q.id, { correctAnswer: opt })}
+                            className={`shrink-0 h-6 w-6 rounded-full border-2 flex items-center justify-center transition-colors ${q.correctAnswer === opt && opt ? "bg-emerald-500 border-emerald-500 text-white" : "border-input hover:border-emerald-400"}`}
+                            title="Mark as correct"
+                          >
+                            {q.correctAnswer === opt && opt && <Check className="h-3 w-3" />}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <button
@@ -407,22 +387,48 @@ export default function UploadQuizzesPage() {
           </button>
         </div>
 
-        {/* Summary & Submit */}
+        {/* Visibility & Submit */}
         <Card className="border-border/50 shadow-sm">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-4">
-                <div className="p-2 rounded-lg bg-purple-500/10">
-                  <BrainCircuit className="h-5 w-5 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{questions.length} Questions &middot; {totalPoints} Points</p>
-                  <p className="text-xs text-muted-foreground">
-                    {questions.filter((q) => q.type === "mcq").length} MCQ, {questions.filter((q) => q.type === "short").length} Short Answer
-                  </p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 rounded-lg bg-purple-500/10">
+                    <BrainCircuit className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{questions.length} Questions &middot; {totalPoints} Points</p>
+                    <p className="text-xs text-muted-foreground">All Multiple Choice &middot; Auto-marked</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex gap-3">
+
+              <div className="border-t pt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Visibility</span>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setVisibility("STUDENTS_ONLY")}
+                    className={`flex-1 p-3 rounded-lg border-2 text-left transition-colors ${visibility === "STUDENTS_ONLY" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" : "border-border hover:border-purple-300"}`}
+                  >
+                    <p className="text-sm font-semibold">Your Students Only</p>
+                    <p className="text-xs text-muted-foreground">Only students assigned to you can see this</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVisibility("PUBLIC")}
+                    className={`flex-1 p-3 rounded-lg border-2 text-left transition-colors ${visibility === "PUBLIC" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" : "border-border hover:border-purple-300"}`}
+                  >
+                    <p className="text-sm font-semibold">All Evalora Students</p>
+                    <p className="text-xs text-muted-foreground">Visible to every student on the platform</p>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
                 <Link href="/protected/teacher/upload">
                   <Button variant="outline" type="button">Cancel</Button>
                 </Link>
