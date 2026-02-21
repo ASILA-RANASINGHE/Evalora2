@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 import { extractText } from 'unpdf';
 import { cleanPdfText } from '../lib/text-cleaner';
+import { chunkText } from '../lib/text-chunker';
 
 async function extractSamplePdf() {
   try {
@@ -11,7 +12,6 @@ async function extractSamplePdf() {
     const pdfBuffer = readFileSync(filePath);
 
     console.log('⏳ Extracting text...');
-    
     const { text, totalPages } = await extractText(new Uint8Array(pdfBuffer));
 
     console.log(`✅ Successfully parsed ${totalPages} pages.\n`);
@@ -21,10 +21,14 @@ async function extractSamplePdf() {
     console.log('🧹 Cleaning up messy PDF text...');
     const cleanedText = cleanPdfText(rawTextString);
 
-    const outputPath = path.join(process.cwd(), 'scripts', 'samples', 'history6-cleaned.txt');
-    writeFileSync(outputPath, cleanedText);
+    console.log('✂️ Chunking text...');
+    const chunks = chunkText(cleanedText);
+    console.log(`✅ Generated ${chunks.length} chunks.\n`);
+
+    const outputPath = path.join(process.cwd(), 'scripts', 'samples', 'history6-chunks.json');
+    writeFileSync(outputPath, JSON.stringify(chunks, null, 2));
     
-    console.log(`💾 Cleaned text saved to: ${outputPath}\n`);
+    console.log(`💾 Chunks saved to: ${outputPath}\n`);
 
   } catch (error) {
     console.error('❌ Failed to extract PDF:', error);
