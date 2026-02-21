@@ -230,24 +230,33 @@ export function ChatInput({ onSend }: ChatInputProps) {
             )}
           </div>
 
-          {/* Map Search Button */}
-          <button
-            onClick={handleMapSearch}
-            disabled={!input.trim()}
-            className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center hover:bg-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 shadow-sm"
-            title="Search location on map"
-          >
-            <MapPin className="h-4 w-4" />
-          </button>
-
           {/* Send Button */}
           <button
             onClick={handleSend}
             disabled={!input.trim() && !attachedFile}
-            className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 shadow-sm"
+            className="h-10 px-5 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 text-white flex items-center justify-center gap-2 hover:from-blue-700 hover:to-blue-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/30"
           >
             <Send className="h-4 w-4" />
+            <span className="text-sm font-medium hidden sm:inline">Send</span>
           </button>
+
+          {/* Map Search Button */}
+          <div className="relative group flex-shrink-0">
+            <button
+              onClick={handleMapSearch}
+              disabled={!input.trim()}
+              className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center hover:bg-emerald-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm hover:shadow-md hover:shadow-emerald-500/25"
+            >
+              <MapPin className="h-4 w-4" />
+            </button>
+            {/* Custom tooltip */}
+            <div className="absolute bottom-full right-0 mb-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+              <div className="bg-slate-800 text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap">
+                Search on Map
+                <div className="absolute top-full right-3 w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[5px] border-t-slate-800" />
+              </div>
+            </div>
+          </div>
         </div>
 
         <p className="text-[10px] text-slate-400 text-center mt-2">
