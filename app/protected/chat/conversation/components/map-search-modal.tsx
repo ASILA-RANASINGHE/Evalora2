@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, MapPin, Loader2 } from "lucide-react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 import { searchLocation, type LocationResult } from "@/lib/actions/location";
 
 // ─── Types ────────────────────────────────────────────────────────
+
+type LeafletModule = typeof import("leaflet");
 
 interface MapSearchModalProps {
   open: boolean;
@@ -28,19 +28,37 @@ export function MapSearchModal({
   searchQuery,
 }: MapSearchModalProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const markerRef = useRef<L.Marker | null>(null);
+  const mapRef = useRef<import("leaflet").Map | null>(null);
+  const markerRef = useRef<import("leaflet").Marker | null>(null);
+  const leafletRef = useRef<LeafletModule | null>(null);
 
   const [status, setStatus] = useState<"loading" | "found" | "not_found" | "idle">("idle");
   const [location, setLocation] = useState<LocationResult | null>(null);
 
-  // Initialize map when modal opens
+  // Initialize map when modal opens (dynamic import to avoid SSR issues)
   useEffect(() => {
     if (!open) return;
 
-    // Small delay to let the modal DOM render
-    const timer = setTimeout(() => {
-      if (!mapContainerRef.current || mapRef.current) return;
+    let cancelled = false;
+
+    const initMap = async () => {
+      // Dynamically import leaflet + inject CSS
+      const L = await import("leaflet");
+      if (cancelled) return;
+
+      // Inject leaflet CSS once
+      if (!document.querySelector('link[href*="leaflet.css"]')) {
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+        document.head.appendChild(link);
+      }
+
+      leafletRef.current = L;
+
+      // Small delay to let the modal DOM render
+      await new Promise((r) => setTimeout(r, 50));
+      if (cancelled || !mapContainerRef.current || mapRef.current) return;
 
       const map = L.map(mapContainerRef.current, {
         center: SRI_LANKA_CENTER,
@@ -58,9 +76,13 @@ export function MapSearchModal({
 
       // Force a resize so tiles render correctly inside the modal
       setTimeout(() => map.invalidateSize(), 100);
-    }, 50);
+    };
 
-    return () => clearTimeout(timer);
+    initMap();
+
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   // Search for location when modal opens with a query
@@ -80,7 +102,8 @@ export function MapSearchModal({
 
         // Place marker on map
         const map = mapRef.current;
-        if (map) {
+        const L = leafletRef.current;
+        if (map && L) {
           // Remove existing marker
           if (markerRef.current) {
             markerRef.current.remove();
