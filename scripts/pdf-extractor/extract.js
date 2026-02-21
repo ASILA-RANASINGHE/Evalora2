@@ -1,30 +1,36 @@
 const fs = require('fs');
 const path = require('path');
-console.log("Pages:", data.numpages);
+const pdf = require('pdf-parse');
 
 async function extractText(fileName) {
   const filePath = path.join(__dirname, 'samples', fileName);
-  
+
   if (!fs.existsSync(filePath)) {
     console.error("File not found:", filePath);
-    return;
+    return null;
   }
 
-  const dataBuffer = fs.readFileSync(filePath);
   try {
+    const dataBuffer = fs.readFileSync(filePath);
+    const data = await pdf(dataBuffer);
+
+    console.log(`Processing: ${fileName}`);
     console.log("Pages:", data.numpages);
-    console.log("Pages:", data.numpages);
-    console.log("Pages:", data.numpages);
-    console.log("--- Extracted Text ---");
-    
+
     const cleanText = data.text
         .replace(/\n\s*\n/g, '\n')
         .trim();
-    console.log(cleanText);
+
+    return {
+      text: cleanText,
+      pageCount: data.numpages,
+      metadata: data.info
+    };
     
   } catch (error) {
     console.error("Error extracting text:", error);
+    throw error;
   }
 }
 
-extractText('Grade6_History.pdf');
+module.exports = { extractText };
