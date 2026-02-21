@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Paperclip, Mic, X, FileText, ImageIcon } from "lucide-react";
+import { Send, Paperclip, Mic, X, FileText, ImageIcon, MapPin } from "lucide-react";
 import { VoiceInputModal, isSpeechSupported } from "./voice-input-modal";
+import { MapSearchModal } from "./map-search-modal";
 
 interface FilePreview {
   name: string;
