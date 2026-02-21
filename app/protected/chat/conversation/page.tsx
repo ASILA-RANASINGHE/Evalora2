@@ -7,7 +7,7 @@ import { ChatHeader } from "./components/chat-header";
 import {
   MessageBubble,
   type ChatMessage,
-} from "./components/message-bubble";
+} from "./components/MessageBubble";
 import { ChatInput } from "./components/chat-input";
 import { ReferencePanel } from "./components/reference-panel";
 import { StudyToolsSidebar } from "./components/study-tools/study-tools-sidebar";
