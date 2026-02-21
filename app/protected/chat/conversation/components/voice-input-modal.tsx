@@ -59,44 +59,6 @@ function useAudioVisualizer(
   const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
-  const start = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-
-      const audioCtx = new AudioContext();
-      audioCtxRef.current = audioCtx;
-
-      const source = audioCtx.createMediaStreamSource(stream);
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.8;
-      source.connect(analyser);
-      analyserRef.current = analyser;
-
-      draw();
-    } catch {
-      // Permission denied or no mic — fallback to idle animation
-      drawIdle();
-    }
-  }, []);
-
-  const stop = useCallback(() => {
-    if (animFrameRef.current) {
-      cancelAnimationFrame(animFrameRef.current);
-      animFrameRef.current = 0;
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-    if (audioCtxRef.current) {
-      audioCtxRef.current.close();
-      audioCtxRef.current = null;
-    }
-    analyserRef.current = null;
-  }, []);
-
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     const analyser = analyserRef.current;
@@ -122,7 +84,6 @@ function useAudioVisualizer(
       const centerY = h / 2;
 
       for (let i = 0; i < barCount; i++) {
-        // Sample from the frequency data symmetrically
         const dataIndex = Math.floor(
           (i < barCount / 2 ? barCount / 2 - i : i - barCount / 2) *
             (bufferLength / barCount) *
@@ -134,7 +95,6 @@ function useAudioVisualizer(
 
         const x = gap + i * (barWidth + gap);
 
-        // Gradient color from blue to indigo
         const hue = 220 + normalised * 30;
         const alpha = 0.5 + normalised * 0.5;
         ctx.fillStyle = `hsla(${hue}, 80%, 60%, ${alpha})`;
@@ -184,6 +144,44 @@ function useAudioVisualizer(
     render();
   }, [canvasRef]);
 
+  const stop = useCallback(() => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = 0;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close();
+      audioCtxRef.current = null;
+    }
+    analyserRef.current = null;
+  }, []);
+
+  const start = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+
+      const audioCtx = new AudioContext();
+      audioCtxRef.current = audioCtx;
+
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.8;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+
+      draw();
+    } catch {
+      // Permission denied or no mic — fallback to idle animation
+      drawIdle();
+    }
+  }, [draw, drawIdle]);
+
   useEffect(() => {
     if (active) {
       start();
@@ -208,6 +206,13 @@ export function VoiceInputModal({
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Refs that mirror state so recognition callbacks read live values
+  // instead of stale closure captures.
+  const stateRef = useRef<VoiceState>(state);
+  stateRef.current = state;
+  const transcriptRef = useRef(transcript);
+  transcriptRef.current = transcript;
 
   // Audio visualizer
   useAudioVisualizer(canvasRef, state === "listening");
@@ -320,9 +325,9 @@ export function VoiceInputModal({
     };
 
     recognition.onend = () => {
-      // If we have transcript and state is still listening, deliver it
-      if (state === "listening" || transcript) {
-        const finalText = transcript.trim();
+      // Read live values via refs to avoid stale closure captures
+      if (stateRef.current === "listening" && transcriptRef.current) {
+        const finalText = transcriptRef.current.trim();
         if (finalText) {
           onTranscript(finalText);
         }
@@ -338,7 +343,7 @@ export function VoiceInputModal({
       setState("error");
       setErrorMessage("Failed to start speech recognition. Please try again.");
     }
-  }, [clearSilenceTimer, stopRecognition, onTranscript, onClose, state, transcript]);
+  }, [clearSilenceTimer, stopRecognition, onTranscript, onClose]);
 
   // Start recognition when modal opens
   useEffect(() => {
@@ -511,11 +516,12 @@ export function VoiceInputModal({
                           <span className="text-slate-400">{` ${interimText}`}</span>
                         )}
                         <motion.span
-                          animate={{ opacity: [1, 0] }}
+                          animate={{ opacity: [1, 1, 0, 0] }}
                           transition={{
-                            duration: 0.8,
+                            duration: 1,
                             repeat: Infinity,
-                            ease: "steps(2)",
+                            times: [0, 0.49, 0.5, 1],
+                            ease: "linear",
                           }}
                           className="inline-block w-0.5 h-4 bg-blue-500 ml-0.5 align-text-bottom"
                         />

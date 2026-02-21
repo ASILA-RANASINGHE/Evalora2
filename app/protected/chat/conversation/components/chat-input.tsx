@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Paperclip, Mic, X, FileText } from "lucide-react";
+import { VoiceInputModal } from "./voice-input-modal";
 
 interface FilePreview {
   name: string;
@@ -22,6 +23,7 @@ function formatFileSize(bytes: number): string {
 export function ChatInput({ onSend }: ChatInputProps) {
   const [input, setInput] = useState("");
   const [attachedFile, setAttachedFile] = useState<FilePreview | null>(null);
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSend = () => {
@@ -126,6 +128,7 @@ export function ChatInput({ onSend }: ChatInputProps) {
 
             {/* Voice */}
             <button
+              onClick={() => setVoiceOpen(true)}
               className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-colors flex-shrink-0 mb-0.5"
               title="Voice to text"
             >
@@ -147,6 +150,16 @@ export function ChatInput({ onSend }: ChatInputProps) {
           EduBot can make mistakes. Verify important academic information.
         </p>
       </div>
+
+      {/* Voice Input Modal */}
+      <VoiceInputModal
+        open={voiceOpen}
+        onClose={() => setVoiceOpen(false)}
+        onTranscript={(transcript) => {
+          setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
+          setVoiceOpen(false);
+        }}
+      />
     </div>
   );
 }
