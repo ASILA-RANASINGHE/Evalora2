@@ -1,11 +1,7 @@
-import React from 'react';
-
-export default function MessageBubble() {
+export default function MessageBubble({ isUser = false }: { isUser?: boolean }) {
   return (
-    <div className="flex w-full justify-end mb-4">
-      <div>
-        This is a user message
-      </div>
+    <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
+      <div>Hello World</div>
     </div>
   );
 }
