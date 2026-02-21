@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Paperclip, Mic, X, FileText } from "lucide-react";
+import { Send, Paperclip, Mic, X, FileText, ImageIcon } from "lucide-react";
 import { VoiceInputModal } from "./voice-input-modal";
 
 interface FilePreview {
@@ -24,7 +24,37 @@ export function ChatInput({ onSend }: ChatInputProps) {
   const [input, setInput] = useState("");
   const [attachedFile, setAttachedFile] = useState<FilePreview | null>(null);
   const [voiceOpen, setVoiceOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const attachMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close attach menu on click outside
+  useEffect(() => {
+    if (!attachMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        attachMenuRef.current &&
+        !attachMenuRef.current.contains(e.target as Node)
+      ) {
+        setAttachMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [attachMenuOpen]);
+
+  const openFilePicker = useCallback(
+    (type: "images" | "documents") => {
+      setAttachMenuOpen(false);
+      if (type === "images") {
+        imageInputRef.current?.click();
+      } else {
+        docInputRef.current?.click();
+      }
+    },
+    []
+  );
 
   const handleSend = () => {
     const trimmed = input.trim();
@@ -94,21 +124,60 @@ export function ChatInput({ onSend }: ChatInputProps) {
         {/* Input Row */}
         <div className="flex items-end gap-2">
           <div className="flex-1 flex items-end gap-2 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all">
-            {/* File Upload */}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-colors flex-shrink-0 mb-0.5"
-              title="Attach file (PDF, Essay)"
-            >
-              <Paperclip className="h-4 w-4" />
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              accept=".pdf,.doc,.docx,.txt,.md"
-              onChange={handleFileChange}
-            />
+            {/* File Upload — menu with Images / Documents */}
+            <div ref={attachMenuRef} className="relative flex-shrink-0 mb-0.5">
+              <button
+                onClick={() => setAttachMenuOpen((v) => !v)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+                title="Attach file"
+              >
+                <Paperclip className="h-4 w-4" />
+              </button>
+
+              {/* Anchored selection menu */}
+              <AnimatePresence>
+                {attachMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 6, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute bottom-full left-0 mb-2 w-44 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-20"
+                  >
+                    <button
+                      onClick={() => openFilePicker("images")}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      <ImageIcon className="h-4 w-4 text-blue-500" />
+                      Images
+                    </button>
+                    <button
+                      onClick={() => openFilePicker("documents")}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      <FileText className="h-4 w-4 text-amber-500" />
+                      Documents
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Hidden file inputs with separate accept filters */}
+              <input
+                ref={imageInputRef}
+                type="file"
+                className="hidden"
+                accept=".jpg,.jpeg,.png,.webp,.gif"
+                onChange={handleFileChange}
+              />
+              <input
+                ref={docInputRef}
+                type="file"
+                className="hidden"
+                accept=".pdf,.doc,.docx,.txt,.md"
+                onChange={handleFileChange}
+              />
+            </div>
 
             {/* Text Input */}
             <textarea
