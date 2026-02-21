@@ -25,6 +25,8 @@ export function ChatInput({ onSend }: ChatInputProps) {
   const [input, setInput] = useState("");
   const [attachedFile, setAttachedFile] = useState<FilePreview | null>(null);
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
+  const [mapQuery, setMapQuery] = useState("");
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
 
@@ -76,6 +78,13 @@ export function ChatInput({ onSend }: ChatInputProps) {
     onSend(messageText);
     setInput("");
     setAttachedFile(null);
+  };
+
+  const handleMapSearch = () => {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    setMapQuery(trimmed);
+    setMapOpen(true);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -221,6 +230,16 @@ export function ChatInput({ onSend }: ChatInputProps) {
             )}
           </div>
 
+          {/* Map Search Button */}
+          <button
+            onClick={handleMapSearch}
+            disabled={!input.trim()}
+            className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center hover:bg-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 shadow-sm"
+            title="Search location on map"
+          >
+            <MapPin className="h-4 w-4" />
+          </button>
+
           {/* Send Button */}
           <button
             onClick={handleSend}
@@ -244,6 +263,13 @@ export function ChatInput({ onSend }: ChatInputProps) {
           setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
           setVoiceOpen(false);
         }}
+      />
+
+      {/* Map Search Modal */}
+      <MapSearchModal
+        open={mapOpen}
+        onClose={() => setMapOpen(false)}
+        searchQuery={mapQuery}
       />
     </div>
   );
