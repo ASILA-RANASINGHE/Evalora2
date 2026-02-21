@@ -12,7 +12,9 @@ import {
   Users,
   Send,
   Inbox,
+  Palette,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SearchUsersDialog } from "@/components/relationships/search-users-dialog";
 import { RequestsTab } from "@/components/relationships/requests-tab";
@@ -46,6 +48,7 @@ export default function ParentSettingsPage() {
           <TabsTrigger value="connections">Connections</TabsTrigger>
           <TabsTrigger value="requests">Requests</TabsTrigger>
           <TabsTrigger value="accept">Accept</TabsTrigger>
+          <TabsTrigger value="appearance">Appearance</TabsTrigger>
         </TabsList>
 
         {/* Profile Tab */}
@@ -118,6 +121,27 @@ export default function ParentSettingsPage() {
         {/* Accept Tab */}
         <TabsContent value="accept" className="space-y-6">
           <AcceptTab />
+        </TabsContent>
+        {/* Appearance Tab */}
+        <TabsContent value="appearance" className="space-y-6">
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Palette className="h-4 w-4 text-purple-500" />
+                Appearance
+              </CardTitle>
+              <CardDescription>Customize the look and feel of the platform</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">Theme</p>
+                  <p className="text-xs text-muted-foreground">Switch between light and dark mode</p>
+                </div>
+                <ThemeToggle />
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
