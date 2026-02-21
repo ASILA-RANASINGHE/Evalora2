@@ -270,7 +270,7 @@ export function MapSearchModal({
             {/* Map Container */}
             <div
               ref={mapContainerRef}
-              className="w-full h-[50vh] min-h-[300px] max-h-[500px]"
+              className="w-full h-[60vh] min-h-[400px] max-h-[650px]"
             />
 
             {/* Footer */}
