@@ -128,7 +128,7 @@ export function MapSearchModal({
           const marker = L.marker([result.latitude, result.longitude], {
             icon: L.divIcon({
               className: "custom-map-marker",
-              html: `<div style="
+              html: `<div class="marker-bounce" style="
                 background: #2563eb;
                 width: 32px;
                 height: 32px;
@@ -293,12 +293,25 @@ export function MapSearchModal({
               <p className="text-[10px] text-slate-400">
                 Map data &copy; OpenStreetMap contributors
               </p>
-              <button
-                onClick={onClose}
-                className="px-4 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
-              >
-                Close
-              </button>
+              <div className="flex items-center gap-2">
+                {status === "found" && location && (
+                  <a
+                    href={`https://www.google.com/maps?q=${location.latitude},${location.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-full transition-colors"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Open in Google Maps
+                  </a>
+                )}
+                <button
+                  onClick={onClose}
+                  className="px-4 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </motion.div>
         </motion.div>
