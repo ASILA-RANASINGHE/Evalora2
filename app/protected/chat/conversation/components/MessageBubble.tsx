@@ -2,9 +2,9 @@ import React from 'react';
 
 export default function MessageBubble() {
   return (
-    <div>
+    <div className="flex w-full justify-end mb-4">
       <div>
-        Hello World
+        This is a user message
       </div>
     </div>
   );
