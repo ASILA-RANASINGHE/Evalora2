@@ -1,3 +1,4 @@
+import { jsPDF } from "jspdf";
 import type { ChatMessage } from "../components/MessageBubble";
 
 interface ExportOptions {
@@ -5,35 +6,44 @@ interface ExportOptions {
   sessionTitle: string;
 }
 
-/**
- * Strips markdown syntax to produce plain readable text.
- */
 function stripMarkdown(md: string): string {
   return md
-    .replace(/#{1,6}\s+/g, "")          // headings
-    .replace(/\*\*(.*?)\*\*/g, "$1")     // bold
-    .replace(/\*(.*?)\*/g, "$1")         // italic
-    .replace(/`{3}[\s\S]*?`{3}/g, "")   // code blocks
-    .replace(/`([^`]+)`/g, "$1")         // inline code
-    .replace(/>\s?/g, "")               // blockquotes
-    .replace(/\$\$[\s\S]*?\$\$/g, "[formula]") // block math
-    .replace(/\$([^$]+)\$/g, "$1")       // inline math
-    .replace(/- \[[ x]\]\s?/g, "• ")    // checkboxes
-    .replace(/^- /gm, "• ")             // unordered lists
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links
-    .replace(/\|[^\n]+\|/g, "")         // tables
-    .replace(/\n{3,}/g, "\n\n")         // excess newlines
+    .replace(/#{1,6}\s+/g, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/`{3}[\s\S]*?`{3}/g, "")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/>\s?/g, "")
+    .replace(/\$\$[\s\S]*?\$\$/g, "[formula]")
+    .replace(/\$([^$]+)\$/g, "$1")
+    .replace(/- \[[ x]\]\s?/g, "- ")
+    .replace(/^- /gm, "- ")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/\|[^\n]+\|/g, "")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
+// Colors as [r, g, b] tuples
+type RGB = [number, number, number];
+const BLUE: RGB = [59, 130, 246];       // #3b82f6
+const INDIGO: RGB = [99, 102, 241];     // #6366f1
+const SLATE_800: RGB = [30, 41, 59];
+const SLATE_500: RGB = [100, 116, 139];
+const SLATE_300: RGB = [203, 213, 225];
+const USER_BG: RGB = [239, 246, 255];   // blue-50
+const BOT_BG: RGB = [248, 250, 252];    // slate-50
+const USER_LABEL: RGB = [37, 99, 235];  // blue-600
+const BOT_LABEL: RGB = [124, 58, 235];  // violet-600
 
 export function exportTranscript({ messages, sessionTitle }: ExportOptions) {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 18;
+  const contentW = pageW - margin * 2;
+  let y = 0;
+
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-US", {
     year: "numeric",
@@ -45,61 +55,113 @@ export function exportTranscript({ messages, sessionTitle }: ExportOptions) {
     minute: "2-digit",
   });
 
-  const messageRows = messages
-    .map((msg) => {
-      const isUser = msg.sender === "user";
-      const label = isUser ? "You" : "EduBot";
-      const plainText = escapeHtml(stripMarkdown(msg.text));
-      const bgColor = isUser ? "#eff6ff" : "#f8fafc";
-      const labelColor = isUser ? "#2563eb" : "#7c3aed";
+  // --- Header band ---
+  const headerH = 30;
+  // Gradient approximation: left half blue, right half indigo with blend
+  const steps = 20;
+  const stepW = pageW / steps;
+  for (let i = 0; i < steps; i++) {
+    const t = i / (steps - 1);
+    const r = Math.round(BLUE[0] + (INDIGO[0] - BLUE[0]) * t);
+    const g = Math.round(BLUE[1] + (INDIGO[1] - BLUE[1]) * t);
+    const b = Math.round(BLUE[2] + (INDIGO[2] - BLUE[2]) * t);
+    doc.setFillColor(r, g, b);
+    doc.rect(i * stepW, 0, stepW + 0.5, headerH, "F");
+  }
 
-      return `
-      <div style="padding:16px 20px;border-bottom:1px solid #e2e8f0;background:${bgColor}">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-          <span style="font-weight:600;font-size:13px;color:${labelColor}">${label}</span>
-          <span style="font-size:11px;color:#94a3b8">${msg.timestamp}</span>
-        </div>
-        <div style="font-size:14px;color:#334155;line-height:1.6;white-space:pre-wrap">${plainText}</div>
-      </div>`;
-    })
-    .join("");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text(sessionTitle, margin, 13);
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>${escapeHtml(sessionTitle)} — Transcript</title>
-<style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f1f5f9;padding:40px 20px}
-  .container{max-width:720px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)}
-  .header{background:linear-gradient(135deg,#3b82f6,#6366f1);padding:32px;color:#fff}
-  .header h1{font-size:20px;font-weight:700;margin-bottom:4px}
-  .header p{font-size:13px;opacity:.85}
-  .footer{padding:16px 20px;text-align:center;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0}
-  @media print{body{background:#fff;padding:0}.container{box-shadow:none;border-radius:0}}
-</style>
-</head>
-<body>
-<div class="container">
-  <div class="header">
-    <h1>${escapeHtml(sessionTitle)}</h1>
-    <p>Exported on ${dateStr} at ${timeStr} &middot; ${messages.length} messages</p>
-  </div>
-  ${messageRows}
-  <div class="footer">Generated by Evalora &middot; EduBot Academic Advisor</div>
-</div>
-</body>
-</html>`;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(220, 220, 255);
+  doc.text(`Exported on ${dateStr} at ${timeStr}  |  ${messages.length} messages`, margin, 21);
 
-  const blob = new Blob([html], { type: "text/html" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${sessionTitle.replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, "_")}_transcript.html`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  y = headerH + 10;
+
+  // --- Helper: add a new page with footer ---
+  function addPage() {
+    drawFooter();
+    doc.addPage();
+    y = 14;
+  }
+
+  function drawFooter() {
+    doc.setFontSize(7);
+    doc.setTextColor(...SLATE_500);
+    doc.setFont("helvetica", "normal");
+    const footerText = "Generated by Evalora  -  EduBot Academic Advisor";
+    const footerW = doc.getTextWidth(footerText);
+    doc.text(footerText, (pageW - footerW) / 2, pageH - 8);
+
+    // Page number
+    const pageNum = `${doc.getNumberOfPages()}`;
+    doc.text(pageNum, pageW - margin, pageH - 8);
+  }
+
+  // --- Render messages ---
+  for (const msg of messages) {
+    const isUser = msg.sender === "user";
+    const label = isUser ? "You" : "EduBot";
+    const labelColor = isUser ? USER_LABEL : BOT_LABEL;
+    const bgColor = isUser ? USER_BG : BOT_BG;
+    const plainText = stripMarkdown(msg.text);
+
+    // Wrap text to calculate height
+    doc.setFontSize(9.5);
+    doc.setFont("helvetica", "normal");
+    const lines = doc.splitTextToSize(plainText, contentW - 16);
+    const textH = lines.length * 4.2;
+    const blockH = textH + 18; // padding top (label+gap) + padding bottom
+
+    // Check if we need a new page
+    if (y + blockH + 10 > pageH - 16) {
+      addPage();
+    }
+
+    // Background rounded rect
+    doc.setFillColor(...bgColor);
+    doc.roundedRect(margin, y, contentW, blockH, 3, 3, "F");
+
+    // Subtle left accent bar
+    doc.setFillColor(...labelColor);
+    doc.roundedRect(margin, y, 1.2, blockH, 0.6, 0.6, "F");
+
+    // Label
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...labelColor);
+    doc.text(label, margin + 8, y + 7);
+
+    // Timestamp
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(...SLATE_500);
+    const labelW = doc.getTextWidth(label + "  ");
+    doc.text(msg.timestamp, margin + 8 + labelW + 2, y + 7);
+
+    // Message body
+    doc.setFontSize(9.5);
+    doc.setTextColor(...SLATE_800);
+    doc.setFont("helvetica", "normal");
+    doc.text(lines, margin + 8, y + 13);
+
+    y += blockH + 4;
+  }
+
+  // Final footer
+  drawFooter();
+
+  // --- Divider line before footer ---
+  doc.setDrawColor(...SLATE_300);
+  doc.setLineWidth(0.3);
+  doc.line(margin, pageH - 13, pageW - margin, pageH - 13);
+
+  // --- Download ---
+  const fileName = sessionTitle
+    .replace(/[^a-zA-Z0-9 ]/g, "")
+    .replace(/\s+/g, "_");
+  doc.save(`${fileName}_transcript.pdf`);
 }
