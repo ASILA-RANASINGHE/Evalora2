@@ -16,7 +16,12 @@ async function extractText(fileName) {
     console.log("Pages:", data.numpages);
     console.log("Pages:", data.numpages);
     console.log("--- Extracted Text ---");
-    console.log(data.text);
+    
+    const cleanText = data.text
+        .replace(/\n\s*\n/g, '\n')
+        .trim();
+    console.log(cleanText);
+    
   } catch (error) {
     console.error("Error extracting text:", error);
   }
