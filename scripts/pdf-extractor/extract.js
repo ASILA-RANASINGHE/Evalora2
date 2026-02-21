@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+console.log("Pages:", data.numpages);
 
 async function extractText(fileName) {
   const filePath = path.join(__dirname, 'samples', fileName);
@@ -10,7 +11,13 @@ async function extractText(fileName) {
   }
 
   const dataBuffer = fs.readFileSync(filePath);
-  console.log(`Buffer created for ${fileName}, size: ${dataBuffer.length} bytes`);
+  try {
+    console.log("Pages:", data.numpages);
+    console.log("--- Extracted Text ---");
+    console.log(data.text);
+  } catch (error) {
+    console.error("Error extracting text:", error);
+  }
 }
 
 extractText('Grade6_History.pdf');
