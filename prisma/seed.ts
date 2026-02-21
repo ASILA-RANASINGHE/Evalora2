@@ -937,6 +937,7 @@ async function main() {
   console.log(`Papers: 5 (teacher) + 5 (admin) = 10`);
   console.log(`Quizzes: ${TOPICS.length} (teacher) + ${TOPICS.length} (admin) = ${TOPICS.length * 2} (20 questions each)`);
   console.log(`Relationships: 5 teacher-student + 5 parent-student = 10`);
+  console.log(`Locations: ${LOCATIONS.length} historical places`);
 }
 
 main()
