@@ -306,6 +306,8 @@ export function VoiceInputModal({
       const messages: Record<string, string> = {
         "not-allowed":
           "Microphone access was denied. Please allow microphone permission in your browser settings.",
+        "service-not-allowed":
+          "Speech recognition service is unavailable. Please use Chrome or Edge with an active internet connection.",
         "no-speech":
           "No speech was detected. Please try again and speak clearly.",
         "audio-capture":
