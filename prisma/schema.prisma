@@ -343,6 +343,17 @@ model ShortNote {
   createdBy Profile @relation(fields: [createdById], references: [id])
 }
 
+// ─── Historical Locations (Map Search) ──────────────────────────
+
+model Location {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique
+  latitude    Float
+  longitude   Float
+  description String?
+  category    String? // e.g. "ancient_city", "kingdom", "temple", "colonial_fort"
+}
+
 // ─── Student Progress & Gamification ─────────────────────────────
 
 model StudentProgress {
