@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 import { extractText } from 'unpdf';
+import { cleanPdfText } from '../lib/text-cleaner';
 
 async function extractSamplePdf() {
   try {
@@ -15,13 +16,15 @@ async function extractSamplePdf() {
 
     console.log(`✅ Successfully parsed ${totalPages} pages.\n`);
     
-    console.log('--- Full Extracted Text ---');
-    console.log(text); 
-    console.log('\n---------------------------');
+    const rawTextString = Array.isArray(text) ? text.join('\n') : text;
+    
+    console.log('🧹 Cleaning up messy PDF text...');
+    const cleanedText = cleanPdfText(rawTextString);
 
-    const outputPath = path.join(process.cwd(), 'scripts', 'samples', 'history6-extracted.txt');
-    writeFileSync(outputPath, Array.isArray(text) ? text.join('\n') : text);
-    console.log(`💾 Full text saved to: ${outputPath}`);
+    const outputPath = path.join(process.cwd(), 'scripts', 'samples', 'history6-cleaned.txt');
+    writeFileSync(outputPath, cleanedText);
+    
+    console.log(`💾 Cleaned text saved to: ${outputPath}\n`);
 
   } catch (error) {
     console.error('❌ Failed to extract PDF:', error);
