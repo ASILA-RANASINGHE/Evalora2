@@ -10,7 +10,6 @@ export function ChatContainer({ messages, isTyping }: { messages: ChatMessage[],
         ))}
 
         {isTyping && <TypingIndicator />}
-        
       </div>
     </div>
   );
