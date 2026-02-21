@@ -1,10 +1,9 @@
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 import { extractText } from 'unpdf';
 
 async function extractSamplePdf() {
   try {
-    // Dynamically resolve the path to your existing sample PDF
     const filePath = path.join(process.cwd(), 'scripts', 'samples', 'history6.pdf');
     
     console.log(`📄 Loading PDF from: ${filePath}`);
@@ -12,13 +11,19 @@ async function extractSamplePdf() {
 
     console.log('⏳ Extracting text...');
     
-    // unpdf parses the raw buffer
     const { text, totalPages } = await extractText(new Uint8Array(pdfBuffer));
 
     console.log(`✅ Successfully parsed ${totalPages} pages.\n`);
-    console.log('--- Text Preview (First 500 characters) ---');
-    console.log(text.join('').substring(0, 500) + '...\n');
-    console.log('-------------------------------------------');
+    
+    // Print the entire text to the console
+    console.log('--- Full Extracted Text ---');
+    console.log(text); 
+    console.log('\n---------------------------');
+
+    // Save the full text to a file so you can easily read it in VS Code
+    const outputPath = path.join(process.cwd(), 'scripts', 'samples', 'history6-extracted.txt');
+    writeFileSync(outputPath, Array.isArray(text) ? text.join('\n') : text);
+    console.log(`💾 Full text saved to: ${outputPath}`);
 
   } catch (error) {
     console.error('❌ Failed to extract PDF:', error);
