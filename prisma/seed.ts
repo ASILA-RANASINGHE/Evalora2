@@ -890,26 +890,104 @@ async function main() {
   console.log("Creating historical locations...");
   await prisma.location.deleteMany();
   const LOCATIONS = [
+    // ── Ancient Capitals & Cities ────────────────────────────────
     { name: "Anuradhapura", latitude: 8.3114, longitude: 80.4037, description: "Ancient capital of Sri Lanka (377 BCE - 1017 CE)", category: "ancient_city" },
     { name: "Polonnaruwa", latitude: 7.9403, longitude: 81.0188, description: "Medieval capital of Sri Lanka (1017 - 1232 CE)", category: "ancient_city" },
-    { name: "Sigiriya", latitude: 7.9570, longitude: 80.7603, description: "5th-century rock fortress built by King Kashyapa", category: "fortress" },
-    { name: "Kandy", latitude: 7.2906, longitude: 80.6337, description: "Last royal capital; home of the Temple of the Tooth Relic", category: "kingdom" },
-    { name: "Galle Fort", latitude: 6.0269, longitude: 80.2170, description: "Dutch colonial fort, UNESCO World Heritage Site", category: "colonial_fort" },
-    { name: "Dambulla", latitude: 7.8675, longitude: 80.6517, description: "Cave temple complex with ancient Buddhist paintings", category: "temple" },
-    { name: "Mihintale", latitude: 8.3503, longitude: 80.5114, description: "Birthplace of Buddhism in Sri Lanka (247 BCE)", category: "temple" },
-    { name: "Yapahuwa", latitude: 7.8167, longitude: 80.3167, description: "13th-century rock fortress and capital", category: "fortress" },
     { name: "Dambadeniya", latitude: 7.4667, longitude: 80.1833, description: "Capital after Polonnaruwa era (1232–1283 CE)", category: "ancient_city" },
-    { name: "Kotte", latitude: 6.8914, longitude: 79.9006, description: "Capital of the Kingdom of Kotte (1412–1597 CE)", category: "kingdom" },
-    { name: "Ruwanwelisaya", latitude: 8.3486, longitude: 80.3964, description: "Great stupa built by King Dutugemunu in Anuradhapura", category: "temple" },
-    { name: "Jetavanaramaya", latitude: 8.3536, longitude: 80.4000, description: "Once the tallest brick structure in the world", category: "temple" },
-    { name: "Thuparamaya", latitude: 8.3564, longitude: 80.3953, description: "First dagoba built in Sri Lanka after Buddhism arrived", category: "temple" },
-    { name: "Colombo", latitude: 6.9271, longitude: 79.8612, description: "Commercial capital; Portuguese, Dutch, and British colonial hub", category: "colonial_fort" },
-    { name: "Gampola", latitude: 7.1633, longitude: 80.5733, description: "Capital of Sri Lanka in the 14th century", category: "kingdom" },
+    { name: "Gampola", latitude: 7.1633, longitude: 80.5733, description: "Capital of Sri Lanka in the 14th century", category: "ancient_city" },
+    { name: "Kotte", latitude: 6.8914, longitude: 79.9006, description: "Capital of the Kingdom of Kotte (1412–1597 CE)", category: "ancient_city" },
+    { name: "Kandy", latitude: 7.2906, longitude: 80.6337, description: "Last royal capital; home of the Temple of the Tooth Relic", category: "kingdom" },
     { name: "Tissamaharama", latitude: 6.2839, longitude: 81.2878, description: "Ancient kingdom in southern Sri Lanka (Ruhuna)", category: "ancient_city" },
+    { name: "Tambapanni", latitude: 8.9833, longitude: 79.9167, description: "First Sinhalese settlement founded by Prince Vijaya (543 BCE)", category: "ancient_city" },
+    { name: "Kelaniya", latitude: 6.9553, longitude: 79.9214, description: "Ancient site visited by the Buddha; Kelaniya Raja Maha Viharaya", category: "ancient_city" },
+    { name: "Kurunegala", latitude: 7.4863, longitude: 80.3623, description: "Capital of Sri Lanka (1293–1341 CE), Yapahuwa to Gampola transition", category: "ancient_city" },
+    { name: "Panduwasnuwara", latitude: 7.6000, longitude: 80.1833, description: "Sub-capital during Anuradhapura period; King Parakramabahu I's birthplace", category: "ancient_city" },
+    { name: "Rajarata", latitude: 8.2000, longitude: 80.5000, description: "Historical northern plains region; heartland of ancient Sinhalese civilization", category: "region" },
+    { name: "Ruhuna", latitude: 6.3000, longitude: 81.1000, description: "Southern historical kingdom; base of King Dutugemunu", category: "region" },
+
+    // ── Fortresses & Rock Sites ──────────────────────────────────
+    { name: "Sigiriya", latitude: 7.9570, longitude: 80.7603, description: "5th-century rock fortress built by King Kashyapa I", category: "fortress" },
+    { name: "Yapahuwa", latitude: 7.8167, longitude: 80.3167, description: "13th-century rock fortress and temporary capital", category: "fortress" },
+    { name: "Ritigala", latitude: 8.1167, longitude: 80.6667, description: "Ancient monastery ruins and forest hermitage", category: "fortress" },
+    { name: "Dimbulagala", latitude: 7.8833, longitude: 81.1167, description: "Ancient rock monastery near Polonnaruwa; Gunner's Quoin", category: "fortress" },
+
+    // ── Buddhist Temples & Dagobas ───────────────────────────────
+    { name: "Ruwanwelisaya", latitude: 8.3486, longitude: 80.3964, description: "Great stupa built by King Dutugemunu in Anuradhapura", category: "temple" },
+    { name: "Jetavanaramaya", latitude: 8.3536, longitude: 80.4000, description: "Once the tallest brick structure in the world (122m)", category: "temple" },
+    { name: "Thuparamaya", latitude: 8.3564, longitude: 80.3953, description: "First dagoba built in Sri Lanka after Buddhism arrived (247 BCE)", category: "temple" },
     { name: "Abhayagiri Monastery", latitude: 8.3636, longitude: 80.3986, description: "Major Buddhist monastery founded by King Valagamba", category: "temple" },
+    { name: "Mihintale", latitude: 8.3503, longitude: 80.5114, description: "Birthplace of Buddhism in Sri Lanka; Arahat Mahinda met King Devanampiya Tissa (247 BCE)", category: "temple" },
+    { name: "Dambulla", latitude: 7.8675, longitude: 80.6517, description: "Cave temple complex with ancient Buddhist paintings and statues", category: "temple" },
+    { name: "Isurumuniya", latitude: 8.3328, longitude: 80.3889, description: "Rock temple in Anuradhapura famous for Isurumuniya Lovers carving", category: "temple" },
+    { name: "Gal Vihara", latitude: 7.9589, longitude: 81.0103, description: "Four magnificent Buddha statues carved from single granite rock in Polonnaruwa", category: "temple" },
+    { name: "Vatadage Polonnaruwa", latitude: 7.9472, longitude: 81.0008, description: "Circular relic house with stunning stone carvings", category: "temple" },
+    { name: "Lankatilaka Polonnaruwa", latitude: 7.9625, longitude: 81.0075, description: "Massive image house with towering brick walls in Polonnaruwa", category: "temple" },
+    { name: "Rankoth Vehera", latitude: 7.9533, longitude: 81.0050, description: "Largest dagoba in Polonnaruwa, built by Nissanka Malla", category: "temple" },
+    { name: "Medirigiriya", latitude: 8.1500, longitude: 80.9833, description: "Ancient vatadage (circular relic house) with exceptional stone pillars", category: "temple" },
+    { name: "Nagadipa", latitude: 9.6667, longitude: 79.8667, description: "Sacred Buddhist site on Nainativu island; visited by the Buddha", category: "temple" },
+    { name: "Sri Pada", latitude: 6.8096, longitude: 80.4994, description: "Adam's Peak; sacred footprint revered by Buddhists, Hindus, Muslims, and Christians", category: "temple" },
+    { name: "Kataragama", latitude: 6.4133, longitude: 81.3317, description: "Multi-religious sacred site; Ruhunu Maha Kataragama Devalaya", category: "temple" },
+    { name: "Aluvihara", latitude: 7.4667, longitude: 80.6167, description: "Rock temple where the Tripitaka was first written down (1st century BCE)", category: "temple" },
+    { name: "Gadaladeniya", latitude: 7.2500, longitude: 80.5833, description: "14th-century temple blending Sinhalese and South Indian architecture", category: "temple" },
+    { name: "Lankatilaka Kandy", latitude: 7.2500, longitude: 80.5667, description: "14th-century temple in Gampola era with massive image house", category: "temple" },
+    { name: "Embekka Devalaya", latitude: 7.2333, longitude: 80.5667, description: "14th-century shrine famous for intricate wooden carvings", category: "temple" },
+    { name: "Tooth Relic Temple", latitude: 7.2936, longitude: 80.6413, description: "Sri Dalada Maligawa in Kandy; houses the sacred Tooth Relic of the Buddha", category: "temple" },
+    { name: "Kelani Viharaya", latitude: 6.9553, longitude: 79.9214, description: "One of the most sacred Buddhist temples; site of Buddha's third visit to Lanka", category: "temple" },
+
+    // ── Irrigation & Reservoirs ──────────────────────────────────
     { name: "Minneriya", latitude: 8.0333, longitude: 80.8833, description: "Ancient reservoir built by King Mahasena (3rd century CE)", category: "reservoir" },
     { name: "Parakrama Samudra", latitude: 7.9333, longitude: 81.0000, description: "Massive reservoir built by King Parakramabahu I", category: "reservoir" },
     { name: "Kalawewa", latitude: 8.0333, longitude: 80.5333, description: "Ancient reservoir built by King Dhatusena (5th century CE)", category: "reservoir" },
+    { name: "Beira Lake", latitude: 6.9267, longitude: 79.8553, description: "Historical lake in Colombo developed during Portuguese and Dutch periods", category: "reservoir" },
+    { name: "Tissa Wewa", latitude: 8.3400, longitude: 80.3894, description: "Ancient reservoir in Anuradhapura built by King Devanampiya Tissa", category: "reservoir" },
+    { name: "Nuwara Wewa", latitude: 8.3300, longitude: 80.4100, description: "Large ancient reservoir on the eastern side of Anuradhapura", category: "reservoir" },
+    { name: "Basawakkulama", latitude: 8.3608, longitude: 80.3839, description: "Oldest reservoir in Sri Lanka, also known as Abhaya Wewa", category: "reservoir" },
+    { name: "Yoda Wewa", latitude: 6.2917, longitude: 81.2833, description: "Ancient reservoir in Tissamaharama region of Ruhuna", category: "reservoir" },
+    { name: "Giant's Tank", latitude: 8.9833, longitude: 80.2000, description: "Ancient reservoir in Mannar region built by King Dhatusena", category: "reservoir" },
+    { name: "Kantale Tank", latitude: 8.3667, longitude: 81.0000, description: "Ancient reservoir in Trincomalee district attributed to King Agbo II", category: "reservoir" },
+
+    // ── Colonial Forts & Sites ───────────────────────────────────
+    { name: "Galle Fort", latitude: 6.0269, longitude: 80.2170, description: "Dutch colonial fort, UNESCO World Heritage Site (built 1588 by Portuguese, expanded by Dutch)", category: "colonial_fort" },
+    { name: "Colombo", latitude: 6.9271, longitude: 79.8612, description: "Commercial capital; Portuguese, Dutch, and British colonial hub", category: "colonial_fort" },
+    { name: "Colombo Fort", latitude: 6.9344, longitude: 79.8428, description: "Historic fortified area built by the Portuguese in 1517", category: "colonial_fort" },
+    { name: "Negombo Fort", latitude: 7.2111, longitude: 79.8386, description: "Dutch fort in Negombo; strategic for cinnamon trade", category: "colonial_fort" },
+    { name: "Jaffna Fort", latitude: 9.6617, longitude: 80.0100, description: "Largest Dutch fort in Asia; originally Portuguese (1619)", category: "colonial_fort" },
+    { name: "Trincomalee Fort", latitude: 8.5711, longitude: 81.2339, description: "Fort Frederick; strategic harbor fort used by Portuguese, Dutch, and British", category: "colonial_fort" },
+    { name: "Batticaloa Fort", latitude: 7.7167, longitude: 81.7000, description: "Dutch fort on an island in Batticaloa lagoon", category: "colonial_fort" },
+    { name: "Matara Fort", latitude: 5.9450, longitude: 80.5350, description: "Dutch star-shaped fort at the southern tip of Sri Lanka", category: "colonial_fort" },
+    { name: "Hammenhiel Fort", latitude: 9.7333, longitude: 79.8500, description: "Dutch island fort near Kayts guarding Jaffna lagoon", category: "colonial_fort" },
+
+    // ── Rebellion & Independence Sites ───────────────────────────
+    { name: "Wellassa", latitude: 6.9500, longitude: 81.0500, description: "Region of the 1818 Uva-Wellassa Great Rebellion against the British", category: "battlefield" },
+    { name: "Matale", latitude: 7.4675, longitude: 80.6234, description: "Site of the 1848 Matale Rebellion against British colonial taxes", category: "battlefield" },
+    { name: "Mulleriyawa", latitude: 6.9333, longitude: 79.9500, description: "Site of the Battle of Mulleriyawa (1562) between Sitawaka and Portuguese", category: "battlefield" },
+    { name: "Independence Square", latitude: 6.9053, longitude: 79.8691, description: "Independence Memorial Hall; where Ceylon's independence was celebrated on Feb 4, 1948", category: "monument" },
+
+    // ── Key Historical Towns ─────────────────────────────────────
+    { name: "Sitawaka", latitude: 6.9833, longitude: 80.2000, description: "Kingdom of Sitawaka (1521–1594); King Rajasinghe I resisted the Portuguese", category: "kingdom" },
+    { name: "Nuwara Eliya", latitude: 6.9497, longitude: 80.7891, description: "Hill country developed by British as a plantation and health resort", category: "colonial_fort" },
+    { name: "Mannar", latitude: 8.9833, longitude: 79.9167, description: "Ancient port city; Adam's Bridge connecting to India; pearl fishery", category: "ancient_city" },
+    { name: "Trincomalee", latitude: 8.5874, longitude: 81.2152, description: "One of the finest natural harbors in the world; fought over by colonial powers", category: "ancient_city" },
+    { name: "Jaffna", latitude: 9.6615, longitude: 80.0255, description: "Northern capital; Kingdom of Jaffna (1215–1624 CE)", category: "kingdom" },
+    { name: "Chilaw", latitude: 7.5758, longitude: 79.7953, description: "Ancient port town; Munneswaram Hindu temple complex", category: "ancient_city" },
+    { name: "Weligama", latitude: 5.9744, longitude: 80.4297, description: "Coastal town with the Kushtarajagala statue (leper king rock carving)", category: "monument" },
+    { name: "Bentota", latitude: 6.4261, longitude: 80.0012, description: "Coastal area with Brief Garden and Lunuganga estate of Geoffrey Bawa", category: "monument" },
+
+    // ── Prehistoric & Archaeological Sites ────────────────────────
+    { name: "Fa Hien Cave", latitude: 6.6500, longitude: 80.3833, description: "Pahiyangala cave with evidence of Balangoda Man (37,000+ years ago)", category: "archaeological" },
+    { name: "Batadomba-lena", latitude: 6.7667, longitude: 80.5000, description: "Prehistoric cave with human remains dating to 28,000 BCE", category: "archaeological" },
+    { name: "Belilena Cave", latitude: 7.0333, longitude: 80.3833, description: "Prehistoric cave in Kitulgala with tools and human remains", category: "archaeological" },
+    { name: "Buduruwagala", latitude: 6.7500, longitude: 81.0667, description: "Rock-cut Buddha statues from the 10th century; tallest is 16m", category: "archaeological" },
+    { name: "Avukana", latitude: 8.0167, longitude: 80.5167, description: "42-foot standing Buddha statue carved from rock (5th century CE, King Dhatusena)", category: "archaeological" },
+    { name: "Sasseruwa", latitude: 8.0000, longitude: 80.5000, description: "Unfinished rock-carved Buddha statue near Avukana", category: "archaeological" },
+    { name: "Ibbankatuwa", latitude: 7.8833, longitude: 80.6500, description: "Prehistoric burial site near Dambulla (700 BCE)", category: "archaeological" },
+    { name: "Pomparippu", latitude: 8.1333, longitude: 79.8667, description: "Megalithic burial site with urn and cist burials on the northwest coast", category: "archaeological" },
+
+    // ── Gardens, Monuments & Modern Heritage ─────────────────────
+    { name: "Peradeniya", latitude: 7.2689, longitude: 80.5964, description: "Royal Botanic Gardens established by British in 1821; ancient royal garden", category: "monument" },
+    { name: "Dehiwala Zoo", latitude: 6.8556, longitude: 79.8778, description: "National Zoological Gardens established in 1936 during British era", category: "monument" },
+    { name: "Old Parliament Building", latitude: 6.9319, longitude: 79.8467, description: "Colonial-era parliament in Colombo Fort; now Presidential Secretariat", category: "monument" },
+    { name: "Galle Face Green", latitude: 6.9208, longitude: 79.8450, description: "Urban park in Colombo laid out by the Dutch in 1659; expanded by British", category: "monument" },
   ];
   for (const loc of LOCATIONS) {
     await prisma.location.create({ data: loc });
