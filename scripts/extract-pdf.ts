@@ -15,12 +15,10 @@ async function extractSamplePdf() {
 
     console.log(`✅ Successfully parsed ${totalPages} pages.\n`);
     
-    // Print the entire text to the console
     console.log('--- Full Extracted Text ---');
     console.log(text); 
     console.log('\n---------------------------');
 
-    // Save the full text to a file so you can easily read it in VS Code
     const outputPath = path.join(process.cwd(), 'scripts', 'samples', 'history6-extracted.txt');
     writeFileSync(outputPath, Array.isArray(text) ? text.join('\n') : text);
     console.log(`💾 Full text saved to: ${outputPath}`);
