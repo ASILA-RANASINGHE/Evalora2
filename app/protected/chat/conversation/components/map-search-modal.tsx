@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, MapPin, Loader2 } from "lucide-react";
+import { X, MapPin, Loader2, ExternalLink } from "lucide-react";
 import { searchLocation, type LocationResult } from "@/lib/actions/location";
 
 // ─── Types ────────────────────────────────────────────────────────
@@ -52,6 +52,21 @@ export function MapSearchModal({
         link.rel = "stylesheet";
         link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
         document.head.appendChild(link);
+      }
+
+      // Inject marker bounce animation CSS once
+      if (!document.querySelector("style[data-marker-bounce]")) {
+        const style = document.createElement("style");
+        style.setAttribute("data-marker-bounce", "");
+        style.textContent = `
+          @keyframes marker-bounce {
+            0%, 100% { transform: translateY(0) rotate(-45deg); }
+            30% { transform: translateY(-12px) rotate(-45deg); }
+            60% { transform: translateY(-4px) rotate(-45deg); }
+          }
+          .marker-bounce { animation: marker-bounce 0.6s ease-out; }
+        `;
+        document.head.appendChild(style);
       }
 
       leafletRef.current = L;
