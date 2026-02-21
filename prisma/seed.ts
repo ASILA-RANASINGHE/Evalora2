@@ -886,7 +886,37 @@ async function main() {
     console.log(`  + Quizzes for: ${topic}`);
   }
 
-  // ─── 10. Student Progress ──────────────────────────────────────
+  // ─── 10. Historical Locations (Map Search) ─────────────────────
+  console.log("Creating historical locations...");
+  await prisma.location.deleteMany();
+  const LOCATIONS = [
+    { name: "Anuradhapura", latitude: 8.3114, longitude: 80.4037, description: "Ancient capital of Sri Lanka (377 BCE - 1017 CE)", category: "ancient_city" },
+    { name: "Polonnaruwa", latitude: 7.9403, longitude: 81.0188, description: "Medieval capital of Sri Lanka (1017 - 1232 CE)", category: "ancient_city" },
+    { name: "Sigiriya", latitude: 7.9570, longitude: 80.7603, description: "5th-century rock fortress built by King Kashyapa", category: "fortress" },
+    { name: "Kandy", latitude: 7.2906, longitude: 80.6337, description: "Last royal capital; home of the Temple of the Tooth Relic", category: "kingdom" },
+    { name: "Galle Fort", latitude: 6.0269, longitude: 80.2170, description: "Dutch colonial fort, UNESCO World Heritage Site", category: "colonial_fort" },
+    { name: "Dambulla", latitude: 7.8675, longitude: 80.6517, description: "Cave temple complex with ancient Buddhist paintings", category: "temple" },
+    { name: "Mihintale", latitude: 8.3503, longitude: 80.5114, description: "Birthplace of Buddhism in Sri Lanka (247 BCE)", category: "temple" },
+    { name: "Yapahuwa", latitude: 7.8167, longitude: 80.3167, description: "13th-century rock fortress and capital", category: "fortress" },
+    { name: "Dambadeniya", latitude: 7.4667, longitude: 80.1833, description: "Capital after Polonnaruwa era (1232–1283 CE)", category: "ancient_city" },
+    { name: "Kotte", latitude: 6.8914, longitude: 79.9006, description: "Capital of the Kingdom of Kotte (1412–1597 CE)", category: "kingdom" },
+    { name: "Ruwanwelisaya", latitude: 8.3486, longitude: 80.3964, description: "Great stupa built by King Dutugemunu in Anuradhapura", category: "temple" },
+    { name: "Jetavanaramaya", latitude: 8.3536, longitude: 80.4000, description: "Once the tallest brick structure in the world", category: "temple" },
+    { name: "Thuparamaya", latitude: 8.3564, longitude: 80.3953, description: "First dagoba built in Sri Lanka after Buddhism arrived", category: "temple" },
+    { name: "Colombo", latitude: 6.9271, longitude: 79.8612, description: "Commercial capital; Portuguese, Dutch, and British colonial hub", category: "colonial_fort" },
+    { name: "Gampola", latitude: 7.1633, longitude: 80.5733, description: "Capital of Sri Lanka in the 14th century", category: "kingdom" },
+    { name: "Tissamaharama", latitude: 6.2839, longitude: 81.2878, description: "Ancient kingdom in southern Sri Lanka (Ruhuna)", category: "ancient_city" },
+    { name: "Abhayagiri Monastery", latitude: 8.3636, longitude: 80.3986, description: "Major Buddhist monastery founded by King Valagamba", category: "temple" },
+    { name: "Minneriya", latitude: 8.0333, longitude: 80.8833, description: "Ancient reservoir built by King Mahasena (3rd century CE)", category: "reservoir" },
+    { name: "Parakrama Samudra", latitude: 7.9333, longitude: 81.0000, description: "Massive reservoir built by King Parakramabahu I", category: "reservoir" },
+    { name: "Kalawewa", latitude: 8.0333, longitude: 80.5333, description: "Ancient reservoir built by King Dhatusena (5th century CE)", category: "reservoir" },
+  ];
+  for (const loc of LOCATIONS) {
+    await prisma.location.create({ data: loc });
+  }
+  console.log(`  + ${LOCATIONS.length} historical locations created`);
+
+  // ─── 11. Student Progress ──────────────────────────────────────
   console.log("Creating student progress records...");
   for (const sid of studentIds) {
     await prisma.studentProgress.create({
