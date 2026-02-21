@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Paperclip, Mic, X, FileText, ImageIcon } from "lucide-react";
-import { VoiceInputModal } from "./voice-input-modal";
+import { VoiceInputModal, isSpeechSupported } from "./voice-input-modal";
 
 interface FilePreview {
   name: string;
@@ -25,6 +25,11 @@ export function ChatInput({ onSend }: ChatInputProps) {
   const [attachedFile, setAttachedFile] = useState<FilePreview | null>(null);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(true);
+
+  useEffect(() => {
+    setSpeechSupported(isSpeechSupported());
+  }, []);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const attachMenuRef = useRef<HTMLDivElement>(null);
@@ -196,13 +201,23 @@ export function ChatInput({ onSend }: ChatInputProps) {
             />
 
             {/* Voice */}
-            <button
-              onClick={() => setVoiceOpen(true)}
-              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-colors flex-shrink-0 mb-0.5"
-              title="Voice to text"
-            >
-              <Mic className="h-4 w-4" />
-            </button>
+            {speechSupported ? (
+              <button
+                onClick={() => setVoiceOpen(true)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-colors flex-shrink-0 mb-0.5"
+                title="Voice to text"
+              >
+                <Mic className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                disabled
+                className="p-1.5 text-slate-300 rounded-lg flex-shrink-0 mb-0.5 cursor-not-allowed"
+                title="Voice input is not supported in this browser. Please use Chrome, Edge, or Safari."
+              >
+                <Mic className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
           {/* Send Button */}

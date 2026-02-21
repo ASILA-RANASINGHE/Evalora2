@@ -39,6 +39,14 @@ interface SpeechRecognitionInstance extends EventTarget {
   onstart: (() => void) | null;
 }
 
+export function isSpeechSupported(): boolean {
+  if (typeof window === "undefined") return false;
+  return !!(
+    (window as unknown as Record<string, unknown>).SpeechRecognition ||
+    (window as unknown as Record<string, unknown>).webkitSpeechRecognition
+  );
+}
+
 function getSpeechRecognition(): SpeechRecognitionInstance | null {
   if (typeof window === "undefined") return null;
   const SR =
