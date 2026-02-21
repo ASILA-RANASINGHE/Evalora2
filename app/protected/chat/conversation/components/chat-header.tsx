@@ -7,6 +7,7 @@ interface ChatHeaderProps {
   onToggleReference: () => void;
   studyToolsOpen: boolean;
   onToggleStudyTools: () => void;
+  onExportTranscript: () => void;
 }
 
 export function ChatHeader({
@@ -14,6 +15,7 @@ export function ChatHeader({
   onToggleReference,
   studyToolsOpen,
   onToggleStudyTools,
+  onExportTranscript,
 }: ChatHeaderProps) {
   return (
     <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-slate-200">
@@ -61,7 +63,10 @@ export function ChatHeader({
           )}
           <span className="hidden sm:inline">Sources</span>
         </button>
-        <button className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">
+        <button
+          onClick={onExportTranscript}
+          className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+        >
           <Download className="h-4 w-4" />
           <span className="hidden sm:inline">Export Transcript</span>
         </button>

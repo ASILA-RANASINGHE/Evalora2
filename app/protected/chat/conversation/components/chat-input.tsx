@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Send, Paperclip, Mic, X, FileText, ImageIcon, MapPin } from "lucide-react";
 import { VoiceInputModal, isSpeechSupported } from "./voice-input-modal";
 import { MapSearchModal } from "./map-search-modal";
+import { LocationSuggestions } from "./location-suggestions";
+import { suggestLocations, type LocationResult } from "@/lib/actions/location";
 
 interface FilePreview {
   name: string;
@@ -29,6 +31,9 @@ export function ChatInput({ onSend }: ChatInputProps) {
   const [mapQuery, setMapQuery] = useState("");
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
+  const [suggestions, setSuggestions] = useState<LocationResult[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setSpeechSupported(isSpeechSupported());
@@ -80,10 +85,36 @@ export function ChatInput({ onSend }: ChatInputProps) {
     setAttachedFile(null);
   };
 
+  // Debounced location suggestions fetch
+  const handleInputChange = (value: string) => {
+    setInput(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (value.trim().length >= 2) {
+      debounceRef.current = setTimeout(async () => {
+        const results = await suggestLocations(value);
+        setSuggestions(results);
+        setShowSuggestions(results.length > 0);
+      }, 300);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSuggestionSelect = (loc: LocationResult) => {
+    setInput(loc.name);
+    setMapQuery(loc.name);
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
+
   const handleMapSearch = () => {
     const trimmed = input.trim();
     if (!trimmed) return;
     setMapQuery(trimmed);
+    setSuggestions([]);
+    setShowSuggestions(false);
     setMapOpen(true);
   };
 
@@ -137,6 +168,12 @@ export function ChatInput({ onSend }: ChatInputProps) {
         </AnimatePresence>
 
         {/* Input Row */}
+        <div className="relative">
+        <LocationSuggestions
+          suggestions={suggestions}
+          visible={showSuggestions}
+          onSelect={handleSuggestionSelect}
+        />
         <div className="flex items-end gap-2">
           <div className="flex-1 flex items-end gap-2 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all">
             {/* File Upload — menu with Images / Documents */}
@@ -197,7 +234,7 @@ export function ChatInput({ onSend }: ChatInputProps) {
             {/* Text Input */}
             <textarea
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask a question..."
               rows={1}
@@ -257,6 +294,7 @@ export function ChatInput({ onSend }: ChatInputProps) {
               </div>
             </div>
           </div>
+        </div>
         </div>
 
         <p className="text-[10px] text-slate-400 text-center mt-2">

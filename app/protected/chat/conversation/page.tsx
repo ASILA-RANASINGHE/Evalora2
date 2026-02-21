@@ -13,6 +13,7 @@ import { ChatInput } from "./components/chat-input";
 import { ReferencePanel } from "./components/reference-panel";
 import { StudyToolsSidebar } from "./components/study-tools/study-tools-sidebar";
 import { DocumentViewer } from "./components/document-viewer";
+import { exportTranscript } from "./utils/export-transcript";
 import "katex/dist/katex.min.css";
 
 const welcomeMessage: ChatMessage = {
@@ -339,6 +340,13 @@ export default function ConversationPage() {
           onToggleReference={() => setReferenceOpen(!referenceOpen)}
           studyToolsOpen={studyToolsOpen}
           onToggleStudyTools={() => setStudyToolsOpen(!studyToolsOpen)}
+          onExportTranscript={() => {
+            const session = sessions.find((s) => s.id === activeSessionId);
+            exportTranscript({
+              messages,
+              sessionTitle: session?.title || "Chat Transcript",
+            });
+          }}
         />
 
         {/* Messages replaced with ChatContainer */}

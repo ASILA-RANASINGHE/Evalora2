@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, MapPin, Loader2 } from "lucide-react";
+import { X, MapPin, Loader2, ExternalLink } from "lucide-react";
 import { searchLocation, type LocationResult } from "@/lib/actions/location";
 
 // ─── Types ────────────────────────────────────────────────────────
@@ -52,6 +52,21 @@ export function MapSearchModal({
         link.rel = "stylesheet";
         link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
         document.head.appendChild(link);
+      }
+
+      // Inject marker bounce animation CSS once
+      if (!document.querySelector("style[data-marker-bounce]")) {
+        const style = document.createElement("style");
+        style.setAttribute("data-marker-bounce", "");
+        style.textContent = `
+          @keyframes marker-bounce {
+            0%, 100% { transform: translateY(0) rotate(-45deg); }
+            30% { transform: translateY(-12px) rotate(-45deg); }
+            60% { transform: translateY(-4px) rotate(-45deg); }
+          }
+          .marker-bounce { animation: marker-bounce 0.6s ease-out; }
+        `;
+        document.head.appendChild(style);
       }
 
       leafletRef.current = L;
@@ -113,7 +128,7 @@ export function MapSearchModal({
           const marker = L.marker([result.latitude, result.longitude], {
             icon: L.divIcon({
               className: "custom-map-marker",
-              html: `<div style="
+              html: `<div class="marker-bounce" style="
                 background: #2563eb;
                 width: 32px;
                 height: 32px;
@@ -278,12 +293,25 @@ export function MapSearchModal({
               <p className="text-[10px] text-slate-400">
                 Map data &copy; OpenStreetMap contributors
               </p>
-              <button
-                onClick={onClose}
-                className="px-4 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
-              >
-                Close
-              </button>
+              <div className="flex items-center gap-2">
+                {status === "found" && location && (
+                  <a
+                    href={`https://www.google.com/maps?q=${location.latitude},${location.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-full transition-colors"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Open in Google Maps
+                  </a>
+                )}
+                <button
+                  onClick={onClose}
+                  className="px-4 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </motion.div>
         </motion.div>

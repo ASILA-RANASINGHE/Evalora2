@@ -35,3 +35,30 @@ export async function searchLocation(
 
   return location;
 }
+
+/**
+ * Return up to 5 locations matching a partial name (case-insensitive).
+ * Used for autocomplete suggestions in the chat input.
+ */
+export async function suggestLocations(
+  query: string
+): Promise<LocationResult[]> {
+  const trimmed = query.trim();
+  if (!trimmed || trimmed.length < 2) return [];
+
+  const locations = await prisma.location.findMany({
+    where: {
+      name: { contains: trimmed, mode: "insensitive" },
+    },
+    select: {
+      name: true,
+      latitude: true,
+      longitude: true,
+      description: true,
+      category: true,
+    },
+    take: 5,
+  });
+
+  return locations;
+}
