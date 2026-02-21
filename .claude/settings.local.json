@@ -24,7 +24,11 @@
       "Bash(set \"DIRECT_URL=postgresql://postgres:xAzpum-midxit-muvpi7@db.cdeeednvnloleknbnipr.supabase.co:5432/postgres\")",
       "Bash(npx dotenv:*)",
       "Bash($env:DATABASE_URL=\"postgresql://postgres.cdeeednvnloleknbnipr:xAzpum-midxit-muvpi7@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres\")",
-      "Bash(pnpm tsx:*)"
+      "Bash(pnpm tsx:*)",
+      "Bash(npx dotenvx run:*)",
+      "Bash(node scripts/check-env.mjs:*)",
+      "Bash(node_modules/.bin/dotenvx run:*)",
+      "Bash(where:*)"
     ]
   }
 }
