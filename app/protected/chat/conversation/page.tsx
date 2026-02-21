@@ -7,7 +7,8 @@ import { ChatHeader } from "./components/chat-header";
 import {
   MessageBubble,
   type ChatMessage,
-} from "./components/message-bubble";
+} from "./components/MessageBubble";
+import { ChatContainer } from "./components/ChatContainer"; // New Import
 import { ChatInput } from "./components/chat-input";
 import { ReferencePanel } from "./components/reference-panel";
 import { StudyToolsSidebar } from "./components/study-tools/study-tools-sidebar";
@@ -182,6 +183,9 @@ export default function ConversationPage() {
     size: "2.4 MB",
   });
 
+  // Added isTyping state
+  const [isTyping, setIsTyping] = useState(false);
+
   // Document viewer state
   const [docViewerOpen, setDocViewerOpen] = useState(false);
   const [docViewerPage, setDocViewerPage] = useState(1);
@@ -190,17 +194,7 @@ export default function ConversationPage() {
     string | undefined
   >();
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
   const messages = chatHistories[activeSessionId] || [];
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
 
   const handleNewChat = useCallback(() => {
     const newId = Date.now().toString();
@@ -285,6 +279,9 @@ export default function ConversationPage() {
       [activeSessionId]: [...(prev[activeSessionId] || []), userMessage],
     }));
 
+    // Start Typing Indicator
+    setIsTyping(true);
+
     // Simulate bot response with citation if syllabus is active
     setTimeout(() => {
       const hasSyllabus = syllabus !== null;
@@ -314,6 +311,8 @@ export default function ConversationPage() {
         ...prev,
         [activeSessionId]: [...(prev[activeSessionId] || []), botMessage],
       }));
+      // Stop Typing Indicator
+      setIsTyping(false);
     }, 1200);
   };
 
@@ -342,19 +341,12 @@ export default function ConversationPage() {
           onToggleStudyTools={() => setStudyToolsOpen(!studyToolsOpen)}
         />
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="max-w-3xl mx-auto space-y-6">
-            {messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                onCitationClick={handleCitationClick}
-              />
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-        </div>
+        {/* Messages replaced with ChatContainer */}
+        <ChatContainer 
+          messages={messages} 
+          isTyping={isTyping} 
+          onCitationClick={handleCitationClick} 
+        />
 
         {/* Input */}
         <ChatInput onSend={handleSend} />
