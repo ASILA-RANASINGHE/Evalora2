@@ -348,6 +348,20 @@ export default function ConversationPage() {
           onCitationClick={handleCitationClick} 
         />
 
+        {!isTyping && messages.length > 0 && messages[messages.length - 1].sender === 'bot' && (
+          <div className="px-4 py-2 flex flex-wrap gap-2 justify-center max-w-3xl mx-auto">
+            {["Explain further", "Give me an example", "Summarize this"].map((chip) => (
+              <button
+                key={chip}
+                onClick={() => handleSend(chip)}
+                className="text-xs font-medium px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-600 rounded-full shadow-sm transition-all hover:scale-105 active:scale-95"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Input */}
         <ChatInput onSend={handleSend} />
       </div>
