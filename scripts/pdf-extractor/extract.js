@@ -13,6 +13,8 @@ async function extractText(fileName) {
   const dataBuffer = fs.readFileSync(filePath);
   try {
     console.log("Pages:", data.numpages);
+    console.log("Pages:", data.numpages);
+    console.log("Pages:", data.numpages);
     console.log("--- Extracted Text ---");
     console.log(data.text);
   } catch (error) {
