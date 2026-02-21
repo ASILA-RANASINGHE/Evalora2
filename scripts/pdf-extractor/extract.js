@@ -2,23 +2,26 @@ const fs = require('fs');
 const path = require('path');
 const pdf = require('pdf-parse');
 
-async function extractText(fileName) {
-  const filePath = path.join(__dirname, 'samples', fileName);
+async function extractText(inputPath) {
+  const filePath = path.isAbsolute(inputPath) 
+    ? inputPath 
+    : path.join(__dirname, 'samples', inputPath);
 
   if (!fs.existsSync(filePath)) {
-    console.error("File not found:", filePath);
-    return null;
+    console.error("❌ File not found at:", filePath);
+    return null; 
   }
 
   try {
     const dataBuffer = fs.readFileSync(filePath);
     const data = await pdf(dataBuffer);
 
-    console.log(`Processing: ${fileName}`);
-    console.log("Pages:", data.numpages);
+    console.log(`------------------------------------------`);
+    console.log(`📄 Processing: ${path.basename(filePath)}`);
+    console.log(`🔢 Pages: ${data.numpages}`);
 
     const cleanText = data.text
-        .replace(/\n\s*\n/g, '\n')
+        .replace(/\n\s*\n/g, '\n') 
         .trim();
 
     return {
@@ -28,7 +31,7 @@ async function extractText(fileName) {
     };
     
   } catch (error) {
-    console.error("Error extracting text:", error);
+    console.error("❌ Error during PDF parsing:", error);
     throw error;
   }
 }
