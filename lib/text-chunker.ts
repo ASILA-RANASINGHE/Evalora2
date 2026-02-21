@@ -14,9 +14,39 @@ export function chunkText(text: string, options: ChunkOptions = {}): string[] {
   let currentIndex = 0;
 
   while (currentIndex < text.length) {
-    const chunk = text.substring(currentIndex, currentIndex + chunkSize);
-    chunks.push(chunk);
-    currentIndex += (chunkSize - chunkOverlap);
+    let endIndex = currentIndex + chunkSize;
+
+    if (endIndex >= text.length) {
+      chunks.push(text.substring(currentIndex).trim());
+      break;
+    }
+
+    let breakIndex = endIndex;
+    const minBreak = currentIndex + (chunkSize * 0.5);
+
+    const lastNewline = text.lastIndexOf('\n', endIndex);
+    const lastPeriod = text.lastIndexOf('. ', endIndex);
+    const lastSpace = text.lastIndexOf(' ', endIndex);
+
+    if (lastNewline > minBreak) {
+      breakIndex = lastNewline;
+    } else if (lastPeriod > minBreak) {
+      breakIndex = lastPeriod + 1;
+    } else if (lastSpace > minBreak) {
+      breakIndex = lastSpace;
+    }
+
+    const chunk = text.substring(currentIndex, breakIndex).trim();
+    if (chunk) chunks.push(chunk);
+    let nextStart = breakIndex - chunkOverlap;
+    if (nextStart > currentIndex) {
+      const nextSpace = text.indexOf(' ', nextStart);
+      if (nextSpace !== -1 && nextSpace < breakIndex) {
+        nextStart = nextSpace + 1;
+      }
+    }
+    
+    currentIndex = Math.max(currentIndex + 1, nextStart);
   }
 
   return chunks;
