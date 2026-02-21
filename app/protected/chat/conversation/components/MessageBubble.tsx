@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { motion } from 'framer-motion';
-import { GraduationCap, Copy, Check } from 'lucide-react';
+import { GraduationCap, Copy, Check, Lightbulb } from 'lucide-react';
 import 'katex/dist/katex.min.css';
 
 export interface Citation {
@@ -20,6 +20,7 @@ export interface ChatMessage {
   timestamp: string;
   text: string;
   citations?: Citation[];
+  quizHint?: string;
 }
 
 interface MessageBubbleProps {
@@ -79,6 +80,26 @@ export function MessageBubble({ message, onCitationClick }: MessageBubbleProps) 
                 {message.text}
               </ReactMarkdown>
             </div>
+
+            {/* Collapsible Quiz Hint */}
+            {!isUser && message.quizHint && (
+              <details className="mt-3 pt-3 border-t border-slate-100">
+                <summary className="text-xs font-semibold text-amber-600 cursor-pointer hover:text-amber-700 select-none flex items-center gap-1.5 list-none [&::-webkit-details-marker]:hidden">
+                  <Lightbulb className="h-3.5 w-3.5" />
+                  Show Hint
+                </summary>
+                <div className="mt-2 px-3 py-2 bg-amber-50 rounded-lg border border-amber-100">
+                  <div className="prose prose-sm max-w-none prose-slate">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm, remarkMath]}
+                      rehypePlugins={[rehypeKatex]}
+                    >
+                      {message.quizHint}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              </details>
+            )}
 
             {/* Citations Row */}
             {!isUser && message.citations && message.citations.length > 0 && (

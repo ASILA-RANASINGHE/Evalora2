@@ -1,12 +1,15 @@
 "use client";
 
-import { Download, BookOpen, PanelRightOpen, PanelRightClose, GraduationCap } from "lucide-react";
+import { Download, BookOpen, PanelRightOpen, PanelRightClose, GraduationCap, BrainCircuit } from "lucide-react";
 
 interface ChatHeaderProps {
   referenceOpen: boolean;
   onToggleReference: () => void;
   studyToolsOpen: boolean;
   onToggleStudyTools: () => void;
+  quizModeActive?: boolean;
+  onStartQuiz?: () => void;
+  onEndQuiz?: () => void;
 }
 
 export function ChatHeader({
@@ -14,6 +17,9 @@ export function ChatHeader({
   onToggleReference,
   studyToolsOpen,
   onToggleStudyTools,
+  quizModeActive = false,
+  onStartQuiz,
+  onEndQuiz,
 }: ChatHeaderProps) {
   return (
     <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-slate-200">
@@ -33,6 +39,22 @@ export function ChatHeader({
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Test My Knowledge */}
+        <button
+          onClick={quizModeActive ? onEndQuiz : onStartQuiz}
+          className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+            quizModeActive
+              ? "bg-amber-50 text-amber-600 ring-1 ring-amber-200"
+              : "text-slate-600 hover:text-slate-800 hover:bg-slate-100"
+          }`}
+          title={quizModeActive ? "End quiz challenge" : "Test my knowledge"}
+        >
+          <BrainCircuit className="h-4 w-4" />
+          <span className="hidden sm:inline">
+            {quizModeActive ? "End Quiz" : "Test My Knowledge"}
+          </span>
+        </button>
+
         <button
           onClick={onToggleStudyTools}
           className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
