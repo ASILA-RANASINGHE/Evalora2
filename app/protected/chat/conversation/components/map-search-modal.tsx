@@ -213,7 +213,7 @@ export function MapSearchModal({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.85, opacity: 0, y: 30 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative z-10 w-[92vw] max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden"
+            className="relative z-10 w-[95vw] max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 pt-5 pb-3">
