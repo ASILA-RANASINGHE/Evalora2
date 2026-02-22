@@ -1,18 +1,25 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { BrainCircuit } from "lucide-react";
 import { Sidebar, type Session, type SyllabusFile } from "./components/sidebar";
 import { ChatHeader } from "./components/chat-header";
 import {
   MessageBubble,
   type ChatMessage,
 } from "./components/MessageBubble";
-import { ChatContainer } from "./components/ChatContainer"; // New Import
+import { ChatContainer } from "./components/ChatContainer";
 import { ChatInput } from "./components/chat-input";
 import { ReferencePanel } from "./components/reference-panel";
 import { StudyToolsSidebar } from "./components/study-tools/study-tools-sidebar";
 import { DocumentViewer } from "./components/document-viewer";
+import { WhiteboardPanel } from "./components/WhiteboardPanel";
+import {
+  generateQuizProblem,
+  generateGradingResponse,
+  type QuizProblem,
+} from "./components/quiz-challenge-prompt";
 import { exportTranscript } from "./utils/export-transcript";
 import "katex/dist/katex.min.css";
 
@@ -195,6 +202,15 @@ export default function ConversationPage() {
     string | undefined
   >();
 
+  // Quiz / whiteboard state
+  const [quizMode, setQuizMode] = useState<{
+    active: boolean;
+    topic: string;
+    awaitingAnswer: boolean;
+  } | null>(null);
+  const [whiteboardOpen, setWhiteboardOpen] = useState(false);
+  const currentProblemRef = useRef<QuizProblem | null>(null);
+
   const messages = chatHistories[activeSessionId] || [];
 
   const handleNewChat = useCallback(() => {
@@ -254,6 +270,79 @@ export default function ConversationPage() {
     setDocViewerOpen(true);
   };
 
+  // ── Quiz handlers ─────────────────────────────────────────────────────
+
+  const handleStartQuiz = useCallback(() => {
+    const recentTexts = messages.slice(-4).map((m) => m.text);
+    const syllabusName = syllabus?.name ?? null;
+    const problem = generateQuizProblem(recentTexts, syllabusName);
+
+    const now = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const problemMessage: ChatMessage = {
+      id: Date.now(),
+      sender: "bot",
+      timestamp: now,
+      text: problem.problemText,
+      quizHint: problem.hintText,
+      ...(syllabusName && {
+        citations: [
+          {
+            label: "Syllabus",
+            page: 1,
+            snippet: `Problem generated from ${syllabusName} context`,
+            source: syllabusName,
+          },
+        ],
+      }),
+    };
+
+    setChatHistories((prev) => ({
+      ...prev,
+      [activeSessionId]: [...(prev[activeSessionId] || []), problemMessage],
+    }));
+
+    setQuizMode({ active: true, topic: problem.topic, awaitingAnswer: true });
+    setWhiteboardOpen(true);
+    setDocViewerOpen(false);
+    currentProblemRef.current = problem;
+  }, [messages, syllabus, activeSessionId]);
+
+  const handleEndQuiz = useCallback(() => {
+    setQuizMode(null);
+    setWhiteboardOpen(false);
+    currentProblemRef.current = null;
+
+    const now = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    setChatHistories((prev) => ({
+      ...prev,
+      [activeSessionId]: [
+        ...(prev[activeSessionId] || []),
+        {
+          id: Date.now(),
+          sender: "bot" as const,
+          timestamp: now,
+          text: "Quiz challenge ended. Feel free to ask me anything or start another challenge!",
+        },
+      ],
+    }));
+  }, [activeSessionId]);
+
+  // Auto-end quiz when switching sessions
+  useEffect(() => {
+    if (quizMode?.active) {
+      setQuizMode(null);
+      setWhiteboardOpen(false);
+      currentProblemRef.current = null;
+    }
+  }, [activeSessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSend = (text: string) => {
     const now = new Date().toLocaleTimeString([], {
       hour: "2-digit",
@@ -282,6 +371,37 @@ export default function ConversationPage() {
 
     // Start Typing Indicator
     setIsTyping(true);
+
+    // Quiz mode: grade the answer instead of normal response
+    if (quizMode?.active && quizMode.awaitingAnswer && currentProblemRef.current) {
+      setTimeout(() => {
+        const gradingText = generateGradingResponse(
+          currentProblemRef.current!,
+          text,
+          syllabus?.name ?? null
+        );
+
+        const botMessage: ChatMessage = {
+          id: Date.now() + 1,
+          text: gradingText,
+          sender: "bot",
+          timestamp: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        };
+
+        setChatHistories((prev) => ({
+          ...prev,
+          [activeSessionId]: [...(prev[activeSessionId] || []), botMessage],
+        }));
+        setIsTyping(false);
+        setQuizMode((prev) =>
+          prev ? { ...prev, awaitingAnswer: false } : null
+        );
+      }, 1800);
+      return;
+    }
 
     // Simulate bot response with citation if syllabus is active
     setTimeout(() => {
@@ -347,26 +467,85 @@ export default function ConversationPage() {
               sessionTitle: session?.title || "Chat Transcript",
             });
           }}
+          quizModeActive={quizMode?.active ?? false}
+          onStartQuiz={handleStartQuiz}
+          onEndQuiz={handleEndQuiz}
         />
 
-        {/* Messages replaced with ChatContainer */}
-        <ChatContainer 
-          messages={messages} 
-          isTyping={isTyping} 
-          onCitationClick={handleCitationClick} 
+        {/* Quiz Mode Banner */}
+        <AnimatePresence>
+          {quizMode?.active && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200 px-6 py-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <BrainCircuit className="h-4 w-4 text-amber-600" />
+                  <span className="text-xs font-semibold text-amber-700">
+                    Quiz Challenge Active
+                  </span>
+                  <span className="text-xs text-amber-500">
+                    — {quizMode.topic}
+                  </span>
+                </div>
+                <button
+                  onClick={handleEndQuiz}
+                  className="text-xs text-amber-600 hover:text-amber-800 font-medium"
+                >
+                  End Challenge
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Messages */}
+        <ChatContainer
+          messages={messages}
+          isTyping={isTyping}
+          onCitationClick={handleCitationClick}
         />
 
         {!isTyping && messages.length > 0 && messages[messages.length - 1].sender === 'bot' && (
           <div className="px-4 py-2 flex flex-wrap gap-2 justify-center max-w-3xl mx-auto">
-            {["Explain further", "Give me an example", "Summarize this"].map((chip) => (
-              <button
-                key={chip}
-                onClick={() => handleSend(chip)}
-                className="text-xs font-medium px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-600 rounded-full shadow-sm transition-all hover:scale-105 active:scale-95"
-              >
-                {chip}
-              </button>
-            ))}
+            {quizMode?.active && !quizMode.awaitingAnswer ? (
+              // Post-grading chips
+              ["Try another problem", "Explain step 2 more", "I need more practice"].map((chip) => (
+                <button
+                  key={chip}
+                  onClick={() => {
+                    if (chip === "Try another problem") {
+                      handleStartQuiz();
+                    } else {
+                      handleSend(chip);
+                    }
+                  }}
+                  className="text-xs font-medium px-4 py-2 bg-white border border-amber-200 text-amber-700 hover:border-amber-400 hover:text-amber-800 rounded-full shadow-sm transition-all hover:scale-105 active:scale-95"
+                >
+                  {chip}
+                </button>
+              ))
+            ) : quizMode?.active && quizMode.awaitingAnswer ? (
+              // Awaiting answer hint
+              <p className="text-xs text-slate-400 italic">
+                Type your answer in the input below, or use the scratch pad for rough work
+              </p>
+            ) : (
+              // Normal chips
+              ["Explain further", "Give me an example", "Summarize this"].map((chip) => (
+                <button
+                  key={chip}
+                  onClick={() => handleSend(chip)}
+                  className="text-xs font-medium px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-600 rounded-full shadow-sm transition-all hover:scale-105 active:scale-95"
+                >
+                  {chip}
+                </button>
+              ))
+            )}
           </div>
         )}
 
@@ -390,6 +569,13 @@ export default function ConversationPage() {
             highlightText={docViewerHighlight}
             onClose={() => setDocViewerOpen(false)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Whiteboard Panel */}
+      <AnimatePresence>
+        {whiteboardOpen && (
+          <WhiteboardPanel onClose={() => setWhiteboardOpen(false)} />
         )}
       </AnimatePresence>
 

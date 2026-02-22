@@ -25,7 +25,8 @@
       "Bash(npx dotenv:*)",
       "Bash($env:DATABASE_URL=\"postgresql://postgres.cdeeednvnloleknbnipr:xAzpum-midxit-muvpi7@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres\")",
       "Bash(pnpm tsx:*)",
-      "Read(//Users/senuka/Documents/Projects/**)"
+      "Read(//Users/senuka/Documents/Projects/**)",
+      "Bash(npx tsc:*)"
     ]
   }
 }
