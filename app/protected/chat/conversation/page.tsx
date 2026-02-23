@@ -14,7 +14,11 @@ import { ChatContainer } from "./components/ChatContainer";
 import { ChatInput } from "./components/chat-input";
 import { ReferencePanel } from "./components/reference-panel";
 import { StudyToolsSidebar } from "./components/study-tools/study-tools-sidebar";
-import { DocumentViewer } from "./components/document-viewer";
+import dynamic from "next/dynamic";
+const DocumentViewer = dynamic(
+  () => import("./components/document-viewer").then((m) => m.DocumentViewer),
+  { ssr: false }
+);
 import { WhiteboardPanel } from "./components/WhiteboardPanel";
 import {
   generateQuizProblem,

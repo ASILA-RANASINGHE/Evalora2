@@ -1,9 +1,8 @@
-import { GlobalWorkerOptions } from "pdfjs-dist";
-
 let initialized = false;
 
-export function ensurePdfWorker() {
+export async function ensurePdfWorker() {
   if (initialized || typeof window === "undefined") return;
-  GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+  const pdfjs = await import("pdfjs-dist");
+  pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
   initialized = true;
 }

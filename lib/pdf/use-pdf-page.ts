@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useCallback, useState } from "react";
-import type { PDFDocumentProxy } from "pdfjs-dist";
+
+// Use type-only import to avoid pulling in the module at SSR time
+type PDFDocumentProxy = import("pdfjs-dist").PDFDocumentProxy;
 
 interface UsePdfPageOptions {
   pdf: PDFDocumentProxy | null;
@@ -16,9 +18,8 @@ export function usePdfPage({
   scale,
   canvasRef,
 }: UsePdfPageOptions) {
-  const renderTaskRef = useRef<ReturnType<
-    Awaited<ReturnType<PDFDocumentProxy["getPage"]>>["render"]
-  > | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const renderTaskRef = useRef<any>(null);
   const [pageSize, setPageSize] = useState<{
     width: number;
     height: number;

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { getDocument, type PDFDocumentProxy } from "pdfjs-dist";
-import { ensurePdfWorker } from "./pdf-worker-setup";
+
+// pdfjs-dist uses DOMMatrix at module scope, so we must dynamic-import it
+// to avoid SSR crashes. Type-only import is safe (erased at compile time).
+type PDFDocumentProxy = import("pdfjs-dist").PDFDocumentProxy;
 
 export function usePdfDocument(url: string | null) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
@@ -22,14 +24,24 @@ export function usePdfDocument(url: string | null) {
     if (url === prevUrlRef.current) return;
     prevUrlRef.current = url;
 
-    ensurePdfWorker();
-    setLoading(true);
-    setError(null);
+    let cancelled = false;
 
-    const loadingTask = getDocument({ url });
+    (async () => {
+      const { ensurePdfWorker } = await import("./pdf-worker-setup");
+      await ensurePdfWorker();
+      const pdfjs = await import("pdfjs-dist");
 
-    loadingTask.promise
-      .then((doc) => {
+      if (cancelled) return;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const doc = await pdfjs.getDocument({ url }).promise;
+        if (cancelled) {
+          doc.destroy();
+          return;
+        }
         // Destroy previous document
         if (pdfRef.current) {
           pdfRef.current.destroy();
@@ -37,17 +49,18 @@ export function usePdfDocument(url: string | null) {
         pdfRef.current = doc;
         setPdf(doc);
         setNumPages(doc.numPages);
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (err?.name !== "PasswordException") {
-          setError(err?.message ?? "Failed to load PDF");
+      } catch (err: unknown) {
+        const e = err as { name?: string; message?: string };
+        if (!cancelled && e?.name !== "PasswordException") {
+          setError(e?.message ?? "Failed to load PDF");
         }
-        setLoading(false);
-      });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
 
     return () => {
-      loadingTask.destroy();
+      cancelled = true;
     };
   }, [url]);
 
