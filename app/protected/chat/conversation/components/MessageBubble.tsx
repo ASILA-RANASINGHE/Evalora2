@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -6,26 +6,34 @@ import rehypeKatex from 'rehype-katex';
 import { motion } from 'framer-motion';
 import { GraduationCap, Copy, Check, Lightbulb } from 'lucide-react';
 import 'katex/dist/katex.min.css';
+import type { Citation, ChatMessage } from '@/app/protected/chat/types';
 
-export interface Citation {
-  label: string;
-  page: number;
-  snippet: string;
-  source: string;
-}
-
-export interface ChatMessage {
-  id: number;
-  sender: "user" | "bot";
-  timestamp: string;
-  text: string;
-  citations?: Citation[];
-  quizHint?: string;
-}
+export type { Citation, ChatMessage };
 
 interface MessageBubbleProps {
   message: ChatMessage;
-  onCitationClick?: (page: number, source: string) => void;
+  onCitationClick?: (page: number, source: string, citation?: Citation) => void;
+}
+
+/**
+ * Scan message text for [label] patterns that match known citation labels,
+ * and convert them to markdown links with a cite:// protocol so ReactMarkdown
+ * renders them as <a> tags we can intercept.
+ */
+function injectCitationLinks(text: string, citations?: Citation[]): string {
+  if (!citations?.length) return text;
+
+  const labelSet = new Set(citations.map((c) => c.label));
+
+  return text.replace(/\[([^\]]+)\]/g, (match, inner: string) => {
+    // Don't convert markdown task list checkboxes [x], [ ], [X]
+    if (inner === 'x' || inner === ' ' || inner === 'X') return match;
+    // Only convert if this label matches a known citation
+    if (labelSet.has(inner)) {
+      return `[${inner}](cite://${encodeURIComponent(inner)})`;
+    }
+    return match;
+  });
 }
 
 export function MessageBubble({ message, onCitationClick }: MessageBubbleProps) {
@@ -38,15 +46,30 @@ export function MessageBubble({ message, onCitationClick }: MessageBubbleProps) 
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Build citation lookup map
+  const citationMap = useMemo(() => {
+    const map = new Map<string, Citation>();
+    for (const c of message.citations ?? []) {
+      map.set(c.label, c);
+    }
+    return map;
+  }, [message.citations]);
+
+  // Preprocess text to convert [label] → clickable cite:// links
+  const processedText = useMemo(
+    () => injectCitationLinks(message.text, message.citations),
+    [message.text, message.citations]
+  );
+
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
       className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'} mb-6 group`}
     >
       <div className={`flex gap-3 max-w-[85%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-        
+
         {/* Avatar for Bot */}
         {!isUser && (
           <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-md flex-shrink-0 mt-1">
@@ -55,15 +78,15 @@ export function MessageBubble({ message, onCitationClick }: MessageBubbleProps) 
         )}
 
         <div className="flex flex-col gap-2">
-          <div 
+          <div
             className={`relative px-5 py-3 rounded-2xl shadow-sm transition-all duration-200 ${
-              isUser 
-                ? 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-br-none shadow-blue-200' 
+              isUser
+                ? 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-br-none shadow-blue-200'
                 : 'bg-white/80 backdrop-blur-md border border-slate-200 text-slate-800 rounded-bl-none hover:shadow-md'
             }`}
           >
             {/* Action Menu (Appear on Hover) */}
-            <button 
+            <button
               onClick={handleCopy}
               className={`absolute top-2 ${isUser ? '-left-8' : '-right-8'} p-1.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg bg-white border border-slate-100 shadow-sm text-slate-400 hover:text-blue-500`}
             >
@@ -71,13 +94,39 @@ export function MessageBubble({ message, onCitationClick }: MessageBubbleProps) 
             </button>
 
             {/* Markdown Content */}
-            <div className={`prose prose-sm max-w-none ${isUser ? 'prose-invert' : 'prose-slate'} 
+            <div className={`prose prose-sm max-w-none ${isUser ? 'prose-invert' : 'prose-slate'}
               prose-headings:font-bold prose-p:leading-relaxed prose-pre:bg-slate-900 prose-pre:text-slate-100`}>
-              <ReactMarkdown 
-                remarkPlugins={[remarkGfm, remarkMath]} 
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[rehypeKatex]}
+                components={{
+                  a: ({ href, children }) => {
+                    // Intercept cite:// links as clickable citation pills
+                    if (href?.startsWith("cite://")) {
+                      const label = decodeURIComponent(href.replace("cite://", ""));
+                      const citation = citationMap.get(label);
+                      if (citation) {
+                        return (
+                          <button
+                            onClick={() => onCitationClick?.(citation.page, citation.source, citation)}
+                            className="inline-flex items-center gap-0.5 text-[11px] font-semibold px-1.5 py-0.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-full transition-colors border border-blue-100 mx-0.5 cursor-pointer align-baseline no-underline"
+                          >
+                            <span className="w-1 h-1 rounded-full bg-blue-400" />
+                            {label}
+                          </button>
+                        );
+                      }
+                    }
+                    // Normal links
+                    return (
+                      <a href={href} target="_blank" rel="noopener noreferrer">
+                        {children}
+                      </a>
+                    );
+                  },
+                }}
               >
-                {message.text}
+                {processedText}
               </ReactMarkdown>
             </div>
 
@@ -107,7 +156,7 @@ export function MessageBubble({ message, onCitationClick }: MessageBubbleProps) 
                 {message.citations.map((citation, idx) => (
                   <button
                     key={idx}
-                    onClick={() => onCitationClick?.(citation.page, citation.source)}
+                    onClick={() => onCitationClick?.(citation.page, citation.source, citation)}
                     className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-full transition-colors border border-blue-100"
                   >
                     <span className="w-1 h-1 rounded-full bg-blue-400" />
@@ -117,7 +166,7 @@ export function MessageBubble({ message, onCitationClick }: MessageBubbleProps) 
               </div>
             )}
           </div>
-          
+
           <span className={`text-[10px] font-medium px-1 ${isUser ? 'text-right text-slate-400' : 'text-left text-slate-400'}`}>
             {message.timestamp}
           </span>
