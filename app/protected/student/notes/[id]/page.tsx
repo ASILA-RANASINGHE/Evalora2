@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Share2, Bookmark, Clock, User, BrainCircuit, Play } from "lucide-react";
+import { ChevronLeft, Share2, Bookmark, Clock, User, BrainCircuit, Play, Paperclip, Download } from "lucide-react";
 import { getNoteById } from "@/lib/actions/note";
 import { notFound } from "next/navigation";
 
@@ -58,6 +58,37 @@ export default async function NoteViewerPage({ params }: { params: Promise<{ id:
         <article className="prose prose-purple max-w-none text-gray-800 whitespace-pre-wrap">
           {note.content}
         </article>
+
+        {note.attachments.length > 0 && (
+          <div className="mt-8 pt-6 border-t">
+            <h3 className="flex items-center gap-2 font-semibold text-gray-900 mb-3">
+              <Paperclip className="h-4 w-4 text-purple-600" />
+              Attachments
+            </h3>
+            <div className="space-y-2">
+              {note.attachments.map((a) => (
+                <a
+                  key={a.id}
+                  href={a.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-3 rounded-lg border hover:border-purple-400 hover:bg-purple-50/50 transition-colors group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-2 bg-purple-100 rounded-md shrink-0">
+                      <Paperclip className="h-4 w-4 text-purple-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{a.name}</p>
+                      <p className="text-xs text-muted-foreground">{(a.size / 1024 / 1024).toFixed(1)} MB</p>
+                    </div>
+                  </div>
+                  <Download className="h-4 w-4 text-muted-foreground group-hover:text-purple-600 transition-colors shrink-0 ml-3" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-10 pt-8 border-t">
           <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 flex items-center justify-between gap-4">

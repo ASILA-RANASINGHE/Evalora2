@@ -27,7 +27,8 @@ export async function createNote(input: CreateNoteInput) {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
-  // Teacher subject restriction
+  const EXTRA_SUBJECTS = ["Geography", "Health"];
+
   const profile = await prisma.profile.findUnique({
     where: { id: user.id },
     select: { role: true },
@@ -37,15 +38,17 @@ export async function createNote(input: CreateNoteInput) {
       where: { id: user.id },
     });
     if (!teacherDetails) throw new Error("Teacher details not found");
-    if (teacherDetails.subject !== input.subject) {
+    if (teacherDetails.subject !== input.subject && !EXTRA_SUBJECTS.includes(input.subject)) {
       throw new Error(`You are not authorized to upload content for "${input.subject}".`);
     }
   }
 
-  const subject = await prisma.subject.findUnique({
+  const subjectCode = input.subject.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 8) || input.subject.slice(0, 8).toUpperCase();
+  const subject = await prisma.subject.upsert({
     where: { name: input.subject },
+    create: { name: input.subject, code: subjectCode },
+    update: {},
   });
-  if (!subject) throw new Error(`Subject "${input.subject}" not found`);
 
   const note = await prisma.note.create({
     data: {
