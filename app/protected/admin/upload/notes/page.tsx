@@ -7,8 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { SUBJECTS } from "@/lib/admin-mock-data";
-
-const GRADES = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
 import {
   ArrowLeft,
   Upload,
@@ -28,7 +26,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { createNote } from "@/lib/actions/note";
+import { uploadFiles } from "@/lib/supabase/storage";
 
+const GRADES = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
 const ACCEPTED_TYPES = ".pdf,.docx,.ppt,.pptx,.txt";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -47,7 +47,13 @@ export default function UploadNotesPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files;
     if (!selected) return;
-    const valid = Array.from(selected).filter((f) => f.size <= MAX_FILE_SIZE);
+    const valid = Array.from(selected).filter((f) => {
+      if (f.size > MAX_FILE_SIZE) {
+        alert(`${f.name} exceeds 10MB limit`);
+        return false;
+      }
+      return true;
+    });
     setFiles((prev) => [...prev, ...valid]);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -61,7 +67,8 @@ export default function UploadNotesPage() {
     setSaving(true);
     setError(null);
     try {
-      await createNote({ title, subject, grade, topic, content });
+      const attachments = files.length > 0 ? await uploadFiles(files) : [];
+      await createNote({ title, subject, grade, topic, content, attachments });
       setSubmitted(true);
       setTitle("");
       setSubject("");
@@ -128,76 +135,33 @@ export default function UploadNotesPage() {
               <CardContent>
                 {/* Toolbar */}
                 <div className="mb-2 flex flex-wrap gap-1 rounded-t-md border border-b-0 bg-muted/50 p-1.5">
-                  <button
-                    type="button"
-                    onClick={() => insertFormatting("**bold**")}
-                    className="rounded p-1.5 hover:bg-muted"
-                    title="Bold"
-                  >
+                  <button type="button" onClick={() => insertFormatting("**bold**")} className="rounded p-1.5 hover:bg-muted" title="Bold">
                     <Bold className="h-4 w-4" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => insertFormatting("*italic*")}
-                    className="rounded p-1.5 hover:bg-muted"
-                    title="Italic"
-                  >
+                  <button type="button" onClick={() => insertFormatting("*italic*")} className="rounded p-1.5 hover:bg-muted" title="Italic">
                     <Italic className="h-4 w-4" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => insertFormatting("__underline__")}
-                    className="rounded p-1.5 hover:bg-muted"
-                    title="Underline"
-                  >
+                  <button type="button" onClick={() => insertFormatting("__underline__")} className="rounded p-1.5 hover:bg-muted" title="Underline">
                     <Underline className="h-4 w-4" />
                   </button>
                   <div className="mx-1 w-px bg-border" />
-                  <button
-                    type="button"
-                    onClick={() => insertFormatting("\n## Heading\n")}
-                    className="rounded p-1.5 hover:bg-muted"
-                    title="Heading"
-                  >
+                  <button type="button" onClick={() => insertFormatting("\n## Heading\n")} className="rounded p-1.5 hover:bg-muted" title="Heading">
                     <Heading2 className="h-4 w-4" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => insertFormatting("\n- item\n")}
-                    className="rounded p-1.5 hover:bg-muted"
-                    title="Bullet List"
-                  >
+                  <button type="button" onClick={() => insertFormatting("\n- item\n")} className="rounded p-1.5 hover:bg-muted" title="Bullet List">
                     <List className="h-4 w-4" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => insertFormatting("\n1. item\n")}
-                    className="rounded p-1.5 hover:bg-muted"
-                    title="Numbered List"
-                  >
+                  <button type="button" onClick={() => insertFormatting("\n1. item\n")} className="rounded p-1.5 hover:bg-muted" title="Numbered List">
                     <ListOrdered className="h-4 w-4" />
                   </button>
                   <div className="mx-1 w-px bg-border" />
-                  <button
-                    type="button"
-                    onClick={() => insertFormatting("[link](url)")}
-                    className="rounded p-1.5 hover:bg-muted"
-                    title="Link"
-                  >
+                  <button type="button" onClick={() => insertFormatting("[link](url)")} className="rounded p-1.5 hover:bg-muted" title="Link">
                     <LinkIcon className="h-4 w-4" />
                   </button>
-                  <button
-                    type="button"
-                    className="rounded p-1.5 hover:bg-muted"
-                    title="Align Left"
-                  >
+                  <button type="button" className="rounded p-1.5 hover:bg-muted" title="Align Left">
                     <AlignLeft className="h-4 w-4" />
                   </button>
-                  <button
-                    type="button"
-                    className="rounded p-1.5 hover:bg-muted"
-                    title="Align Center"
-                  >
+                  <button type="button" className="rounded p-1.5 hover:bg-muted" title="Align Center">
                     <AlignCenter className="h-4 w-4" />
                   </button>
                 </div>
@@ -222,12 +186,8 @@ export default function UploadNotesPage() {
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <FileUp className="h-8 w-8 text-muted-foreground" />
-                  <p className="text-sm font-medium">
-                    Click to upload or drag and drop
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    PDF, DOCX, PPT, TXT (max 10MB)
-                  </p>
+                  <p className="text-sm font-medium">Click to upload or drag and drop</p>
+                  <p className="text-xs text-muted-foreground">PDF, DOCX, PPT, TXT (max 10MB)</p>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -241,20 +201,13 @@ export default function UploadNotesPage() {
                 {files.length > 0 && (
                   <div className="mt-3 space-y-2">
                     {files.map((file, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between rounded-md border px-3 py-2"
-                      >
+                      <div key={i} className="flex items-center justify-between rounded-md border px-3 py-2">
                         <span className="truncate text-sm">{file.name}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-muted-foreground">
                             {(file.size / 1024 / 1024).toFixed(1)} MB
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => removeFile(i)}
-                            className="text-muted-foreground hover:text-destructive"
-                          >
+                          <button type="button" onClick={() => removeFile(i)} className="text-muted-foreground hover:text-destructive">
                             <X className="h-4 w-4" />
                           </button>
                         </div>
@@ -275,9 +228,7 @@ export default function UploadNotesPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label className="mb-1.5 block text-sm font-medium">
-                    Subject
-                  </Label>
+                  <Label className="mb-1.5 block text-sm font-medium">Subject</Label>
                   <select
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
@@ -286,16 +237,12 @@ export default function UploadNotesPage() {
                   >
                     <option value="">Select subject...</option>
                     {SUBJECTS.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
+                      <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <Label className="mb-1.5 block text-sm font-medium">
-                    Grade
-                  </Label>
+                  <Label className="mb-1.5 block text-sm font-medium">Grade</Label>
                   <select
                     value={grade}
                     onChange={(e) => setGrade(e.target.value)}
@@ -304,16 +251,12 @@ export default function UploadNotesPage() {
                   >
                     <option value="">Select grade...</option>
                     {GRADES.map((g) => (
-                      <option key={g} value={g}>
-                        {g}
-                      </option>
+                      <option key={g} value={g}>{g}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <Label className="mb-1.5 block text-sm font-medium">
-                    Topic
-                  </Label>
+                  <Label className="mb-1.5 block text-sm font-medium">Topic</Label>
                   <Input
                     placeholder="e.g. World War II"
                     value={topic}
@@ -340,9 +283,7 @@ export default function UploadNotesPage() {
             </Card>
 
             {/* Submit */}
-            {error && (
-              <p className="text-sm text-red-500 mb-2">{error}</p>
-            )}
+            {error && <p className="text-sm text-red-500 mb-2">{error}</p>}
             <Button
               type="submit"
               className="w-full bg-purple-600 hover:bg-purple-700"
@@ -351,7 +292,7 @@ export default function UploadNotesPage() {
               {saving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Publishing...
+                  {files.length > 0 ? "Uploading files..." : "Publishing..."}
                 </>
               ) : submitted ? (
                 <>

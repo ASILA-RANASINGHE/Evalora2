@@ -24,6 +24,7 @@ import {
 import Link from "next/link";
 import { createNote } from "@/lib/actions/note";
 import { getTeacherSubjects } from "@/lib/actions/teacher";
+import { uploadFiles } from "@/lib/supabase/storage";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const grades = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
@@ -97,6 +98,7 @@ export default function UploadNotesPage() {
     if (!validate()) return;
     setSaving(true);
     try {
+      const attachments = files.length > 0 ? await uploadFiles(files) : [];
       await createNote({
         title,
         subject,
@@ -104,6 +106,7 @@ export default function UploadNotesPage() {
         topic,
         content,
         visibility,
+        attachments,
       });
       setSubmitted(true);
     } catch (err) {

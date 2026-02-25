@@ -3,6 +3,13 @@
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 
+interface AttachmentInput {
+  name: string;
+  url: string;
+  size: number;
+  type: string;
+}
+
 interface CreateShortNoteInput {
   title: string;
   subject: string;
@@ -10,6 +17,7 @@ interface CreateShortNoteInput {
   topic: string;
   content: string;
   visibility?: string;
+  attachments?: AttachmentInput[];
 }
 
 export async function createShortNote(input: CreateShortNoteInput) {
@@ -52,6 +60,9 @@ export async function createShortNote(input: CreateShortNoteInput) {
       status: "APPROVED",
       visibility: profile?.role === "ADMIN" ? "PUBLIC" : (input.visibility === "PUBLIC" ? "PUBLIC" : "STUDENTS_ONLY"),
       createdById: user.id,
+      attachments: input.attachments?.length
+        ? { create: input.attachments.map((a) => ({ name: a.name, url: a.url, size: a.size, type: a.type })) }
+        : undefined,
     },
   });
 
@@ -98,6 +109,7 @@ export async function getShortNoteById(id: string) {
     include: {
       subject: { select: { name: true } },
       createdBy: { select: { firstName: true, lastName: true } },
+      attachments: true,
     },
   });
 
@@ -113,5 +125,12 @@ export async function getShortNoteById(id: string) {
       `${shortNote.createdBy.firstName ?? ""} ${shortNote.createdBy.lastName ?? ""}`.trim() ||
       "Teacher",
     createdAt: shortNote.createdAt,
+    attachments: shortNote.attachments.map((a) => ({
+      id: a.id,
+      name: a.name,
+      url: a.url,
+      size: a.size,
+      type: a.type,
+    })),
   };
 }

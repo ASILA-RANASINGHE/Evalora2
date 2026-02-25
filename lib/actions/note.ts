@@ -3,6 +3,13 @@
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 
+interface AttachmentInput {
+  name: string;
+  url: string;
+  size: number;
+  type: string;
+}
+
 interface CreateNoteInput {
   title: string;
   subject: string;
@@ -10,6 +17,7 @@ interface CreateNoteInput {
   topic: string;
   content: string;
   visibility?: string;
+  attachments?: AttachmentInput[];
 }
 
 export async function createNote(input: CreateNoteInput) {
@@ -49,6 +57,9 @@ export async function createNote(input: CreateNoteInput) {
       visibility: profile?.role === "ADMIN" ? "PUBLIC" : (input.visibility === "PUBLIC" ? "PUBLIC" : "STUDENTS_ONLY"),
       status: "APPROVED",
       createdById: user.id,
+      attachments: input.attachments?.length
+        ? { create: input.attachments.map((a) => ({ name: a.name, url: a.url, size: a.size, type: a.type })) }
+        : undefined,
     },
   });
 
