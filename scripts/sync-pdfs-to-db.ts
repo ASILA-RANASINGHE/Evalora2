@@ -7,6 +7,13 @@ import { getPdfListFromBucket, downloadPdfAsBuffer } from './process-supabase-pd
 import { prisma } from '../lib/prisma';
 
 const CACHE_FILE = path.join(process.cwd(), 'scripts', 'processed-files.json');
+const DLQ_FILE = path.join(process.cwd(), 'scripts', 'failed-files.json');
+
+interface FailedFileLog {
+  fileName: string;
+  error: string;
+  timestamp: string;
+}
 
 function getProcessedFiles(): string[] {
   if (existsSync(CACHE_FILE)) {
@@ -23,6 +30,28 @@ function getProcessedFiles(): string[] {
 function markFileAsProcessed(fileName: string, processedList: string[]) {
   processedList.push(fileName);
   writeFileSync(CACHE_FILE, JSON.stringify(processedList, null, 2), 'utf8');
+}
+
+function logToDeadLetterQueue(fileName: string, errorMsg: string) {
+  let failedFiles: FailedFileLog[] = [];
+  
+  if (existsSync(DLQ_FILE)) {
+    try {
+      failedFiles = JSON.parse(readFileSync(DLQ_FILE, 'utf8'));
+    } catch (e) {
+      failedFiles = [];
+    }
+  }
+  
+  failedFiles = failedFiles.filter(f => f.fileName !== fileName);
+  
+  failedFiles.push({
+    fileName,
+    error: errorMsg,
+    timestamp: new Date().toISOString()
+  });
+  
+  writeFileSync(DLQ_FILE, JSON.stringify(failedFiles, null, 2), 'utf8');
 }
 
 function extractMetadataFromFilename(fileName: string) {
@@ -67,6 +96,7 @@ async function runPipeline() {
         
         if (chunks.length === 0) {
           console.log(`No text found in ${fileName}. Skipping database insertion.`);
+          logToDeadLetterQueue(fileName, "Extracted text was completely empty.");
           continue;
         }
 
@@ -90,12 +120,17 @@ async function runPipeline() {
         markFileAsProcessed(fileName, processedFiles);
         console.log(`Marked ${fileName} as processed in cache.`);
 
-      } catch (fileError) {
-        console.error(`Failed processing ${fileName}:`, fileError);
+      } catch (fileError: any) {
+        console.error(`Failed processing ${fileName}. Adding to DLQ.`);
+        const errorMessage = fileError?.message || String(fileError);
+        logToDeadLetterQueue(fileName, errorMessage);
       }
     }
     
-    console.log('\nPipeline complete! All PDFs have been chunked and stored.');
+    console.log('\nPipeline complete! All valid PDFs have been processed.');
+    if (existsSync(DLQ_FILE)) {
+      console.log(`Check ${DLQ_FILE} for any files that failed during processing.`);
+    }
 
   } catch (error) {
     console.error('Pipeline encountered a fatal error:', error);
