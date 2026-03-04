@@ -153,9 +153,14 @@ export const subjectTopics: Record<string, string[]> = {
     "Government Systems", "Human Rights", "Democracy", "Elections & Voting",
     "International Relations", "Law & Justice", "Citizenship",
   ],
+  Health: [
+    "Human Body Systems", "Nutrition & Diet", "Mental Health", "Physical Fitness",
+    "Disease Prevention", "First Aid", "Reproductive Health", "Substance Abuse",
+    "Personal Hygiene", "Environmental Health",
+  ],
 };
 
-export const subjects = ["History", "Geography", "Civics"];
+export const subjects = ["History", "Geography", "Civics", "Health"];
 
 // ─── Students (18) ──────────────────────────────────────────────
 

@@ -35,6 +35,8 @@ export interface ContentItem {
 
 export const SUBJECTS = [
   "History",
+  "Geography",
+  "Health",
 ] as const;
 
 export const TOPICS_BY_SUBJECT: Record<string, string[]> = {
@@ -45,6 +47,27 @@ export const TOPICS_BY_SUBJECT: Record<string, string[]> = {
     "Industrial Revolution",
     "Cold War Era",
     "Sri Lankan History",
+  ],
+  Geography: [
+    "Physical Geography",
+    "Climate & Weather",
+    "Population Studies",
+    "Urban Geography",
+    "Economic Geography",
+    "Map Skills",
+    "Ecosystems",
+  ],
+  Health: [
+    "Human Body Systems",
+    "Nutrition & Diet",
+    "Mental Health",
+    "Physical Fitness",
+    "Disease Prevention",
+    "First Aid",
+    "Reproductive Health",
+    "Substance Abuse",
+    "Personal Hygiene",
+    "Environmental Health",
   ],
 };
 

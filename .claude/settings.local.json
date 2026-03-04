@@ -27,6 +27,11 @@
       "Bash(pnpm tsx:*)",
       "Read(//Users/senuka/Documents/Projects/**)",
       "Bash(npx tsc:*)"
+      "Bash(pnpm tsx:*)",
+      "Bash(npx dotenvx run:*)",
+      "Bash(node scripts/check-env.mjs:*)",
+      "Bash(node_modules/.bin/dotenvx run:*)",
+      "Bash(where:*)"
     ]
   }
 }

@@ -299,6 +299,7 @@ model Note {
   id         String            @id @default(uuid()) @db.Uuid
   title      String
   subjectId  String            @db.Uuid
+  grade      String?
   topic      String
   content    String            // markdown or rich text — TEXT has no size limit
   visibility ContentVisibility @default(STUDENTS_ONLY)
@@ -330,6 +331,7 @@ model ShortNote {
   id          String        @id @default(uuid()) @db.Uuid
   title       String
   subjectId   String        @db.Uuid
+  grade       String?
   topic       String
   content     String
   visibility  ContentVisibility @default(STUDENTS_ONLY)
@@ -339,8 +341,20 @@ model ShortNote {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  subject   Subject @relation(fields: [subjectId], references: [id])
-  createdBy Profile @relation(fields: [createdById], references: [id])
+  subject     Subject               @relation(fields: [subjectId], references: [id])
+  createdBy   Profile               @relation(fields: [createdById], references: [id])
+  attachments ShortNoteAttachment[]
+}
+
+model ShortNoteAttachment {
+  id          String    @id @default(uuid()) @db.Uuid
+  shortNoteId String    @db.Uuid
+  name        String
+  url         String    // Supabase Storage URL
+  size        Int       // bytes
+  type        String    // MIME type
+
+  shortNote ShortNote @relation(fields: [shortNoteId], references: [id], onDelete: Cascade)
 }
 
 // ─── Historical Locations (Map Search) ──────────────────────────
