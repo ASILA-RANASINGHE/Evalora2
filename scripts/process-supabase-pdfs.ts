@@ -10,7 +10,7 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function getPdfListFromBucket() {
-  console.log('🔍 Fetching file list from "note-attachments" bucket...');
+  console.log('Fetching file list from "note-attachments" bucket...');
   
   const { data, error } = await supabase.storage
     .from('note-attachments')
@@ -21,13 +21,13 @@ export async function getPdfListFromBucket() {
   }
 
   const pdfFiles = data.filter(file => file.name.endsWith('.pdf'));
-  console.log(`✅ Found ${pdfFiles.length} PDFs in the bucket.\n`);
+  console.log(`Found ${pdfFiles.length} PDFs in the bucket.\n`);
   
   return pdfFiles.map(file => file.name);
 }
 
 export async function downloadPdfAsBuffer(fileName: string): Promise<Uint8Array> {
-  console.log(`⬇️ Downloading ${fileName}...`);
+  console.log(`Downloading ${fileName}...`);
   
   const { data, error } = await supabase.storage
     .from('note-attachments')
