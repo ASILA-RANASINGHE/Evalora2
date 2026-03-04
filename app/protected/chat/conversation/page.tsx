@@ -9,11 +9,16 @@ import {
   MessageBubble,
   type ChatMessage,
 } from "./components/MessageBubble";
+import type { Citation, BoundingBox } from "@/app/protected/chat/types";
 import { ChatContainer } from "./components/ChatContainer";
 import { ChatInput } from "./components/chat-input";
 import { ReferencePanel } from "./components/reference-panel";
 import { StudyToolsSidebar } from "./components/study-tools/study-tools-sidebar";
-import { DocumentViewer } from "./components/document-viewer";
+import dynamic from "next/dynamic";
+const DocumentViewer = dynamic(
+  () => import("./components/document-viewer").then((m) => m.DocumentViewer),
+  { ssr: false }
+);
 import { WhiteboardPanel } from "./components/WhiteboardPanel";
 import {
   generateQuizProblem,
@@ -83,6 +88,8 @@ As noted in your syllabus [p. 12], understanding sorting algorithm analysis reli
         snippet:
           "The quadratic formula can be applied to analyze the average-case behavior of certain recursive sorting algorithms.",
         source: "CS201_Syllabus.pdf",
+        file_id: "demo-cs201",
+        highlight_text: "quadratic formula can be applied to analyze",
       },
       {
         label: "Sec 2.1",
@@ -90,6 +97,8 @@ As noted in your syllabus [p. 12], understanding sorting algorithm analysis reli
         snippet:
           "An array is a contiguous block of memory that stores elements of the same type. Access time is O(1) for indexed access.",
         source: "CS201_Syllabus.pdf",
+        file_id: "demo-cs201",
+        highlight_text: "array is a contiguous block of memory",
       },
     ],
   },
@@ -147,6 +156,8 @@ Would you like me to dive deeper into any of these topics?`,
         snippet:
           "Midterm Exam 25%, Final Exam 30%, Programming Assignments 25%, Quizzes 10%, Class Participation 10%.",
         source: "CS201_Syllabus.pdf",
+        file_id: "demo-cs201",
+        highlight_text: "Midterm Exam",
       },
     ],
   },
@@ -198,8 +209,17 @@ export default function ConversationPage() {
   const [docViewerOpen, setDocViewerOpen] = useState(false);
   const [docViewerPage, setDocViewerPage] = useState(1);
   const [docViewerFile, setDocViewerFile] = useState("CS201_Syllabus.pdf");
+  const [docViewerPdfUrl, setDocViewerPdfUrl] = useState<string | null>(
+    "/demo/CS201_Syllabus.pdf"
+  );
   const [docViewerHighlight, setDocViewerHighlight] = useState<
     string | undefined
+  >();
+  const [docViewerHighlightBox, setDocViewerHighlightBox] = useState<
+    BoundingBox | undefined
+  >();
+  const [docViewerParagraphIndex, setDocViewerParagraphIndex] = useState<
+    number | undefined
   >();
 
   // Quiz / whiteboard state
@@ -263,11 +283,15 @@ export default function ConversationPage() {
     [activeSessionId, handleNewChat]
   );
 
-  const handleCitationClick = (page: number, source: string) => {
+  const handleCitationClick = (page: number, source: string, citation?: Citation) => {
     setDocViewerFile(source);
     setDocViewerPage(page);
-    setDocViewerHighlight(undefined);
+    setDocViewerPdfUrl(`/demo/${source}`);
+    setDocViewerHighlightBox(citation?.bounding_box);
+    setDocViewerParagraphIndex(citation?.paragraph_index);
+    setDocViewerHighlight(citation?.highlight_text ?? citation?.snippet);
     setDocViewerOpen(true);
+    setWhiteboardOpen(false);
   };
 
   // ── Quiz handlers ─────────────────────────────────────────────────────
@@ -424,6 +448,8 @@ export default function ConversationPage() {
               snippet:
                 "CS201 — Data Structures & Algorithms. This course covers fundamental data structures and algorithmic techniques.",
               source: syllabus.name,
+              file_id: "demo-cs201",
+              highlight_text: "Data Structures & Algorithms",
             },
           ],
         }),
@@ -565,8 +591,11 @@ export default function ConversationPage() {
         {docViewerOpen && (
           <DocumentViewer
             fileName={docViewerFile}
+            pdfUrl={docViewerPdfUrl}
             initialPage={docViewerPage}
             highlightText={docViewerHighlight}
+            highlightBox={docViewerHighlightBox}
+            paragraphIndex={docViewerParagraphIndex}
             onClose={() => setDocViewerOpen(false)}
           />
         )}

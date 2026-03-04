@@ -44,7 +44,7 @@ type ChatAction =
   | { type: "SET_ACTIVE_CONVERSATION"; payload: { conversationId: string } }
   | { type: "RENAME_CONVERSATION"; payload: { conversationId: string; title: string } }
   | { type: "ADD_MESSAGE"; payload: { conversationId: string; message: ChatMessage } }
-  | { type: "UPDATE_MESSAGE_STATUS"; payload: { conversationId: string; messageId: string; status: ChatMessage["status"] } }
+  | { type: "UPDATE_MESSAGE_STATUS"; payload: { conversationId: string; messageId: number; status: ChatMessage["status"] } }
   | { type: "SET_TYPING"; payload: boolean }
   | { type: "SET_SYLLABUS"; payload: SyllabusFile | null }
   | { type: "LOAD_STATE"; payload: Pick<ChatState, "conversations" | "messagesByConversation" | "activeConversationId"> };
@@ -178,7 +178,7 @@ interface ChatContextValue {
   setActiveConversation: (conversationId: string) => void;
   renameConversation: (conversationId: string, title: string) => void;
   addMessage: (conversationId: string, message: ChatMessage) => void;
-  updateMessageStatus: (conversationId: string, messageId: string, status: ChatMessage["status"]) => void;
+  updateMessageStatus: (conversationId: string, messageId: number, status: ChatMessage["status"]) => void;
   setTyping: (isTyping: boolean) => void;
   setSyllabus: (syllabus: SyllabusFile | null) => void;
 }
@@ -242,7 +242,7 @@ export function ChatProvider({ children, initial }: ChatProviderProps) {
   );
 
   const updateMessageStatus = useCallback(
-    (conversationId: string, messageId: string, status: ChatMessage["status"]) =>
+    (conversationId: string, messageId: number, status: ChatMessage["status"]) =>
       dispatch({ type: "UPDATE_MESSAGE_STATUS", payload: { conversationId, messageId, status } }),
     []
   );

@@ -2,11 +2,12 @@ import { useRef, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MessageBubble, type ChatMessage } from "./MessageBubble";
 import { TypingIndicator } from "./TypingIndicator";
+import type { Citation } from "@/app/protected/chat/types";
 
 interface ChatContainerProps {
   messages: ChatMessage[];
   isTyping?: boolean;
-  onCitationClick?: (page: number, source: string) => void;
+  onCitationClick?: (page: number, source: string, citation?: Citation) => void;
 }
 
 export function ChatContainer({ messages, isTyping, onCitationClick }: ChatContainerProps) {
