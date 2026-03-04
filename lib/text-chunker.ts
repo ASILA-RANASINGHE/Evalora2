@@ -1,52 +1,53 @@
+import { getEncoding } from 'js-tiktoken';
+
 export interface ChunkOptions {
-  chunkSize?: number;
-  chunkOverlap?: number;
+  maxTokens?: number;
+  tokenOverlap?: number;
 }
 
 export function chunkText(text: string, options: ChunkOptions = {}): string[] {
-  const { chunkSize = 500, chunkOverlap = 50 } = options;
+  const { maxTokens = 500, tokenOverlap = 50 } = options;
   const chunks: string[] = [];
   
   if (!text || text.trim() === '') {
     return chunks;
   }
 
-  let currentIndex = 0;
+  const tokenizer = getEncoding("cl100k_base");
 
-  while (currentIndex < text.length) {
-    let endIndex = currentIndex + chunkSize;
+  const words = text.split(/\s+/);
+  
+  let currentChunkWords: string[] = [];
+  let currentTokenCount = 0;
 
-    if (endIndex >= text.length) {
-      chunks.push(text.substring(currentIndex).trim());
-      break;
-    }
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
 
-    let breakIndex = endIndex;
-    const minBreak = currentIndex + (chunkSize * 0.5);
+    const wordTokens = tokenizer.encode(word + " ").length;
 
-    const lastNewline = text.lastIndexOf('\n', endIndex);
-    const lastPeriod = text.lastIndexOf('. ', endIndex);
-    const lastSpace = text.lastIndexOf(' ', endIndex);
+    if (currentTokenCount + wordTokens > maxTokens && currentChunkWords.length > 0) {
+      chunks.push(currentChunkWords.join(" ").trim());
 
-    if (lastNewline > minBreak) {
-      breakIndex = lastNewline;
-    } else if (lastPeriod > minBreak) {
-      breakIndex = lastPeriod + 1;
-    } else if (lastSpace > minBreak) {
-      breakIndex = lastSpace;
-    }
-
-    const chunk = text.substring(currentIndex, breakIndex).trim();
-    if (chunk) chunks.push(chunk);
-    let nextStart = breakIndex - chunkOverlap;
-    if (nextStart > currentIndex) {
-      const nextSpace = text.indexOf(' ', nextStart);
-      if (nextSpace !== -1 && nextSpace < breakIndex) {
-        nextStart = nextSpace + 1;
+      let overlapWords: string[] = [];
+      let overlapTokenCount = 0;
+      
+      for (let j = currentChunkWords.length - 1; j >= 0; j--) {
+        const wTokens = tokenizer.encode(currentChunkWords[j] + " ").length;
+        if (overlapTokenCount + wTokens > tokenOverlap) break;
+        
+        overlapWords.unshift(currentChunkWords[j]);
+        overlapTokenCount += wTokens;
       }
+      currentChunkWords = [...overlapWords, word];
+      currentTokenCount = overlapTokenCount + wordTokens;
+    } else {
+      currentChunkWords.push(word);
+      currentTokenCount += wordTokens;
     }
-    
-    currentIndex = Math.max(currentIndex + 1, nextStart);
+  }
+
+  if (currentChunkWords.length > 0) {
+    chunks.push(currentChunkWords.join(" ").trim());
   }
 
   return chunks;
