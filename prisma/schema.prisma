@@ -370,3 +370,15 @@ model StudentProgress {
 
   student Profile @relation(fields: [studentId], references: [id])
 }
+
+model DocumentChunk {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid 
+  
+  title     String
+  topic     String?
+  content   String
+  grade     String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
