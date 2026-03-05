@@ -11,7 +11,11 @@ function createPrismaClient() {
   }
   const pool = new Pool({ connectionString });
   const adapter = new PrismaPg(pool);
-  return new PrismaClient({ adapter });
+  
+  return new PrismaClient({ 
+    adapter,
+    log: ['query', 'info', 'warn', 'error'],
+  });
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
