@@ -5,6 +5,7 @@ import { cleanPdfText } from '../lib/text-cleaner';
 import { chunkText } from '../lib/text-chunker';
 import { getPdfListFromBucket, downloadPdfAsBuffer } from './process-supabase-pdfs';
 import { prisma } from '../lib/prisma';
+import cliProgress from 'cli-progress';
 
 const CACHE_FILE = path.join(process.cwd(), 'scripts', 'processed-files.json');
 const DLQ_FILE = path.join(process.cwd(), 'scripts', 'failed-files.json');
@@ -111,11 +112,32 @@ async function runPipeline() {
           content: chunkText,
         }));
 
-        const result = await prisma.documentChunk.createMany({
-          data: dbRecords,
+        const progressBar = new cliProgress.SingleBar({
+          format: 'Uploading to DB |{bar}| {percentage}% | {value}/{total} Chunks',
+          barCompleteChar: '\u2588',
+          barIncompleteChar: '\u2591',
+          hideCursor: true
         });
 
-        console.log(`Successfully saved ${result.count} chunks to the database!`);
+        progressBar.start(dbRecords.length, 0);
+
+        const BATCH_SIZE = 25; 
+        let totalInserted = 0;
+
+        for (let i = 0; i < dbRecords.length; i += BATCH_SIZE) {
+          const batch = dbRecords.slice(i, i + BATCH_SIZE);
+          
+          const result = await prisma.documentChunk.createMany({
+            data: batch,
+            skipDuplicates: true,
+          });
+          
+          totalInserted += result.count;
+          progressBar.increment(batch.length); 
+        }
+
+        progressBar.stop();
+        console.log(`Successfully saved ${totalInserted} chunks to the database!`);
 
         markFileAsProcessed(fileName, processedFiles);
         console.log(`Marked ${fileName} as processed in cache.`);
