@@ -4,11 +4,43 @@ import { extractText } from 'unpdf';
 import { cleanPdfText } from '../lib/text-cleaner';
 import { chunkText } from '../lib/text-chunker';
 import { getPdfListFromBucket, downloadPdfAsBuffer } from './process-supabase-pdfs';
-import { prisma } from '../lib/prisma';
+import { PrismaClient } from '../lib/generated/prisma/client';
 import cliProgress from 'cli-progress';
 
 const CACHE_FILE = path.join(process.cwd(), 'scripts', 'processed-files.json');
 const DLQ_FILE = path.join(process.cwd(), 'scripts', 'failed-files.json');
+
+// Create a dedicated Prisma client for this script
+// Using DIRECT_URL for scripts (bypasses PgBouncer pooler)
+function createScriptPrismaClient() {
+  // IMPORTANT: Scripts must use DIRECT_URL (port 5432) NOT the pooler (port 6543)
+  // The pooler causes hangs with the pg adapter
+  const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("DIRECT_URL or DATABASE_URL environment variable is not set");
+  }
+
+  // Import dynamically to avoid issues
+  const { Pool } = require('pg');
+  const { PrismaPg } = require('@prisma/adapter-pg');
+
+  const pool = new Pool({
+    connectionString,
+    ssl: { rejectUnauthorized: false },
+    // For scripts, we can use a single connection
+    max: 1,
+    connectionTimeoutMillis: 10000,
+  });
+
+  const adapter = new PrismaPg(pool);
+
+  return new PrismaClient({
+    adapter,
+    log: ['query', 'info', 'warn', 'error'],
+  });
+}
+
+const prisma = createScriptPrismaClient();
 
 interface FailedFileLog {
   fileName: string;
@@ -67,6 +99,22 @@ function extractMetadataFromFilename(fileName: string) {
 async function runPipeline() {
   try {
     console.log('Starting PDF Processing Pipeline...');
+    
+    // Test database connection before proceeding
+    console.log('Testing database connection...');
+    try {
+      await prisma.$connect();
+      // Simple query to verify connection works
+      await prisma.$queryRaw`SELECT 1`;
+      console.log('Database connection successful!');
+    } catch (connError: any) {
+      console.error('Failed to connect to database:', connError.message);
+      console.error('\nTroubleshooting tips:');
+      console.error('1. Use DIRECT_URL (port 5432) instead of the pooler (port 6543) for scripts');
+      console.error('2. Ensure your DATABASE_URL includes ?sslmode=require');
+      console.error('3. Check if your IP is allowed in Supabase dashboard');
+      throw connError;
+    }
     
     const processedFiles = getProcessedFiles();
     console.log(`Loaded ${processedFiles.length} previously processed files from cache.`);
