@@ -7,47 +7,18 @@ export interface ChunkOptions {
 
 export function chunkText(text: string, options: ChunkOptions = {}): string[] {
   const { maxTokens = 500, tokenOverlap = 50 } = options;
-  const chunks: string[] = [];
   
   if (!text || text.trim() === '') {
-    return chunks;
+    return [];
   }
-
   const tokenizer = getEncoding("cl100k_base");
-
-  const words = text.split(/\s+/);
-  
-  let currentChunkWords: string[] = [];
-  let currentTokenCount = 0;
-
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i];
-
-    const wordTokens = tokenizer.encode(word + " ").length;
-
-    if (currentTokenCount + wordTokens > maxTokens && currentChunkWords.length > 0) {
-      chunks.push(currentChunkWords.join(" ").trim());
-
-      let overlapWords: string[] = [];
-      let overlapTokenCount = 0;
-      
-      for (let j = currentChunkWords.length - 1; j >= 0; j--) {
-        const wTokens = tokenizer.encode(currentChunkWords[j] + " ").length;
-        if (overlapTokenCount + wTokens > tokenOverlap) break;
-        
-        overlapWords.unshift(currentChunkWords[j]);
-        overlapTokenCount += wTokens;
-      }
-      currentChunkWords = [...overlapWords, word];
-      currentTokenCount = overlapTokenCount + wordTokens;
-    } else {
-      currentChunkWords.push(word);
-      currentTokenCount += wordTokens;
-    }
-  }
-
-  if (currentChunkWords.length > 0) {
-    chunks.push(currentChunkWords.join(" ").trim());
+  const tokens = tokenizer.encode(text);
+  const chunks: string[] = [];
+  let i = 0;
+  while (i < tokens.length) {
+    const chunkTokens = tokens.slice(i, i + maxTokens);
+    chunks.push(tokenizer.decode(chunkTokens));
+    i += (maxTokens - tokenOverlap);
   }
 
   return chunks;
