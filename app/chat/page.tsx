@@ -1,13 +1,17 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 
 export default function ChatTestPage() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } =
-    useChat({ api: "/api/chat" });
+  // AI SDK v6: useChat returns { messages, sendMessage, status, error }
+  const { messages, sendMessage, status, error } = useChat({
+    api: "/api/chat",
+  });
 
+  const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isLoading = status === "submitted" || status === "streaming";
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -16,12 +20,21 @@ export default function ChatTestPage() {
     });
   }, [messages]);
 
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+    const text = input;
+    setInput("");
+    await sendMessage({ text });
+  };
+
   return (
     <div className="flex flex-col h-screen bg-slate-50">
       {/* Header */}
       <header className="shrink-0 border-b border-slate-200 bg-white px-6 py-4">
         <h1 className="text-lg font-semibold text-slate-800">
-          Evalora <span className="text-sm font-normal text-slate-400">RAG Test</span>
+          Evalora{" "}
+          <span className="text-sm font-normal text-slate-400">RAG Test</span>
         </h1>
       </header>
 
@@ -46,7 +59,9 @@ export default function ChatTestPage() {
                     : "bg-white text-slate-700 border border-slate-200 rounded-bl-md shadow-sm"
                 }`}
               >
-                {m.content}
+                {m.parts
+                  ?.filter((p) => p.type === "text")
+                  .map((p, i) => <span key={i}>{p.text}</span>) ?? ""}
               </div>
             </div>
           ))}
@@ -77,12 +92,12 @@ export default function ChatTestPage() {
       {/* Input */}
       <div className="shrink-0 border-t border-slate-200 bg-white px-4 py-4">
         <form
-          onSubmit={handleSubmit}
+          onSubmit={onSubmit}
           className="mx-auto flex max-w-2xl items-center gap-3"
         >
           <input
             value={input}
-            onChange={handleInputChange}
+            onChange={(e) => setInput(e.target.value)}
             placeholder="Ask Evalora a question..."
             className="flex-1 rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
             disabled={isLoading}

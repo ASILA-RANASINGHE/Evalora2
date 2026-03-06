@@ -1,4 +1,4 @@
-import { streamText, type Message } from "ai";
+import { streamText } from "ai";
 import { huggingface } from "@ai-sdk/huggingface";
 import {
   retrieveRelevantChunks,
@@ -40,47 +40,62 @@ function formatContext(chunks: RetrievedChunk[]): string {
   return `\n\n<context>\nThe following reference material was retrieved from the knowledge base. Use it to answer the student's question.\n\n${formatted}\n</context>`;
 }
 
+// --- Extract plain text from a UIMessage's parts array ---
+function extractText(parts: Array<{ type: string; text?: string }>): string {
+  return (parts ?? [])
+    .filter((p) => p.type === "text" && p.text)
+    .map((p) => p.text!)
+    .join("");
+}
+
 // --- Route handler ---
 export async function POST(req: Request) {
-  const { messages }: { messages: Message[] } = await req.json();
+  const body = await req.json();
+  const rawMessages: Array<{
+    role: string;
+    parts?: Array<{ type: string; text?: string }>;
+    content?: string;
+  }> = body.messages ?? [];
 
-  // Find the latest user message for retrieval
-  const lastUserMessage = [...messages]
-    .reverse()
-    .find((m) => m.role === "user");
+  // Build clean ModelMessage objects from whatever the client sends
+  const modelMessages: Array<{ role: "user" | "assistant"; content: string }> =
+    [];
 
-  if (!lastUserMessage?.content) {
+  for (const msg of rawMessages) {
+    if (msg.role !== "user" && msg.role !== "assistant") continue;
+    // Support both v6 (parts) and legacy (content) formats
+    const text = msg.parts ? extractText(msg.parts) : (msg.content ?? "");
+    if (text) {
+      modelMessages.push({ role: msg.role, content: text });
+    }
+  }
+
+  if (modelMessages.length === 0 || modelMessages[modelMessages.length - 1].role !== "user") {
     return new Response("No user message provided", { status: 400 });
   }
+
+  const userText = modelMessages[modelMessages.length - 1].content;
 
   // Retrieve relevant chunks — if retrieval fails, continue without context
   let chunks: RetrievedChunk[] = [];
   try {
-    chunks = await retrieveRelevantChunks(
-      typeof lastUserMessage.content === "string"
-        ? lastUserMessage.content
-        : ""
-    );
+    chunks = await retrieveRelevantChunks(userText);
   } catch (err) {
     console.error("Retrieval failed, proceeding without context:", err);
   }
 
-  // Build the context-augmented messages
+  // Append context to the last user message
   const contextBlock = formatContext(chunks);
-  const augmentedMessages = messages.map((msg, idx) => {
-    // Append context to the last user message only
-    if (idx === messages.length - 1 && msg.role === "user" && contextBlock) {
-      return { ...msg, content: msg.content + contextBlock };
-    }
-    return msg;
-  });
+  if (contextBlock) {
+    modelMessages[modelMessages.length - 1].content += contextBlock;
+  }
 
   // Stream the response
   const result = streamText({
-    model: huggingface("HuggingFaceH4/zephyr-7b-beta"),
+    model: huggingface("Qwen/Qwen2.5-72B-Instruct"),
     system: SYSTEM_PROMPT,
-    messages: augmentedMessages,
+    messages: modelMessages,
   });
 
-  return result.toDataStreamResponse();
+  return result.toUIMessageStreamResponse();
 }

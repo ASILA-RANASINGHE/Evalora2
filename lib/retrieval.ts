@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 
 // --- Config ---
 const HF_MODEL = "sentence-transformers/all-MiniLM-L6-v2";
-const HF_API_URL = `https://api-inference.huggingface.co/pipeline/feature-extraction/${HF_MODEL}`;
+const HF_API_URL = `https://router.huggingface.co/pipeline/feature-extraction/${HF_MODEL}`;
 const MAX_RETRIES = 3;
 const TOP_K = 3;
 

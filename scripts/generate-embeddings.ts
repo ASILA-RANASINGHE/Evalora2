@@ -6,7 +6,7 @@ import cliProgress from 'cli-progress';
 
 // --- Config ---
 const HF_MODEL = 'sentence-transformers/all-MiniLM-L6-v2';
-const HF_API_URL = `https://api-inference.huggingface.co/pipeline/feature-extraction/${HF_MODEL}`;
+const HF_API_URL = `https://router.huggingface.co/pipeline/feature-extraction/${HF_MODEL}`;
 const BATCH_SIZE = 25;
 const MAX_RETRIES = 3;
 
