@@ -97,5 +97,18 @@ export async function POST(req: Request) {
     messages: modelMessages,
   });
 
-  return result.toUIMessageStreamResponse();
+  // Pass RAG metadata via headers so the client can display debug info
+  const ragDebug = chunks.map((c) => ({
+    title: c.title,
+    topic: c.topic,
+    grade: c.grade,
+    similarity: Number(c.similarity).toFixed(3),
+    preview: c.content.slice(0, 120),
+  }));
+
+  return result.toUIMessageStreamResponse({
+    headers: {
+      "X-RAG-Chunks": encodeURIComponent(JSON.stringify(ragDebug)),
+    },
+  });
 }
