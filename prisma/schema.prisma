@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../lib/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../lib/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [vector]
 }
 
 enum UserRole {
@@ -386,13 +388,12 @@ model StudentProgress {
 }
 
 model DocumentChunk {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid 
-  
+  id        String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   title     String
   topic     String?
   content   String
   grade     String?
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  embedding Unsupported("vector(384)")?
+  createdAt DateTime                    @default(now())
+  updatedAt DateTime                    @updatedAt
 }
