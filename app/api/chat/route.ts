@@ -1,5 +1,5 @@
 import { streamText, type Message } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { huggingface } from "@ai-sdk/huggingface";
 import {
   retrieveRelevantChunks,
   type RetrievedChunk,
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
 
   // Stream the response
   const result = streamText({
-    model: openai("gpt-4o-mini"),
+    model: huggingface("HuggingFaceH4/zephyr-7b-beta"),
     system: SYSTEM_PROMPT,
     messages: augmentedMessages,
   });
