@@ -1,7 +1,8 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { useRef, useEffect, useState } from "react";
+import { DefaultChatTransport } from "ai";
+import { useRef, useEffect, useState, Suspense, useMemo } from "react";
 
 interface RagChunkDebug {
   title: string;
@@ -11,27 +12,34 @@ interface RagChunkDebug {
   preview: string;
 }
 
-export default function ChatTestPage() {
-  const { messages, sendMessage, status, error } = useChat({
-    api: "/api/chat",
-    fetch: async (url, options) => {
-      const res = await fetch(url, options);
-      // Extract RAG debug info from response header
-      const ragHeader = res.headers.get("X-RAG-Chunks");
-      if (ragHeader) {
-        try {
-          const parsed = JSON.parse(decodeURIComponent(ragHeader));
-          setLastRagChunks(parsed);
-        } catch {}
-      } else {
-        setLastRagChunks([]);
-      }
-      return res;
-    },
-  });
+function ChatTestPageInner() {
+  const [lastRagChunks, setLastRagChunks] = useState<RagChunkDebug[]>([]);
+  const ragChunksRef = useRef(setLastRagChunks);
+  ragChunksRef.current = setLastRagChunks;
+
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        fetch: async (url, init) => {
+          const res = await fetch(url, init);
+          const ragHeader = res.headers.get("X-RAG-Chunks");
+          if (ragHeader) {
+            try {
+              ragChunksRef.current(JSON.parse(decodeURIComponent(ragHeader)));
+            } catch {}
+          } else {
+            ragChunksRef.current([]);
+          }
+          return res;
+        },
+      }),
+    []
+  );
+
+  const { messages, sendMessage, status, error } = useChat({ transport });
 
   const [input, setInput] = useState("");
-  const [lastRagChunks, setLastRagChunks] = useState<RagChunkDebug[]>([]);
   const [showDebug, setShowDebug] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isLoading = status === "submitted" || status === "streaming";
@@ -49,7 +57,7 @@ export default function ChatTestPage() {
     const text = input;
     setInput("");
     setLastRagChunks([]);
-    await sendMessage({ text });
+    sendMessage({ text });
   };
 
   return (
@@ -224,5 +232,13 @@ export default function ChatTestPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ChatTestPage() {
+  return (
+    <Suspense>
+      <ChatTestPageInner />
+    </Suspense>
   );
 }
