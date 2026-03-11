@@ -286,6 +286,10 @@ model PaperAttempt {
   paperId     String    @db.Uuid
   studentId   String    @db.Uuid
   score       Float?
+  timeTaken   Int?      // seconds
+  answers     Json?     // { "questionId": "answer" }
+  flagged     Json?     // ["questionId", ...]
+  results     Json?     // full per-question results object
   startedAt   DateTime  @default(now())
   submittedAt DateTime?
 
@@ -386,13 +390,14 @@ model StudentProgress {
 }
 
 model DocumentChunk {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid 
-  
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
   title     String
   topic     String?
   content   String
   grade     String?
-  
+  embedding Unsupported("vector")?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
