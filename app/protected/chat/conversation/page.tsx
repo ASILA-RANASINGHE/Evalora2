@@ -276,8 +276,10 @@ export default function ConversationPage() {
 
   // Sync session changes
   const prevSessionId = useRef(activeSessionId);
+  const isFirstRender = useRef(true);
   useEffect(() => {
-    if (prevSessionId.current !== activeSessionId) {
+    if (prevSessionId.current !== activeSessionId || isFirstRender.current) {
+      isFirstRender.current = false;
       prevSessionId.current = activeSessionId;
       setLastRagChunks([]);
       const history = chatHistories[activeSessionId] || [];
@@ -313,7 +315,7 @@ export default function ConversationPage() {
         const text = aiMsg.parts
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ? aiMsg.parts.filter((p: any) => p.type === "text").map((p: any) => p.text).join("")
-          : (aiMsg as any).text || "";
+          : (aiMsg as any).content || (aiMsg as any).text || "";
 
         return {
           id: aiMsg.id as unknown as number,
@@ -474,6 +476,13 @@ export default function ConversationPage() {
   }, [activeSessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSend = (text: string) => {
+    const userMessage: ChatMessage = {
+      id: Date.now(),
+      text,
+      sender: "user",
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
     setSessions((prev) =>
       prev.map((s) =>
         s.id === activeSessionId && s.title === "New Chat"
@@ -482,19 +491,15 @@ export default function ConversationPage() {
       )
     );
 
+    // Save user message immediately to our local state so it shows up before API resolves
+    setChatHistories((prev) => ({
+      ...prev,
+      [activeSessionId]: [...(prev[activeSessionId] || []), userMessage],
+    }));
+
     // Quiz mode: grade the answer instead of normal response
     if (quizMode?.active && quizMode.awaitingAnswer && currentProblemRef.current) {
       setIsTyping(true);
-      const userMessage: ChatMessage = {
-        id: Date.now(),
-        text,
-        sender: "user",
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
-      setChatHistories((prev) => ({
-        ...prev,
-        [activeSessionId]: [...(prev[activeSessionId] || []), userMessage],
-      }));
 
       setTimeout(() => {
         const gradingText = generateGradingResponse(
