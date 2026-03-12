@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport, type UIMessage } from "ai";
 import { motion, AnimatePresence } from "framer-motion";
 import { BrainCircuit } from "lucide-react";
 import { Sidebar, type Session, type SyllabusFile } from "./components/sidebar";
 import { ChatHeader } from "./components/chat-header";
-import {
-  MessageBubble,
-  type ChatMessage,
-} from "./components/MessageBubble";
+import type { ChatMessage } from "./components/MessageBubble";
 import type { Citation, BoundingBox } from "@/app/protected/chat/types";
 import { ChatContainer } from "./components/ChatContainer";
 import { ChatInput } from "./components/chat-input";
@@ -27,6 +26,14 @@ import {
 } from "./components/quiz-challenge-prompt";
 import { exportTranscript } from "./utils/export-transcript";
 import "katex/dist/katex.min.css";
+
+interface RagChunkDebug {
+  title: string;
+  topic: string | null;
+  grade: string | null;
+  similarity: string;
+  preview: string;
+}
 
 const welcomeMessage: ChatMessage = {
   id: 1,
@@ -231,7 +238,106 @@ export default function ConversationPage() {
   const [whiteboardOpen, setWhiteboardOpen] = useState(false);
   const currentProblemRef = useRef<QuizProblem | null>(null);
 
-  const messages = chatHistories[activeSessionId] || [];
+  const [lastRagChunks, setLastRagChunks] = useState<RagChunkDebug[]>([]);
+  const ragChunksRef = useRef(setLastRagChunks);
+  ragChunksRef.current = setLastRagChunks;
+
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        fetch: async (url, init) => {
+          const res = await fetch(url, init);
+          const ragHeader = res.headers.get("X-RAG-Chunks");
+          if (ragHeader) {
+            try {
+              ragChunksRef.current(JSON.parse(decodeURIComponent(ragHeader)));
+            } catch {}
+          } else {
+            // Keep chunks during a stream if header is missing, but backend should send it
+            // on the first chunk. If it explicitly clears, we clear.
+            // ragChunksRef.current([]); 
+          }
+          return res;
+        },
+      }),
+    []
+  );
+
+  const { messages: aiMessages, setMessages, sendMessage, status } = useChat({
+    id: activeSessionId,
+    transport,
+  });
+
+  const messages = useMemo(
+    () => chatHistories[activeSessionId] || [],
+    [chatHistories, activeSessionId]
+  );
+
+  // Sync session changes
+  const prevSessionId = useRef(activeSessionId);
+  useEffect(() => {
+    if (prevSessionId.current !== activeSessionId) {
+      prevSessionId.current = activeSessionId;
+      setLastRagChunks([]);
+      const history = chatHistories[activeSessionId] || [];
+      setMessages(
+        history.map((m) => ({
+          id: m.id.toString(),
+          role: m.sender === "user" ? "user" : "assistant",
+          parts: [{ type: "text", text: m.text }],
+        } as unknown as UIMessage))
+      );
+    }
+  }, [activeSessionId, chatHistories, setMessages]);
+
+  useEffect(() => {
+    if (aiMessages.length === 0) return;
+
+    setChatHistories((prev) => {
+      const currentHist = prev[activeSessionId] || [];
+      const mappedAi = aiMessages.map((aiMsg, idx) => {
+        const existing = currentHist.find((h) => h.id.toString() === aiMsg.id.toString());
+        
+        let citations = existing?.citations;
+        if (aiMsg.role === "assistant" && idx === aiMessages.length - 1 && lastRagChunks.length > 0) {
+          citations = lastRagChunks.map((c) => ({
+            label: c.title,
+            snippet: c.preview,
+            source: c.title,
+            page: 1,
+            highlight_text: c.title,
+          }));
+        }
+
+        const text = aiMsg.parts
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ? aiMsg.parts.filter((p: any) => p.type === "text").map((p: any) => p.text).join("")
+          : (aiMsg as any).text || "";
+
+        return {
+          id: aiMsg.id as unknown as number,
+          sender: aiMsg.role === "user" ? "user" : "bot",
+          text,
+          timestamp: existing?.timestamp || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          citations,
+        } as unknown as ChatMessage;
+      });
+
+      // Simple diff check to prevent infinite re-renders while allowing streams
+      const lastMapped = mappedAi[mappedAi.length - 1];
+      const lastHist = currentHist[currentHist.length - 1];
+      if (
+        status === "streaming" ||
+        status === "submitted" ||
+        currentHist.length !== mappedAi.length ||
+        lastMapped?.text !== lastHist?.text
+      ) {
+        return { ...prev, [activeSessionId]: mappedAi };
+      }
+      return prev;
+    });
+  }, [aiMessages, activeSessionId, lastRagChunks, status]);
 
   const handleNewChat = useCallback(() => {
     const newId = Date.now().toString();
@@ -368,18 +474,6 @@ export default function ConversationPage() {
   }, [activeSessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSend = (text: string) => {
-    const now = new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    const userMessage: ChatMessage = {
-      id: Date.now(),
-      text,
-      sender: "user",
-      timestamp: now,
-    };
-
     setSessions((prev) =>
       prev.map((s) =>
         s.id === activeSessionId && s.title === "New Chat"
@@ -388,16 +482,20 @@ export default function ConversationPage() {
       )
     );
 
-    setChatHistories((prev) => ({
-      ...prev,
-      [activeSessionId]: [...(prev[activeSessionId] || []), userMessage],
-    }));
-
-    // Start Typing Indicator
-    setIsTyping(true);
-
     // Quiz mode: grade the answer instead of normal response
     if (quizMode?.active && quizMode.awaitingAnswer && currentProblemRef.current) {
+      setIsTyping(true);
+      const userMessage: ChatMessage = {
+        id: Date.now(),
+        text,
+        sender: "user",
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+      setChatHistories((prev) => ({
+        ...prev,
+        [activeSessionId]: [...(prev[activeSessionId] || []), userMessage],
+      }));
+
       setTimeout(() => {
         const gradingText = generateGradingResponse(
           currentProblemRef.current!,
@@ -409,10 +507,7 @@ export default function ConversationPage() {
           id: Date.now() + 1,
           text: gradingText,
           sender: "bot",
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         };
 
         setChatHistories((prev) => ({
@@ -420,47 +515,14 @@ export default function ConversationPage() {
           [activeSessionId]: [...(prev[activeSessionId] || []), botMessage],
         }));
         setIsTyping(false);
-        setQuizMode((prev) =>
-          prev ? { ...prev, awaitingAnswer: false } : null
-        );
+        setQuizMode((prev) => prev ? { ...prev, awaitingAnswer: false } : null);
       }, 1800);
       return;
     }
 
-    // Simulate bot response with citation if syllabus is active
-    setTimeout(() => {
-      const hasSyllabus = syllabus !== null;
-      const botMessage: ChatMessage = {
-        id: Date.now() + 1,
-        text: hasSyllabus
-          ? "Thanks for your question! Based on your uploaded syllabus [p. 1], I can see this relates to the course overview.\n\n> This is a **demo response** showcasing citation and document context features."
-          : "Thanks for your question! I'm analyzing it now. In a full implementation, this would connect to an AI backend for real academic support.\n\n> This is a **demo response** showcasing the markdown rendering capabilities.",
-        sender: "bot",
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        ...(hasSyllabus && {
-          citations: [
-            {
-              label: "p. 1",
-              page: 1,
-              snippet:
-                "CS201 — Data Structures & Algorithms. This course covers fundamental data structures and algorithmic techniques.",
-              source: syllabus.name,
-              file_id: "demo-cs201",
-              highlight_text: "Data Structures & Algorithms",
-            },
-          ],
-        }),
-      };
-      setChatHistories((prev) => ({
-        ...prev,
-        [activeSessionId]: [...(prev[activeSessionId] || []), botMessage],
-      }));
-      // Stop Typing Indicator
-      setIsTyping(false);
-    }, 1200);
+    // Call RAG Endpoint
+    setLastRagChunks([]);
+    sendMessage({ text });
   };
 
   return (
@@ -532,7 +594,7 @@ export default function ConversationPage() {
         {/* Messages */}
         <ChatContainer
           messages={messages}
-          isTyping={isTyping}
+          isTyping={isTyping || (status === "submitted" && messages[messages.length - 1]?.sender === "user")}
           onCitationClick={handleCitationClick}
         />
 
