@@ -288,6 +288,10 @@ model PaperAttempt {
   paperId     String    @db.Uuid
   studentId   String    @db.Uuid
   score       Float?
+  timeTaken   Int?      // seconds
+  answers     Json?     // { "questionId": "answer" }
+  flagged     Json?     // ["questionId", ...]
+  results     Json?     // full per-question results object
   startedAt   DateTime  @default(now())
   submittedAt DateTime?
 
