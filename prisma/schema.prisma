@@ -256,9 +256,10 @@ model Paper {
   totalMarks     Int
   passPercentage Int       @default(35)
 
-  instructions   String?
-  visibility     ContentVisibility @default(STUDENTS_ONLY)
-  status         ContentStatus @default(DRAFT)
+  instructions     String?
+  selectionRules   Json?     // [{ id, label, questionNumbers: number[], required: number }]
+  visibility       ContentVisibility @default(STUDENTS_ONLY)
+  status           ContentStatus @default(DRAFT)
 
   createdById String   @db.Uuid
   createdAt   DateTime @default(now())
@@ -271,14 +272,20 @@ model Paper {
 }
 
 model PaperQuestion {
-  id            String       @id @default(uuid()) @db.Uuid
-  paperId       String       @db.Uuid
-  text          String
-  type          QuestionType @default(MCQ)
-  points        Int          @default(1)
-  options       String[]
-  correctAnswer String
-  order         Int          @default(0)
+  id             String       @id @default(uuid()) @db.Uuid
+  paperId        String       @db.Uuid
+  text           String
+  type           QuestionType @default(MCQ)
+  points         Int          @default(1)
+  options        String[]
+  correctAnswer  String
+  order          Int          @default(0)
+
+  // Structured question hierarchy
+  questionNumber Int?     // main question group number (e.g. 1, 2, 3)
+  subLabel       String?  // first-level sub label (e.g. "a", "b", "c")
+  subSubLabel    String?  // second-level sub label (e.g. "i", "ii", "iii")
+  description    String?  // optional description shown at the top of a main question group
 
   paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
 }

@@ -11,6 +11,18 @@ interface PaperQuestionInput {
   options: string[];
   correctAnswer: string;
   order: number;
+  // Structured question hierarchy
+  questionNumber?: number;
+  subLabel?: string;
+  subSubLabel?: string;
+  description?: string;
+}
+
+export interface SelectionRule {
+  id: number;
+  label?: string;
+  questionNumbers: number[]; // which main question numbers are in this group
+  required: number;          // how many must be answered
 }
 
 interface CreatePaperInput {
@@ -29,6 +41,7 @@ interface CreatePaperInput {
   passPercentage: number;
   instructions?: string;
   visibility?: string;
+  selectionRules?: SelectionRule[];
   questions?: PaperQuestionInput[];
 }
 
@@ -75,6 +88,9 @@ export async function createPaper(input: CreatePaperInput) {
       totalMarks: input.totalMarks,
       passPercentage: input.passPercentage,
       instructions: input.instructions,
+      selectionRules: input.selectionRules && input.selectionRules.length > 0
+        ? (input.selectionRules as object[])
+        : undefined,
       visibility: profile?.role === "ADMIN" ? "PUBLIC" : (input.visibility === "PUBLIC" ? "PUBLIC" : "STUDENTS_ONLY"),
       status: "APPROVED",
       createdById: user.id,
@@ -87,6 +103,10 @@ export async function createPaper(input: CreatePaperInput) {
             options: q.options,
             correctAnswer: q.correctAnswer,
             order: q.order ?? i,
+            questionNumber: q.questionNumber ?? null,
+            subLabel: q.subLabel ?? null,
+            subSubLabel: q.subSubLabel ?? null,
+            description: q.description ?? null,
           })),
         },
       }),
@@ -182,6 +202,11 @@ export interface ExamQuestion {
   type: "MCQ" | "SHORT";
   points: number;
   options: string[];
+  // Structured question hierarchy
+  questionNumber?: number | null;
+  subLabel?: string | null;
+  subSubLabel?: string | null;
+  description?: string | null;
 }
 
 export interface ExamPaperData {
@@ -199,6 +224,7 @@ export interface ExamPaperData {
   essayMarks: number;
   passPercentage: number;
   instructions: string | null;
+  selectionRules: SelectionRule[] | null;
   questions: ExamQuestion[];
 }
 
@@ -217,6 +243,11 @@ export interface QuestionResult {
   questionText: string;
   questionType: "MCQ" | "SHORT";
   options: string[];
+  // Structured hierarchy fields
+  mainQuestionNumber?: number | null;
+  subLabel?: string | null;
+  subSubLabel?: string | null;
+  description?: string | null;
 }
 
 export interface ExamResults {
@@ -226,6 +257,7 @@ export interface ExamResults {
   percentage: number;
   grade: string;
   timeTaken: number; // seconds
+  selectionRules?: SelectionRule[] | null;
   sectionBreakdown: {
     section: string;
     type: string;
@@ -353,6 +385,9 @@ export async function startPaperAttempt(paperId: string): Promise<{
     essayMarks: paper.essayMarks,
     passPercentage: paper.passPercentage,
     instructions: paper.instructions,
+    selectionRules: paper.selectionRules
+      ? (paper.selectionRules as unknown as SelectionRule[])
+      : null,
     questions: paper.questions.map((q, i) => ({
       id: q.id,
       number: i + 1,
@@ -360,6 +395,10 @@ export async function startPaperAttempt(paperId: string): Promise<{
       type: q.type as "MCQ" | "SHORT",
       points: q.points,
       options: q.options,
+      questionNumber: q.questionNumber,
+      subLabel: q.subLabel,
+      subSubLabel: q.subSubLabel,
+      description: q.description,
       // correctAnswer is NOT sent to client
     })),
   };
@@ -439,7 +478,6 @@ export async function submitPaperAttempt(
       aiConfidence = result.aiConfidence;
     }
 
-    totalEarned += marksAwarded;
     questionResults.push({
       questionId: q.id,
       questionNumber: i + 1,
@@ -455,8 +493,60 @@ export async function submitPaperAttempt(
       questionText: q.text,
       questionType: q.type as "MCQ" | "SHORT",
       options: q.options,
+      mainQuestionNumber: q.questionNumber,
+      subLabel: q.subLabel,
+      subSubLabel: q.subSubLabel,
+      description: q.description,
     });
   }
+
+  // ── Apply selection-group rules ──────────────────────────────────────────────
+  // For each selective group, if the student answered more than required,
+  // zero out the lowest-scoring extras so only the best `required` count.
+  const selectionRules = attempt.paper.selectionRules
+    ? (attempt.paper.selectionRules as unknown as SelectionRule[])
+    : [];
+
+  for (const rule of selectionRules) {
+    // All sub-question results whose mainQuestionNumber belongs to this group
+    const groupResults = questionResults.filter(
+      (r) => r.mainQuestionNumber != null && rule.questionNumbers.includes(r.mainQuestionNumber)
+    );
+
+    // Determine which main-question numbers were actually answered (at least one sub answered)
+    const answeredMainNums = [...new Set(
+      groupResults
+        .filter((r) => r.studentAnswer.trim().length > 0)
+        .map((r) => r.mainQuestionNumber!)
+    )];
+
+    if (answeredMainNums.length > rule.required) {
+      // Grade each answered main question by summing its sub-question marks
+      const mainScores = answeredMainNums.map((num) => ({
+        num,
+        score: groupResults
+          .filter((r) => r.mainQuestionNumber === num)
+          .reduce((s, r) => s + r.marksAwarded, 0),
+      }));
+      // Sort ascending — lowest scores get zeroed first
+      mainScores.sort((a, b) => a.score - b.score);
+      const toExclude = mainScores.slice(0, mainScores.length - rule.required).map((m) => m.num);
+
+      for (const excludedNum of toExclude) {
+        groupResults
+          .filter((r) => r.mainQuestionNumber === excludedNum)
+          .forEach((r) => {
+            r.marksAwarded = 0;
+            r.isCorrect = false;
+            r.isPartial = false;
+            r.aiFeedback = `Question ${excludedNum} was not counted — you answered more than the required ${rule.required} question(s) in this group. Your ${rule.required} best-answered question(s) were counted instead.`;
+          });
+      }
+    }
+  }
+
+  // Sum marks after selection-rule adjustments
+  totalEarned = questionResults.reduce((s, r) => s + r.marksAwarded, 0);
 
   const totalMarks = attempt.paper.totalMarks;
   const percentage = totalMarks > 0 ? Math.round((totalEarned / totalMarks) * 100) : 0;
@@ -506,6 +596,7 @@ export async function submitPaperAttempt(
     percentage,
     grade,
     timeTaken,
+    selectionRules: selectionRules.length > 0 ? selectionRules : null,
     sectionBreakdown,
     questionResults,
   };

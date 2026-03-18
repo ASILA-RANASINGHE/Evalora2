@@ -35,6 +35,7 @@ import {
   type ExamQuestion,
   type ExamResults,
   type QuestionResult,
+  type SelectionRule,
 } from "@/lib/actions/paper";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -58,6 +59,30 @@ interface QuestionState extends ExamQuestion {
 type ReviewFilter = "all" | "correct" | "incorrect" | "flagged" | "partial";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Build a display label like "1(a)(i)" for structured questions, or just the sequential number for MCQ */
+function buildQuestionLabel(q: ExamQuestion): string {
+  if (q.type === "MCQ" || !q.questionNumber) return String(q.number);
+  let label = String(q.questionNumber);
+  if (q.subLabel) label += `(${q.subLabel})`;
+  if (q.subSubLabel) label += `(${q.subSubLabel})`;
+  return label;
+}
+
+/** Return the selection rule this question belongs to, or null */
+function getSelectionRule(q: ExamQuestion, rules: SelectionRule[] | null | undefined): SelectionRule | null {
+  if (!rules || !q.questionNumber) return null;
+  return rules.find((r) => r.questionNumbers.includes(q.questionNumber!)) ?? null;
+}
+
+/** Short label for navigation grid, e.g. "1a" or "2bi" */
+function buildShortLabel(q: ExamQuestion): string {
+  if (q.type === "MCQ" || !q.questionNumber) return String(q.number);
+  let label = String(q.questionNumber);
+  if (q.subLabel) label += q.subLabel;
+  if (q.subSubLabel) label += q.subSubLabel;
+  return label;
+}
 
 function formatTime(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -766,21 +791,23 @@ export default function ExamInterface({
                 </Button>
               </div>
               <div className="overflow-y-auto p-6 space-y-6">
-                {results.questionResults.map((qr) => (
-                  <div key={qr.questionId} className="border rounded-xl p-4 space-y-2">
-                    <p className="font-semibold text-sm text-muted-foreground">
-                      Q{qr.questionNumber} – {qr.marksAvailable} mark
-                      {qr.marksAvailable !== 1 ? "s" : ""}
-                    </p>
-                    <p className="text-sm font-medium">{qr.questionText}</p>
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                      <p className="text-xs font-semibold text-green-700 mb-1">
-                        Model Answer
+                {results.questionResults.map((qr) => {
+                  const qLabel = qr.mainQuestionNumber != null
+                    ? `Q${qr.mainQuestionNumber}${qr.subLabel ? `(${qr.subLabel})` : ""}${qr.subSubLabel ? `(${qr.subSubLabel})` : ""}`
+                    : `Q${qr.questionNumber}`;
+                  return (
+                    <div key={qr.questionId} className="border rounded-xl p-4 space-y-2">
+                      <p className="font-semibold text-sm text-muted-foreground">
+                        {qLabel} – {qr.marksAvailable} mark{qr.marksAvailable !== 1 ? "s" : ""}
                       </p>
-                      <p className="text-sm text-green-800">{qr.correctAnswer}</p>
+                      <p className="text-sm font-medium">{qr.questionText}</p>
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <p className="text-xs font-semibold text-green-700 mb-1">Model Answer</p>
+                        <p className="text-sm text-green-800">{qr.correctAnswer}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -841,11 +868,16 @@ export default function ExamInterface({
               value={reviewIndex}
               onChange={(e) => setReviewIndex(Number(e.target.value))}
             >
-              {filtered.map((r, i) => (
-                <option key={r.questionId} value={i}>
-                  Q{r.questionNumber} – {r.questionType}
-                </option>
-              ))}
+              {filtered.map((r, i) => {
+                const label = r.mainQuestionNumber != null
+                  ? `Q${r.mainQuestionNumber}${r.subLabel ? `(${r.subLabel})` : ""}${r.subSubLabel ? `(${r.subSubLabel})` : ""}`
+                  : `Q${r.questionNumber}`;
+                return (
+                  <option key={r.questionId} value={i}>
+                    {label} – {r.questionType}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -856,7 +888,7 @@ export default function ExamInterface({
           ) : currentReview ? (
             <div className="bg-white rounded-2xl border shadow-sm p-6 space-y-6">
               {/* Question header */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <Badge
                   className={`text-sm px-3 py-1 ${
                     currentReview.isCorrect
@@ -875,15 +907,26 @@ export default function ExamInterface({
                   {currentReview.marksAwarded}/{currentReview.marksAvailable} marks
                 </Badge>
                 <span className="text-sm text-muted-foreground">
-                  Question {currentReview.questionNumber} of{" "}
-                  {results.questionResults.length}
+                  {reviewIndex + 1} of {filtered.length}
                 </span>
               </div>
 
+              {/* Description (if any) */}
+              {currentReview.description && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                  <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">Context</p>
+                  <p className="text-sm text-amber-900 whitespace-pre-wrap leading-relaxed">{currentReview.description}</p>
+                </div>
+              )}
+
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                  Question ({currentReview.marksAvailable} mark
-                  {currentReview.marksAvailable !== 1 ? "s" : ""})
+                  Question {
+                    currentReview.mainQuestionNumber != null
+                      ? `${currentReview.mainQuestionNumber}${currentReview.subLabel ? `(${currentReview.subLabel})` : ""}${currentReview.subSubLabel ? `(${currentReview.subSubLabel})` : ""}`
+                      : currentReview.questionNumber
+                  }
+                  {" "}({currentReview.marksAvailable} mark{currentReview.marksAvailable !== 1 ? "s" : ""})
                 </p>
                 <p className="text-base font-medium leading-relaxed">
                   {currentReview.questionText}
@@ -1189,9 +1232,10 @@ export default function ExamInterface({
         {/* LEFT PANEL - Question */}
         <div className="flex-[3] overflow-y-auto p-6 border-r bg-white">
           <div className="max-w-2xl space-y-5">
-            <div className="flex items-center gap-3">
+            {/* Question label + marks badges */}
+            <div className="flex items-center gap-3 flex-wrap">
               <Badge className="bg-purple-100 text-purple-700 text-sm px-3 py-1">
-                Question {question.number}
+                Question {buildQuestionLabel(question)}
               </Badge>
               <Badge variant="outline" className="text-sm">
                 {question.points} mark{question.points !== 1 ? "s" : ""}
@@ -1202,7 +1246,63 @@ export default function ExamInterface({
               >
                 {question.type === "MCQ" ? "Multiple Choice" : "Structured"}
               </Badge>
+              {/* Total marks for the main question group (structured only) */}
+              {question.type === "SHORT" && question.questionNumber != null && (() => {
+                const groupTotal = questions
+                  .filter((q) => q.questionNumber === question.questionNumber && q.type === "SHORT")
+                  .reduce((s, q) => s + q.points, 0);
+                return groupTotal > question.points ? (
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    Q{question.questionNumber} total: <span className="font-semibold text-foreground">{groupTotal} marks</span>
+                  </span>
+                ) : null;
+              })()}
             </div>
+
+            {/* Selection group banner */}
+            {(() => {
+              const rule = getSelectionRule(question, paper.selectionRules);
+              if (!rule) return null;
+              const answeredInGroup = questions.filter(
+                (q) => q.questionNumber != null && rule.questionNumbers.includes(q.questionNumber) && q.isAnswered
+              );
+              const uniqueAnsweredMains = [...new Set(answeredInGroup.map((q) => q.questionNumber))];
+              const count = uniqueAnsweredMains.length;
+              const done = count >= rule.required;
+              return (
+                <div className={`rounded-xl px-4 py-3 border ${done ? "bg-emerald-50 border-emerald-300" : "bg-orange-50 border-orange-300"}`}>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div>
+                      <p className={`text-xs font-semibold uppercase tracking-wide mb-0.5 ${done ? "text-emerald-700" : "text-orange-700"}`}>
+                        Optional Question Group
+                      </p>
+                      <p className={`text-sm font-medium ${done ? "text-emerald-800" : "text-orange-800"}`}>
+                        {rule.label
+                          ? rule.label
+                          : `Answer any ${rule.required} of these ${rule.questionNumbers.length} questions`}
+                      </p>
+                    </div>
+                    <span className={`text-sm font-bold px-2.5 py-1 rounded-full ${done ? "bg-emerald-200 text-emerald-800" : "bg-orange-200 text-orange-800"}`}>
+                      {count}/{rule.required} answered
+                    </span>
+                  </div>
+                  {count > rule.required && (
+                    <p className="text-xs text-orange-600 mt-1.5">
+                      You&apos;ve answered {count} of {rule.required} required — your {rule.required} best-scoring will be counted.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Description */}
+            {question.description && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">Context</p>
+                <p className="text-sm text-amber-900 whitespace-pre-wrap leading-relaxed">{question.description}</p>
+              </div>
+            )}
+
             <p className="text-base leading-relaxed font-medium text-gray-800 whitespace-pre-wrap">
               {question.text}
             </p>
@@ -1316,27 +1416,34 @@ export default function ExamInterface({
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
               Questions
             </p>
-            <div className="grid grid-cols-8 gap-1.5">
+            <div className="flex flex-wrap gap-1.5">
               {questions.map((q, i) => {
                 const isCurrent = i === currentIndex;
                 const isAns = q.isAnswered;
                 const isFlag = q.isFlagged;
+                const label = buildShortLabel(q);
+                const isOptional = !!getSelectionRule(q, paper.selectionRules);
                 return (
-                  <button
-                    key={q.id}
-                    onClick={() => navigateTo(i)}
-                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
-                      isCurrent
-                        ? "bg-blue-600 text-white ring-2 ring-blue-300"
-                        : isFlag
-                          ? "bg-yellow-400 text-white"
-                          : isAns
-                            ? "bg-green-500 text-white"
-                            : "bg-gray-200 text-gray-600 hover:bg-gray-300"
-                    }`}
-                  >
-                    {q.number}
-                  </button>
+                  <div key={q.id} className="relative">
+                    <button
+                      onClick={() => navigateTo(i)}
+                      title={`Question ${buildQuestionLabel(q)} — ${q.points} mark${q.points !== 1 ? "s" : ""}${isOptional ? " (optional group)" : ""}`}
+                      className={`min-w-[2rem] h-8 px-1.5 rounded-lg text-xs font-bold transition-all ${
+                        isCurrent
+                          ? "bg-blue-600 text-white ring-2 ring-blue-300"
+                          : isFlag
+                            ? "bg-yellow-400 text-white"
+                            : isAns
+                              ? "bg-green-500 text-white"
+                              : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                    {isOptional && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-orange-400 border border-white" title="Optional group" />
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -1353,6 +1460,11 @@ export default function ExamInterface({
               <span className="flex items-center gap-1">
                 <span className="w-3 h-3 bg-gray-200 rounded" /> Unanswered
               </span>
+              {paper.selectionRules && paper.selectionRules.length > 0 && (
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-orange-400" /> Optional group
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -1454,6 +1566,32 @@ export default function ExamInterface({
                   {formatMinSec(timeRemaining)}
                 </span>
               </div>
+
+              {/* Optional group status */}
+              {paper?.selectionRules && paper.selectionRules.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Optional Groups</p>
+                  {paper.selectionRules.map((rule) => {
+                    const answeredMains = [...new Set(
+                      questions
+                        .filter((q) => q.questionNumber != null && rule.questionNumbers.includes(q.questionNumber) && q.isAnswered)
+                        .map((q) => q.questionNumber)
+                    )];
+                    const count = answeredMains.length;
+                    const ok = count >= rule.required;
+                    return (
+                      <div key={rule.id} className={`flex justify-between p-3 rounded-xl ${ok ? "bg-emerald-50" : "bg-orange-50"}`}>
+                        <span className="text-sm text-gray-700">
+                          {rule.label || `Answer ${rule.required} of Q${rule.questionNumbers.join(", Q")}`}
+                        </span>
+                        <span className={`font-bold text-sm ${ok ? "text-emerald-700" : "text-orange-600"}`}>
+                          {count}/{rule.required} {ok ? "✓" : "⚠"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="bg-orange-50 border border-orange-200 rounded-xl p-3">

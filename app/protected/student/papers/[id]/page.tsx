@@ -131,7 +131,7 @@ export default async function PaperViewPage({
                     </td>
                     <td className="py-3 text-center">{paper.essayCount}</td>
                     <td className="py-3 text-center font-semibold">
-                      {paper.essayCount * paper.essayMarks}
+                      {paper.totalMarks - paper.mcqCount * paper.mcqMarks}
                     </td>
                   </tr>
                 )}
