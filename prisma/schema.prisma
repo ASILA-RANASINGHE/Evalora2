@@ -19,6 +19,8 @@ enum UserRole {
 enum QuestionType {
   MCQ
   SHORT
+  FILL_BLANK
+  TRUE_FALSE
 }
 
 enum QuizType {
@@ -253,6 +255,10 @@ model Paper {
   mcqMarks       Int       @default(1) // marks per MCQ
   essayCount     Int       @default(0)
   essayMarks     Int       @default(10) // marks per essay
+  tfCount        Int       @default(0)
+  tfMarks        Int       @default(1)
+  fbCount        Int       @default(0)
+  fbMarks        Int       @default(1)
   totalMarks     Int
   passPercentage Int       @default(35)
 

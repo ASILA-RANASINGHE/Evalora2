@@ -38,6 +38,10 @@ interface CreatePaperInput {
   mcqMarks: number;
   essayCount: number;
   essayMarks: number;
+  tfCount: number;
+  tfMarks: number;
+  fbCount: number;
+  fbMarks: number;
   totalMarks: number;
   passPercentage: number;
   instructions?: string;
@@ -86,6 +90,10 @@ export async function createPaper(input: CreatePaperInput) {
       mcqMarks: input.mcqMarks,
       essayCount: input.essayCount,
       essayMarks: input.essayMarks,
+      tfCount: input.tfCount,
+      tfMarks: input.tfMarks,
+      fbCount: input.fbCount,
+      fbMarks: input.fbMarks,
       totalMarks: input.totalMarks,
       passPercentage: input.passPercentage,
       instructions: input.instructions,
@@ -188,6 +196,10 @@ export async function getPaperById(id: string) {
     mcqMarks: paper.mcqMarks,
     essayCount: paper.essayCount,
     essayMarks: paper.essayMarks,
+    tfCount: paper.tfCount,
+    tfMarks: paper.tfMarks,
+    fbCount: paper.fbCount,
+    fbMarks: paper.fbMarks,
     totalMarks: paper.totalMarks,
     passPercentage: paper.passPercentage,
     instructions: paper.instructions,
@@ -201,7 +213,7 @@ export interface ExamQuestion {
   id: string;
   number: number;
   text: string;
-  type: "MCQ" | "SHORT";
+  type: "MCQ" | "SHORT" | "FILL_BLANK" | "TRUE_FALSE";
   points: number;
   options: string[];
   // Structured question hierarchy
@@ -225,6 +237,10 @@ export interface ExamPaperData {
   mcqMarks: number;
   essayCount: number;
   essayMarks: number;
+  tfCount: number;
+  tfMarks: number;
+  fbCount: number;
+  fbMarks: number;
   passPercentage: number;
   instructions: string | null;
   selectionRules: SelectionRule[] | null;
@@ -244,7 +260,7 @@ export interface QuestionResult {
   studentAnswer: string;
   requiresManualReview: boolean;
   questionText: string;
-  questionType: "MCQ" | "SHORT";
+  questionType: "MCQ" | "SHORT" | "FILL_BLANK" | "TRUE_FALSE";
   options: string[];
   // Structured hierarchy fields
   mainQuestionNumber?: number | null;
@@ -386,6 +402,10 @@ export async function startPaperAttempt(paperId: string): Promise<{
     mcqMarks: paper.mcqMarks,
     essayCount: paper.essayCount,
     essayMarks: paper.essayMarks,
+    tfCount: paper.tfCount,
+    tfMarks: paper.tfMarks,
+    fbCount: paper.fbCount,
+    fbMarks: paper.fbMarks,
     passPercentage: paper.passPercentage,
     instructions: paper.instructions,
     selectionRules: paper.selectionRules
@@ -395,7 +415,7 @@ export async function startPaperAttempt(paperId: string): Promise<{
       id: q.id,
       number: i + 1,
       text: q.text,
-      type: q.type as "MCQ" | "SHORT",
+      type: q.type as "MCQ" | "SHORT" | "FILL_BLANK" | "TRUE_FALSE",
       points: q.points,
       options: q.options,
       questionNumber: q.questionNumber,
@@ -473,6 +493,35 @@ export async function submitPaperAttempt(
         ? "Correct! You selected the right answer."
         : `Incorrect. The correct answer is: ${q.correctAnswer}. Review this topic to understand why.`;
       aiConfidence = 99;
+    } else if (q.type === "TRUE_FALSE") {
+      isCorrect = studentAnswer === q.correctAnswer.trim();
+      marksAwarded = isCorrect ? q.points : 0;
+      aiFeedback = isCorrect
+        ? "Correct! You selected the right answer."
+        : `Incorrect. The correct answer is: ${q.correctAnswer}.`;
+      aiConfidence = 99;
+    } else if (q.type === "FILL_BLANK") {
+      const correctBlanks = q.correctAnswer.split("|");
+      const studentBlanks = studentAnswer ? studentAnswer.split("|") : [];
+      let totalCorrect = 0;
+      for (let bi = 0; bi < correctBlanks.length; bi++) {
+        const correct = correctBlanks[bi]?.trim().toLowerCase() ?? "";
+        const student = studentBlanks[bi]?.trim().toLowerCase() ?? "";
+        if (correct && student === correct) totalCorrect++;
+      }
+      const ratio = correctBlanks.length > 0 ? totalCorrect / correctBlanks.length : 0;
+      const raw = ratio * q.points;
+      marksAwarded = Math.min(Math.round(raw * 2) / 2, q.points);
+      isCorrect = ratio === 1;
+      isPartial = ratio > 0 && ratio < 1;
+      aiConfidence = 99;
+      if (isCorrect) {
+        aiFeedback = "Correct! All blanks filled correctly.";
+      } else if (isPartial) {
+        aiFeedback = `Partial credit. You got ${totalCorrect} of ${correctBlanks.length} blanks correct.`;
+      } else {
+        aiFeedback = `Incorrect. Review the correct answers for this question.`;
+      }
     } else {
       const result = gradeStructuredQuestion(studentAnswer, q.correctAnswer, q.points);
       marksAwarded = result.marksAwarded;
@@ -495,7 +544,7 @@ export async function submitPaperAttempt(
       studentAnswer,
       requiresManualReview: q.type === "SHORT" && aiConfidence < 80,
       questionText: q.text,
-      questionType: q.type as "MCQ" | "SHORT",
+      questionType: q.type as "MCQ" | "SHORT" | "FILL_BLANK" | "TRUE_FALSE",
       options: q.options,
       mainQuestionNumber: q.questionNumber,
       subLabel: q.subLabel,
@@ -559,6 +608,8 @@ export async function submitPaperAttempt(
   // Section breakdown
   const mcqResults = questionResults.filter((r) => r.questionType === "MCQ");
   const shortResults = questionResults.filter((r) => r.questionType === "SHORT");
+  const tfResults = questionResults.filter((r) => r.questionType === "TRUE_FALSE");
+  const fbResults = questionResults.filter((r) => r.questionType === "FILL_BLANK");
   const sectionBreakdown = [];
 
   if (mcqResults.length > 0) {
@@ -590,6 +641,38 @@ export async function submitPaperAttempt(
       marksObtained: shortEarned,
       totalMarks: shortMarks,
       percentage: shortMarks > 0 ? Math.round((shortEarned / shortMarks) * 100) : 0,
+    });
+  }
+
+  if (tfResults.length > 0) {
+    const tfMarks = tfResults.reduce((s, r) => s + r.marksAvailable, 0);
+    const tfEarned = tfResults.reduce((s, r) => s + r.marksAwarded, 0);
+    sectionBreakdown.push({
+      section: "Section C",
+      type: "True / False",
+      questions: tfResults.length,
+      correct: tfResults.filter((r) => r.isCorrect).length,
+      incorrect: tfResults.filter((r) => !r.isCorrect && !r.isPartial).length,
+      partial: tfResults.filter((r) => r.isPartial).length,
+      marksObtained: tfEarned,
+      totalMarks: tfMarks,
+      percentage: tfMarks > 0 ? Math.round((tfEarned / tfMarks) * 100) : 0,
+    });
+  }
+
+  if (fbResults.length > 0) {
+    const fbMarks = fbResults.reduce((s, r) => s + r.marksAvailable, 0);
+    const fbEarned = fbResults.reduce((s, r) => s + r.marksAwarded, 0);
+    sectionBreakdown.push({
+      section: "Section D",
+      type: "Fill in the Blank",
+      questions: fbResults.length,
+      correct: fbResults.filter((r) => r.isCorrect).length,
+      incorrect: fbResults.filter((r) => !r.isCorrect && !r.isPartial).length,
+      partial: fbResults.filter((r) => r.isPartial).length,
+      marksObtained: fbEarned,
+      totalMarks: fbMarks,
+      percentage: fbMarks > 0 ? Math.round((fbEarned / fbMarks) * 100) : 0,
     });
   }
 

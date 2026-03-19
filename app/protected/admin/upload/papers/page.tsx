@@ -52,9 +52,11 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.72): Promi
 }
 
 interface McqQuestion {
+  qType: "MCQ" | "TRUE_FALSE" | "FILL_BLANK";
   text: string;
-  options: string[];
-  correctAnswer: string;
+  options: string[];   // MCQ only: 4 answer options
+  correctAnswer: string; // MCQ: selected text; TRUE_FALSE: "True"/"False"; FILL_BLANK: unused (derived from answers)
+  answers: string[];   // FILL_BLANK only: one answer string per ___ blank
   imageData?: string;
 }
 
@@ -130,7 +132,7 @@ export default function AdminUploadPapersPage() {
     setMcqQuestions((prev) => {
       if (mcqCountNum === 0) return [];
       if (mcqCountNum > prev.length)
-        return [...prev, ...Array.from({ length: mcqCountNum - prev.length }, () => ({ text: "", options: ["", "", "", ""], correctAnswer: "" }))];
+        return [...prev, ...Array.from({ length: mcqCountNum - prev.length }, () => ({ qType: "MCQ" as const, text: "", options: ["", "", "", ""], correctAnswer: "", answers: [] }))];
       return prev.slice(0, mcqCountNum);
     });
   }, [mcqCountNum]);
@@ -161,7 +163,9 @@ export default function AdminUploadPapersPage() {
   );
 
   const totalMarks = useMemo(
-    () => mcqCountNum * (parseInt(mcqMarks) || 0) + structuredTotalMarks,
+    () =>
+      mcqCountNum * (parseInt(mcqMarks) || 0) +
+      structuredTotalMarks,
     [mcqCountNum, mcqMarks, structuredTotalMarks]
   );
 
@@ -185,15 +189,39 @@ export default function AdminUploadPapersPage() {
     setSaving(true);
     setSaveError(null);
     try {
-      const mcqFlat = mcqQuestions.map((q, i) => ({
-        text: q.text,
-        type: "MCQ" as const,
-        points: parseInt(mcqMarks) || 1,
-        options: q.options,
-        correctAnswer: q.correctAnswer,
-        order: i,
-        imageUrl: q.imageData || undefined,
-      }));
+      const mcqFlat = mcqQuestions.map((q, i) => {
+        if (q.qType === "TRUE_FALSE") {
+          return {
+            text: q.text,
+            type: "TRUE_FALSE" as const,
+            points: parseInt(mcqMarks) || 1,
+            options: ["True", "False"],
+            correctAnswer: q.correctAnswer || "True",
+            order: i,
+            imageUrl: q.imageData || undefined,
+          };
+        } else if (q.qType === "FILL_BLANK") {
+          return {
+            text: q.text,
+            type: "FILL_BLANK" as const,
+            points: parseInt(mcqMarks) || 1,
+            options: q.answers,
+            correctAnswer: q.answers.join("|"),
+            order: i,
+            imageUrl: q.imageData || undefined,
+          };
+        } else {
+          return {
+            text: q.text,
+            type: "MCQ" as const,
+            points: parseInt(mcqMarks) || 1,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
+            order: i,
+            imageUrl: q.imageData || undefined,
+          };
+        }
+      });
 
       let orderOffset = mcqCountNum;
       const structuredFlat: Parameters<typeof createPaper>[0]["questions"] = [];
@@ -250,6 +278,10 @@ export default function AdminUploadPapersPage() {
         mcqMarks: parseInt(mcqMarks) || 0,
         essayCount: essayCountNum,
         essayMarks: 0,
+        tfCount: 0,
+        tfMarks: 0,
+        fbCount: 0,
+        fbMarks: 0,
         totalMarks,
         passPercentage: parseInt(passPercentage) || 35,
         instructions: notes || undefined,
@@ -488,15 +520,15 @@ export default function AdminUploadPapersPage() {
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs">Number of MCQs</Label>
+                    <Label className="text-xs">Number of Part 1 Questions</Label>
                     <Input type="number" min="0" placeholder="0" value={mcqCount} onChange={(e) => { setMcqCount(e.target.value); if (errors.mcqCount) setErrors((p) => ({ ...p, mcqCount: undefined })); }} />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Marks per MCQ</Label>
+                    <Label className="text-xs">Marks per Question</Label>
                     <Input type="number" min="0" placeholder="0" value={mcqMarks} onChange={(e) => setMcqMarks(e.target.value)} />
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground">Subtotal: {mcqCountNum * (parseInt(mcqMarks) || 0)} marks</p>
+                <p className="text-xs text-muted-foreground">Subtotal: {mcqCountNum * (parseInt(mcqMarks) || 0)} marks — includes MCQ, True/False, and Fill in the Blank</p>
               </div>
 
               <div className="p-4 rounded-lg border bg-muted/20 space-y-3">
@@ -543,12 +575,13 @@ export default function AdminUploadPapersPage() {
           </CardContent>
         </Card>
 
-        {/* MCQ Question Builder */}
+        {/* Part 1 Question Builder */}
         {mcqCountNum > 0 && (
           <div className="space-y-4">
             <h3 className="font-semibold text-lg flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-              MCQ Questions ({mcqCountNum})
+              Part 1 Questions ({mcqCountNum})
+              <span className="text-sm font-normal text-muted-foreground ml-1">MCQ · True/False · Fill in Blank</span>
             </h3>
             {mcqQuestions.map((q, i) => (
               <Card key={i} className="border-border/50 shadow-sm">
@@ -559,13 +592,44 @@ export default function AdminUploadPapersPage() {
                       <span className="text-sm font-bold min-w-6">{i + 1}.</span>
                     </div>
                     <div className="flex-1 space-y-3">
+                      {/* Question type switcher */}
+                      <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
+                        {(["MCQ", "TRUE_FALSE", "FILL_BLANK"] as const).map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => {
+                              const updated = [...mcqQuestions];
+                              updated[i] = { ...updated[i], qType: t, correctAnswer: t === "TRUE_FALSE" ? "True" : "", answers: [] };
+                              setMcqQuestions(updated);
+                            }}
+                            className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
+                              q.qType === t
+                                ? "bg-white dark:bg-gray-700 shadow text-foreground"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            {t === "MCQ" ? "MCQ" : t === "TRUE_FALSE" ? "True / False" : "Fill in Blank"}
+                          </button>
+                        ))}
+                      </div>
+
                       <Input
                         placeholder="Enter question text..."
                         value={q.text}
                         onChange={(e) => {
-                          const updated = [...mcqQuestions];
-                          updated[i] = { ...updated[i], text: e.target.value };
-                          setMcqQuestions(updated);
+                          if (q.qType === "FILL_BLANK") {
+                            const updated = [...mcqQuestions];
+                            const newText = e.target.value;
+                            const blankCount = (newText.match(/___/g) || []).length;
+                            const newAnswers = Array.from({ length: blankCount }, (_, bi) => updated[i].answers[bi] || "");
+                            updated[i] = { ...updated[i], text: newText, answers: newAnswers };
+                            setMcqQuestions(updated);
+                          } else {
+                            const updated = [...mcqQuestions];
+                            updated[i] = { ...updated[i], text: e.target.value };
+                            setMcqQuestions(updated);
+                          }
                         }}
                       />
                       {/* Image upload */}
@@ -586,38 +650,106 @@ export default function AdminUploadPapersPage() {
                           </label>
                         )}
                       </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground">Options (click circle to mark correct answer)</Label>
-                        {q.options.map((opt, optIdx) => (
-                          <div key={optIdx} className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground w-5">{String.fromCharCode(65 + optIdx)}.</span>
-                            <Input
-                              placeholder={`Option ${String.fromCharCode(65 + optIdx)}`}
-                              value={opt}
-                              onChange={(e) => {
-                                const updated = [...mcqQuestions];
-                                const newOpts = [...updated[i].options];
-                                newOpts[optIdx] = e.target.value;
-                                updated[i] = { ...updated[i], options: newOpts };
-                                setMcqQuestions(updated);
-                              }}
-                              className="h-8 text-sm"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = [...mcqQuestions];
-                                updated[i] = { ...updated[i], correctAnswer: opt };
-                                setMcqQuestions(updated);
-                              }}
-                              className={`shrink-0 h-6 w-6 rounded-full border-2 flex items-center justify-center transition-colors ${q.correctAnswer === opt && opt ? "bg-emerald-500 border-emerald-500 text-white" : "border-input hover:border-emerald-400"}`}
-                              title="Mark as correct"
-                            >
-                              {q.correctAnswer === opt && opt && <Check className="h-3 w-3" />}
-                            </button>
+
+                      {/* MCQ options */}
+                      {q.qType === "MCQ" && (
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground">Options (click circle to mark correct answer)</Label>
+                          {q.options.map((opt, optIdx) => (
+                            <div key={optIdx} className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground w-5">{String.fromCharCode(65 + optIdx)}.</span>
+                              <Input
+                                placeholder={`Option ${String.fromCharCode(65 + optIdx)}`}
+                                value={opt}
+                                onChange={(e) => {
+                                  const updated = [...mcqQuestions];
+                                  const newOpts = [...updated[i].options];
+                                  newOpts[optIdx] = e.target.value;
+                                  updated[i] = { ...updated[i], options: newOpts };
+                                  setMcqQuestions(updated);
+                                }}
+                                className="h-8 text-sm"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = [...mcqQuestions];
+                                  updated[i] = { ...updated[i], correctAnswer: opt };
+                                  setMcqQuestions(updated);
+                                }}
+                                className={`shrink-0 h-6 w-6 rounded-full border-2 flex items-center justify-center transition-colors ${q.correctAnswer === opt && opt ? "bg-emerald-500 border-emerald-500 text-white" : "border-input hover:border-emerald-400"}`}
+                                title="Mark as correct"
+                              >
+                                {q.correctAnswer === opt && opt && <Check className="h-3 w-3" />}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* True/False options */}
+                      {q.qType === "TRUE_FALSE" && (
+                        <div className="space-y-2">
+                          <div className="flex gap-3">
+                            {(["True", "False"] as const).map((opt) => (
+                              <button
+                                key={opt}
+                                type="button"
+                                onClick={() => {
+                                  const updated = [...mcqQuestions];
+                                  updated[i] = { ...updated[i], correctAnswer: opt };
+                                  setMcqQuestions(updated);
+                                }}
+                                className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-bold transition-colors ${
+                                  q.correctAnswer === opt
+                                    ? opt === "True"
+                                      ? "border-green-500 bg-green-50 text-green-700"
+                                      : "border-red-500 bg-red-50 text-red-700"
+                                    : "border-input hover:border-gray-400"
+                                }`}
+                              >
+                                {opt === "True" ? "✓ True" : "✗ False"}
+                              </button>
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                          <p className="text-xs text-muted-foreground">Click to set the correct answer</p>
+                        </div>
+                      )}
+
+                      {/* Fill in Blank */}
+                      {q.qType === "FILL_BLANK" && (
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground">Use <code className="bg-muted px-1 rounded">___</code> in your question text for each blank</p>
+                          {(() => {
+                            const blankCount = (q.text.match(/___/g) || []).length;
+                            if (blankCount === 0) return (
+                              <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">Type ___ in the question above to add blanks</p>
+                            );
+                            return (
+                              <div className="space-y-2">
+                                <p className="text-xs font-medium text-muted-foreground">Correct answers for each blank:</p>
+                                {Array.from({ length: blankCount }, (_, bi) => (
+                                  <div key={bi} className="flex items-center gap-2">
+                                    <span className="text-xs font-medium text-purple-600 w-16 shrink-0">Blank {bi + 1}:</span>
+                                    <Input
+                                      placeholder={`Answer for blank ${bi + 1}`}
+                                      value={q.answers[bi] || ""}
+                                      onChange={(e) => {
+                                        const updated = [...mcqQuestions];
+                                        const newAnswers = [...(updated[i].answers || [])];
+                                        newAnswers[bi] = e.target.value;
+                                        updated[i] = { ...updated[i], answers: newAnswers };
+                                        setMcqQuestions(updated);
+                                      }}
+                                      className="h-8 text-sm"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>

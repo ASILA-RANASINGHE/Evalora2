@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,7 +63,7 @@ type ReviewFilter = "all" | "correct" | "incorrect" | "flagged" | "partial";
 
 /** Build a display label like "1(a)(i)" for structured questions, or just the sequential number for MCQ */
 function buildQuestionLabel(q: ExamQuestion): string {
-  if (q.type === "MCQ" || !q.questionNumber) return String(q.number);
+  if (q.type === "MCQ" || q.type === "TRUE_FALSE" || q.type === "FILL_BLANK" || !q.questionNumber) return String(q.number);
   let label = String(q.questionNumber);
   if (q.subLabel) label += `(${q.subLabel})`;
   if (q.subSubLabel) label += `(${q.subSubLabel})`;
@@ -77,7 +78,7 @@ function getSelectionRule(q: ExamQuestion, rules: SelectionRule[] | null | undef
 
 /** Short label for navigation grid, e.g. "1a" or "2bi" */
 function buildShortLabel(q: ExamQuestion): string {
-  if (q.type === "MCQ" || !q.questionNumber) return String(q.number);
+  if (q.type === "MCQ" || q.type === "TRUE_FALSE" || q.type === "FILL_BLANK" || !q.questionNumber) return String(q.number);
   let label = String(q.questionNumber);
   if (q.subLabel) label += q.subLabel;
   if (q.subSubLabel) label += q.subSubLabel;
@@ -983,6 +984,56 @@ export default function ExamInterface({
                 </div>
               )}
 
+              {/* True/False review */}
+              {currentReview.questionType === "TRUE_FALSE" && (
+                <div className="space-y-2">
+                  {["True", "False"].map((opt) => {
+                    const isStudent = currentReview.studentAnswer === opt;
+                    const isCorrect = currentReview.correctAnswer === opt;
+                    return (
+                      <div
+                        key={opt}
+                        className={`flex items-center gap-3 p-3 rounded-lg border text-sm ${
+                          isStudent && isCorrect
+                            ? "bg-green-50 border-green-400"
+                            : isStudent && !isCorrect
+                              ? "bg-red-50 border-red-400"
+                              : isCorrect
+                                ? "bg-green-50 border-green-300"
+                                : "border-gray-200"
+                        }`}
+                      >
+                        {isStudent && isCorrect && <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />}
+                        {isStudent && !isCorrect && <XCircle className="h-4 w-4 text-red-500 shrink-0" />}
+                        {!isStudent && isCorrect && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
+                        {!isStudent && !isCorrect && <span className="w-4 h-4 shrink-0" />}
+                        <span className="font-medium">{opt}</span>
+                        {isStudent && <span className="ml-auto text-xs text-muted-foreground">Your answer</span>}
+                        {!isStudent && isCorrect && <span className="ml-auto text-xs text-green-600 font-medium">Correct answer</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Fill in the Blank review */}
+              {currentReview.questionType === "FILL_BLANK" && (
+                <div className="space-y-3">
+                  {currentReview.correctAnswer.split("|").map((correct, bi) => {
+                    const studentVal = currentReview.studentAnswer ? currentReview.studentAnswer.split("|")[bi] || "" : "";
+                    const isBlankCorrect = studentVal.trim().toLowerCase() === correct.trim().toLowerCase();
+                    return (
+                      <div key={bi} className={`flex items-center gap-3 p-3 rounded-lg border text-sm ${isBlankCorrect ? "bg-green-50 border-green-300" : "bg-red-50 border-red-300"}`}>
+                        {isBlankCorrect ? <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" /> : <XCircle className="h-4 w-4 text-red-500 shrink-0" />}
+                        <span className="text-muted-foreground min-w-16">Blank {bi + 1}:</span>
+                        <span className={`font-medium ${isBlankCorrect ? "text-green-700" : "text-red-600"}`}>{studentVal || <em className="text-muted-foreground not-italic">empty</em>}</span>
+                        {!isBlankCorrect && <span className="ml-auto text-xs text-green-700">Correct: <strong>{correct}</strong></span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Structured side-by-side */}
               {currentReview.questionType === "SHORT" && (
                 <div className="grid md:grid-cols-2 gap-4">
@@ -1216,12 +1267,18 @@ export default function ExamInterface({
           <span className="flex items-center gap-2">
             <span
               className={`px-1.5 py-0.5 rounded text-xs font-semibold ${
-                question.type === "MCQ"
-                  ? "bg-blue-100 text-blue-700"
-                  : "bg-purple-100 text-purple-700"
+                question.type === "SHORT"
+                  ? "bg-purple-100 text-purple-700"
+                  : "bg-blue-100 text-blue-700"
               }`}
             >
-              {question.type === "MCQ" ? "Part 1 · MCQ" : "Part 2 · Structured"}
+              {question.type === "SHORT"
+                ? "Part 2 · Structured"
+                : question.type === "TRUE_FALSE"
+                  ? "Part 1 · True / False"
+                  : question.type === "FILL_BLANK"
+                    ? "Part 1 · Fill in Blank"
+                    : "Part 1 · MCQ"}
             </span>
             Q {currentIndex + 1} of {questions.length}
           </span>
@@ -1250,9 +1307,23 @@ export default function ExamInterface({
               </Badge>
               <Badge
                 variant="outline"
-                className={`text-xs ${question.type === "MCQ" ? "text-blue-600 border-blue-200" : "text-orange-600 border-orange-200"}`}
+                className={`text-xs ${
+                  question.type === "MCQ"
+                    ? "text-blue-600 border-blue-200"
+                    : question.type === "TRUE_FALSE"
+                      ? "text-amber-600 border-amber-200"
+                      : question.type === "FILL_BLANK"
+                        ? "text-teal-600 border-teal-200"
+                        : "text-orange-600 border-orange-200"
+                }`}
               >
-                {question.type === "MCQ" ? "Multiple Choice" : "Structured"}
+                {question.type === "MCQ"
+                  ? "Multiple Choice"
+                  : question.type === "TRUE_FALSE"
+                    ? "True / False"
+                    : question.type === "FILL_BLANK"
+                      ? "Fill in the Blank"
+                      : "Structured"}
               </Badge>
               {/* Total marks for the main question group (structured only) */}
               {question.type === "SHORT" && question.questionNumber != null && (() => {
@@ -1372,6 +1443,68 @@ export default function ExamInterface({
                     );
                   })}
                 </RadioGroup>
+              ) : question.type === "TRUE_FALSE" ? (
+                <div className="space-y-3">
+                  {["True", "False"].map((option) => {
+                    const selected = question.studentAnswer === option;
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => handleAnswer(option)}
+                        className={`w-full p-4 rounded-xl border-2 text-left font-semibold text-lg transition-all flex items-center gap-3 ${
+                          selected
+                            ? option === "True"
+                              ? "border-green-500 bg-green-50 text-green-700"
+                              : "border-red-500 bg-red-50 text-red-700"
+                            : "border-gray-200 hover:border-purple-300 hover:bg-purple-50/50 text-gray-700"
+                        }`}
+                      >
+                        <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+                          selected
+                            ? option === "True" ? "bg-green-500 text-white" : "bg-red-500 text-white"
+                            : "bg-gray-100 text-gray-600"
+                        }`}>
+                          {option === "True" ? "T" : "F"}
+                        </span>
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : question.type === "FILL_BLANK" ? (
+                (() => {
+                  const parts = question.text.split("___");
+                  const filledValues = question.studentAnswer ? question.studentAnswer.split("|") : [];
+                  return (
+                    <div className="space-y-4">
+                      <div className="leading-relaxed text-base flex flex-wrap items-center gap-1">
+                        {parts.map((part, pi) => (
+                          <React.Fragment key={pi}>
+                            <span className="text-gray-800">{part}</span>
+                            {pi < parts.length - 1 && (
+                              <input
+                                type="text"
+                                value={filledValues[pi] || ""}
+                                onChange={(e) => {
+                                  const newValues = [...Array(parts.length - 1)].map((_, bi) =>
+                                    bi === pi ? e.target.value : (filledValues[bi] || "")
+                                  );
+                                  handleAnswer(newValues.join("|"));
+                                }}
+                                className="border-b-2 border-purple-400 bg-transparent text-center text-sm font-medium focus:outline-none focus:border-purple-600 px-2 min-w-[80px] max-w-[150px]"
+                                placeholder={`blank ${pi + 1}`}
+                              />
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {parts.length - 1} blank{parts.length - 1 !== 1 ? "s" : ""} to fill in
+                      </p>
+                    </div>
+                  );
+                })()
               ) : (
                 <div className="space-y-3">
                   <Textarea
@@ -1443,39 +1576,42 @@ export default function ExamInterface({
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
               Questions
             </p>
-            {/* Part 1: MCQs */}
+            {/* Part 1: MCQ / True/False / Fill in Blank */}
             {paper.mcqCount > 0 && (
               <div className="mb-3">
                 <p className="text-xs font-semibold text-blue-600 mb-1.5 flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
-                  Part 1 — MCQ ({paper.mcqCount})
+                  Part 1 — Questions ({paper.mcqCount})
                 </p>
                 <div className="flex flex-wrap gap-1.5">
-                  {questions.filter((q) => q.type === "MCQ").map((q) => {
-                    const i = questions.indexOf(q);
-                    const isCurrent = i === currentIndex;
-                    const isAns = q.isAnswered;
-                    const isFlag = q.isFlagged;
-                    const label = buildShortLabel(q);
-                    return (
-                      <button
-                        key={q.id}
-                        onClick={() => navigateTo(i)}
-                        title={`MCQ ${q.number} — ${q.points} mark${q.points !== 1 ? "s" : ""}`}
-                        className={`min-w-[2rem] h-8 px-1.5 rounded-lg text-xs font-bold transition-all ${
-                          isCurrent
-                            ? "bg-blue-600 text-white ring-2 ring-blue-300"
-                            : isFlag
-                              ? "bg-yellow-400 text-white"
-                              : isAns
-                                ? "bg-green-500 text-white"
-                                : "bg-gray-200 text-gray-600 hover:bg-gray-300"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
+                  {questions
+                    .filter((q) => q.type === "MCQ" || q.type === "TRUE_FALSE" || q.type === "FILL_BLANK")
+                    .map((q) => {
+                      const i = questions.indexOf(q);
+                      const isCurrent = i === currentIndex;
+                      const isAns = q.isAnswered;
+                      const isFlag = q.isFlagged;
+                      const label = buildShortLabel(q);
+                      const typeTag = q.type === "TRUE_FALSE" ? " T/F" : q.type === "FILL_BLANK" ? " FB" : "";
+                      return (
+                        <button
+                          key={q.id}
+                          onClick={() => navigateTo(i)}
+                          title={`${q.type === "TRUE_FALSE" ? "True/False" : q.type === "FILL_BLANK" ? "Fill Blank" : "MCQ"} ${q.number} — ${q.points} mark${q.points !== 1 ? "s" : ""}`}
+                          className={`min-w-[2rem] h-8 px-1.5 rounded-lg text-xs font-bold transition-all ${
+                            isCurrent
+                              ? "bg-blue-600 text-white ring-2 ring-blue-300"
+                              : isFlag
+                                ? "bg-yellow-400 text-white"
+                                : isAns
+                                  ? "bg-green-500 text-white"
+                                  : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                          }`}
+                        >
+                          {label}{typeTag}
+                        </button>
+                      );
+                    })}
                 </div>
               </div>
             )}

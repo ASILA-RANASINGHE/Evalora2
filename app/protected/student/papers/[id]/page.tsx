@@ -154,7 +154,7 @@ export default async function PaperViewPage({
                   <tr>
                     <td className="py-3 font-medium">Section A</td>
                     <td className="py-3 text-muted-foreground">
-                      Multiple Choice (MCQ)
+                      Part 1 — MCQ / True/False / Fill in Blank
                     </td>
                     <td className="py-3 text-center">{paper.mcqCount}</td>
                     <td className="py-3 text-center font-semibold">
