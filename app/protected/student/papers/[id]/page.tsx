@@ -11,9 +11,11 @@ import {
   Play,
   BookOpen,
   Hash,
+  RotateCcw,
+  Trophy,
 } from "lucide-react";
 
-import { getPaperById } from "@/lib/actions/paper";
+import { getPaperById, getStudentPaperAttempts } from "@/lib/actions/paper";
 import { notFound } from "next/navigation";
 
 const termLabels: Record<string, string> = {
@@ -24,13 +26,35 @@ const termLabels: Record<string, string> = {
   END_OF_YEAR: "End of Year",
 };
 
+const gradeColors: Record<string, string> = {
+  "A+": "text-green-600",
+  A: "text-green-500",
+  "B+": "text-blue-600",
+  B: "text-blue-500",
+  C: "text-yellow-600",
+  S: "text-orange-500",
+  F: "text-red-600",
+};
+
+function formatDuration(minutes: number): string {
+  if (minutes >= 60) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return `${h}h${m > 0 ? ` ${m}m` : ""}`;
+  }
+  return `${minutes}m`;
+}
+
 export default async function PaperViewPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const paper = await getPaperById(id);
+  const [paper, attempts] = await Promise.all([
+    getPaperById(id),
+    getStudentPaperAttempts(id),
+  ]);
 
   if (!paper) notFound();
 
@@ -38,6 +62,11 @@ export default async function PaperViewPage({
     paper.duration >= 60
       ? `${Math.floor(paper.duration / 60)} Hour${Math.floor(paper.duration / 60) > 1 ? "s" : ""}${paper.duration % 60 > 0 ? ` ${paper.duration % 60} Min` : ""}`
       : `${paper.duration} Minutes`;
+
+  const hasAttempts = attempts.length > 0;
+  const bestAttempt = hasAttempts
+    ? attempts.reduce((best, a) => (a.score > best.score ? a : best), attempts[0])
+    : null;
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
@@ -173,6 +202,81 @@ export default async function PaperViewPage({
         </Card>
       )}
 
+      {/* Past Attempts */}
+      {hasAttempts && (
+        <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/10">
+          <CardContent className="p-6 space-y-4">
+            <div className="flex items-center gap-2 font-semibold text-base text-green-700">
+              <Trophy className="h-5 w-5" />
+              Your Attempts
+              <Badge className="ml-auto bg-green-100 text-green-700 text-xs">
+                {attempts.length} attempt{attempts.length !== 1 ? "s" : ""}
+              </Badge>
+            </div>
+
+            {/* Best score highlight */}
+            {bestAttempt && (
+              <div className="flex items-center justify-between bg-white dark:bg-card rounded-xl border border-green-200 px-4 py-3">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Best Score</p>
+                  <p className="text-2xl font-bold mt-0.5">
+                    <span className={gradeColors[bestAttempt.grade] ?? "text-gray-700"}>
+                      {bestAttempt.grade}
+                    </span>
+                    <span className="text-base font-semibold text-muted-foreground ml-2">
+                      {bestAttempt.score}%
+                    </span>
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(bestAttempt.submittedAt).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Time: {formatDuration(Math.ceil(bestAttempt.timeTaken / 60))}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* All attempts list */}
+            {attempts.length > 1 && (
+              <div className="space-y-2">
+                {attempts.map((attempt, idx) => (
+                  <div
+                    key={attempt.id}
+                    className="flex items-center justify-between text-sm px-3 py-2.5 rounded-lg bg-white dark:bg-card border border-border/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-muted-foreground font-medium w-16 shrink-0">
+                        Attempt {attempts.length - idx}
+                      </span>
+                      <span className={`font-bold ${gradeColors[attempt.grade] ?? "text-gray-700"}`}>
+                        {attempt.grade} — {attempt.score}%
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground text-right">
+                      <span>
+                        {new Date(attempt.submittedAt).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                        })}
+                      </span>
+                      <span className="mx-1.5">&bull;</span>
+                      <span>{formatDuration(Math.ceil(attempt.timeTaken / 60))}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Warning */}
       <Card className="border-l-4 border-l-red-500 bg-red-50">
         <CardContent className="p-5 flex items-start gap-3">
@@ -195,8 +299,17 @@ export default async function PaperViewPage({
             size="lg"
             className="h-14 px-10 text-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all gap-3"
           >
-            <Play className="h-5 w-5" />
-            Start Paper
+            {hasAttempts ? (
+              <>
+                <RotateCcw className="h-5 w-5" />
+                Attempt Again
+              </>
+            ) : (
+              <>
+                <Play className="h-5 w-5" />
+                Start Paper
+              </>
+            )}
           </Button>
         </Link>
         <p className="mt-3 text-sm text-muted-foreground flex items-center justify-center gap-2">

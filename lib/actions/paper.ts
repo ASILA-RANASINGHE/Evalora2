@@ -659,6 +659,40 @@ export async function getIncompleteAttempt(paperId: string): Promise<{ attemptId
   return attempt ? { attemptId: attempt.id, startedAt: attempt.startedAt } : null;
 }
 
+/** Get all completed attempts for a paper by the current student */
+export async function getStudentPaperAttempts(paperId: string): Promise<{
+  id: string;
+  score: number;
+  grade: string;
+  timeTaken: number;
+  submittedAt: Date;
+  totalMarks: number;
+}[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const paper = await prisma.paper.findUnique({
+    where: { id: paperId },
+    select: { totalMarks: true },
+  });
+
+  const attempts = await prisma.paperAttempt.findMany({
+    where: { paperId, studentId: user.id, submittedAt: { not: null } },
+    orderBy: { submittedAt: "desc" },
+    select: { id: true, score: true, timeTaken: true, submittedAt: true },
+  });
+
+  return attempts.map((a) => ({
+    id: a.id,
+    score: a.score ?? 0,
+    grade: calculateGrade(a.score ?? 0),
+    timeTaken: a.timeTaken ?? 0,
+    submittedAt: a.submittedAt!,
+    totalMarks: paper?.totalMarks ?? 0,
+  }));
+}
+
 /** Flag a question for teacher manual review */
 export async function requestManualReview(attemptId: string, questionId: string): Promise<{ ok: boolean }> {
   const supabase = await createClient();

@@ -1344,9 +1344,10 @@ export default function ExamInterface({
                   {question.options.map((opt, oi) => {
                     const label = ["A", "B", "C", "D", "E"][oi] ?? String(oi + 1);
                     const selected = question.studentAnswer === opt;
+                    const optId = `opt-${question.id}-${oi}`;
                     return (
                       <div
-                        key={opt}
+                        key={`mcq-opt-${oi}`}
                         className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
                           selected
                             ? "border-purple-500 bg-purple-50"
@@ -1363,8 +1364,8 @@ export default function ExamInterface({
                         >
                           {label}
                         </div>
-                        <RadioGroupItem value={opt} id={`opt-${oi}`} className="hidden" />
-                        <Label htmlFor={`opt-${oi}`} className="cursor-pointer flex-1 text-sm">
+                        <RadioGroupItem value={opt} id={optId} className="hidden" />
+                        <Label htmlFor={optId} className="cursor-pointer flex-1 text-sm leading-relaxed">
                           {opt}
                         </Label>
                       </div>
@@ -1372,16 +1373,23 @@ export default function ExamInterface({
                   })}
                 </RadioGroup>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Textarea
-                    placeholder="Type your answer here..."
+                    placeholder="Write your answer here. Press Enter to start a new paragraph..."
                     value={question.studentAnswer}
                     onChange={(e) => handleAnswer(e.target.value)}
-                    className="min-h-[180px] text-sm resize-none"
+                    className="min-h-[220px] text-sm leading-relaxed"
                   />
-                  <p className="text-xs text-muted-foreground text-right">
-                    {question.studentAnswer.length} characters
-                  </p>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="text-blue-600 font-medium">
+                      {question.points} mark{question.points !== 1 ? "s" : ""} — write clearly and in full sentences
+                    </span>
+                    <span>
+                      {question.studentAnswer.trim() === ""
+                        ? "0 words"
+                        : `${question.studentAnswer.trim().split(/\s+/).length} words`}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>

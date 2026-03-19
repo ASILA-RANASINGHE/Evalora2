@@ -673,37 +673,38 @@ export default function AdminUploadPapersPage() {
                         const subLabelStr = subLabels[subIdx];
                         return (
                           <div key={subIdx} className="border rounded-lg p-3 bg-muted/10 space-y-3">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-start gap-2">
                               {showSubLabel && (
-                                <span className="text-sm font-bold text-purple-600 dark:text-purple-400 min-w-[1.5rem]">
+                                <span className="text-sm font-bold text-purple-600 dark:text-purple-400 min-w-[1.5rem] pt-2">
                                   {subLabelStr})
                                 </span>
                               )}
-                              <div className="flex-1 grid grid-cols-[1fr_auto] gap-2">
-                                <Input
-                                  placeholder={`Sub-question ${showSubLabel ? subLabelStr + ") " : ""}text...`}
+                              <div className="flex-1 space-y-2">
+                                <textarea
+                                  placeholder={`Sub-question ${showSubLabel ? subLabelStr + ") " : ""}text... (Enter for new line)`}
                                   value={sub.text}
                                   onChange={(e) => updateSub(mainIdx, subIdx, { text: e.target.value })}
-                                  className="h-8 text-sm"
+                                  rows={2}
+                                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y min-h-[2.5rem]"
                                 />
                                 {sub.subSubs.length === 0 && (
-                                  <div className="flex items-center gap-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs text-muted-foreground">Marks:</span>
                                     <Input
                                       type="number"
                                       min="0"
                                       value={sub.marks}
                                       onChange={(e) => updateSub(mainIdx, subIdx, { marks: parseInt(e.target.value) || 0 })}
-                                      className="h-8 text-sm w-16 text-center"
+                                      className="h-7 text-sm w-16 text-center"
                                       title="Marks"
                                     />
-                                    <span className="text-xs text-muted-foreground whitespace-nowrap">mk</span>
                                   </div>
                                 )}
                               </div>
                               <button
                                 type="button"
                                 onClick={() => removeSub(mainIdx, subIdx)}
-                                className="text-red-400 hover:text-red-600 transition-colors shrink-0"
+                                className="text-red-400 hover:text-red-600 transition-colors shrink-0 mt-1"
                                 title="Remove sub-question"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -737,32 +738,35 @@ export default function AdminUploadPapersPage() {
                               <div className="space-y-2 pl-4 border-l-2 border-purple-200 dark:border-purple-800">
                                 {sub.subSubs.map((ss, ssIdx) => (
                                   <div key={ssIdx} className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs font-bold text-purple-500 min-w-[1.75rem]">
+                                    <div className="flex items-start gap-2">
+                                      <span className="text-xs font-bold text-purple-500 min-w-[1.75rem] mt-2">
                                         {romanNumerals[ssIdx]})
                                       </span>
-                                      <Input
-                                        placeholder={`Sub-part ${romanNumerals[ssIdx]}) text...`}
+                                      <textarea
+                                        placeholder={`Sub-part ${romanNumerals[ssIdx]}) text... (Enter for new line)`}
                                         value={ss.text}
                                         onChange={(e) => updateSubSub(mainIdx, subIdx, ssIdx, { text: e.target.value })}
-                                        className="h-8 text-sm flex-1"
+                                        rows={2}
+                                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y min-h-[2.5rem] flex-1"
                                       />
-                                      <Input
-                                        type="number"
-                                        min="0"
-                                        value={ss.marks}
-                                        onChange={(e) => updateSubSub(mainIdx, subIdx, ssIdx, { marks: parseInt(e.target.value) || 0 })}
-                                        className="h-8 text-sm w-16 text-center"
-                                        title="Marks"
-                                      />
-                                      <span className="text-xs text-muted-foreground">mk</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => removeSubSub(mainIdx, subIdx, ssIdx)}
-                                        className="text-red-400 hover:text-red-600 transition-colors"
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </button>
+                                      <div className="flex items-center gap-1 mt-1 shrink-0">
+                                        <Input
+                                          type="number"
+                                          min="0"
+                                          value={ss.marks}
+                                          onChange={(e) => updateSubSub(mainIdx, subIdx, ssIdx, { marks: parseInt(e.target.value) || 0 })}
+                                          className="h-8 text-sm w-16 text-center"
+                                          title="Marks"
+                                        />
+                                        <span className="text-xs text-muted-foreground">mk</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => removeSubSub(mainIdx, subIdx, ssIdx)}
+                                          className="text-red-400 hover:text-red-600 transition-colors"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </button>
+                                      </div>
                                     </div>
                                     <div className="ml-[1.75rem] space-y-1.5">
                                       {ss.imageData ? (
