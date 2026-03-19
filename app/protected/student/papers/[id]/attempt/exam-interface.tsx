@@ -1213,9 +1213,17 @@ export default function ExamInterface({
       {/* ── Progress Bar ── */}
       <div className="bg-white border-b px-4 py-2 shrink-0">
         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-          <span>
-            Question {currentIndex + 1} of {questions.length} &mdash;{" "}
-            {Math.round(((currentIndex + 1) / questions.length) * 100)}% complete
+          <span className="flex items-center gap-2">
+            <span
+              className={`px-1.5 py-0.5 rounded text-xs font-semibold ${
+                question.type === "MCQ"
+                  ? "bg-blue-100 text-blue-700"
+                  : "bg-purple-100 text-purple-700"
+              }`}
+            >
+              {question.type === "MCQ" ? "Part 1 · MCQ" : "Part 2 · Structured"}
+            </span>
+            Q {currentIndex + 1} of {questions.length}
           </span>
           <span>
             {answeredCount}/{questions.length} answered
@@ -1306,6 +1314,17 @@ export default function ExamInterface({
             <p className="text-base leading-relaxed font-medium text-gray-800 whitespace-pre-wrap">
               {question.text}
             </p>
+
+            {/* Question image */}
+            {question.imageUrl && (
+              <div className="rounded-xl border overflow-hidden bg-gray-50">
+                <img
+                  src={question.imageUrl}
+                  alt="Question image"
+                  className="max-w-full max-h-64 object-contain mx-auto block"
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -1416,37 +1435,83 @@ export default function ExamInterface({
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
               Questions
             </p>
-            <div className="flex flex-wrap gap-1.5">
-              {questions.map((q, i) => {
-                const isCurrent = i === currentIndex;
-                const isAns = q.isAnswered;
-                const isFlag = q.isFlagged;
-                const label = buildShortLabel(q);
-                const isOptional = !!getSelectionRule(q, paper.selectionRules);
-                return (
-                  <div key={q.id} className="relative">
-                    <button
-                      onClick={() => navigateTo(i)}
-                      title={`Question ${buildQuestionLabel(q)} — ${q.points} mark${q.points !== 1 ? "s" : ""}${isOptional ? " (optional group)" : ""}`}
-                      className={`min-w-[2rem] h-8 px-1.5 rounded-lg text-xs font-bold transition-all ${
-                        isCurrent
-                          ? "bg-blue-600 text-white ring-2 ring-blue-300"
-                          : isFlag
-                            ? "bg-yellow-400 text-white"
-                            : isAns
-                              ? "bg-green-500 text-white"
-                              : "bg-gray-200 text-gray-600 hover:bg-gray-300"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                    {isOptional && (
-                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-orange-400 border border-white" title="Optional group" />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            {/* Part 1: MCQs */}
+            {paper.mcqCount > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-blue-600 mb-1.5 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+                  Part 1 — MCQ ({paper.mcqCount})
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {questions.filter((q) => q.type === "MCQ").map((q) => {
+                    const i = questions.indexOf(q);
+                    const isCurrent = i === currentIndex;
+                    const isAns = q.isAnswered;
+                    const isFlag = q.isFlagged;
+                    const label = buildShortLabel(q);
+                    return (
+                      <button
+                        key={q.id}
+                        onClick={() => navigateTo(i)}
+                        title={`MCQ ${q.number} — ${q.points} mark${q.points !== 1 ? "s" : ""}`}
+                        className={`min-w-[2rem] h-8 px-1.5 rounded-lg text-xs font-bold transition-all ${
+                          isCurrent
+                            ? "bg-blue-600 text-white ring-2 ring-blue-300"
+                            : isFlag
+                              ? "bg-yellow-400 text-white"
+                              : isAns
+                                ? "bg-green-500 text-white"
+                                : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {/* Part 2: Structured */}
+            {paper.essayCount > 0 && (
+              <div className="mb-1">
+                <p className="text-xs font-semibold text-purple-600 mb-1.5 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" />
+                  Part 2 — Structured ({paper.essayCount})
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {questions.filter((q) => q.type === "SHORT").map((q) => {
+                    const i = questions.indexOf(q);
+                    const isCurrent = i === currentIndex;
+                    const isAns = q.isAnswered;
+                    const isFlag = q.isFlagged;
+                    const label = buildShortLabel(q);
+                    const isOptional = !!getSelectionRule(q, paper.selectionRules);
+                    return (
+                      <div key={q.id} className="relative">
+                        <button
+                          onClick={() => navigateTo(i)}
+                          title={`Question ${buildQuestionLabel(q)} — ${q.points} mark${q.points !== 1 ? "s" : ""}${isOptional ? " (optional group)" : ""}`}
+                          className={`min-w-[2rem] h-8 px-1.5 rounded-lg text-xs font-bold transition-all ${
+                            isCurrent
+                              ? "bg-blue-600 text-white ring-2 ring-blue-300"
+                              : isFlag
+                                ? "bg-yellow-400 text-white"
+                                : isAns
+                                  ? "bg-green-500 text-white"
+                                  : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                        {isOptional && (
+                          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-orange-400 border border-white" title="Optional group" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <div className="flex flex-wrap gap-3 mt-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <span className="w-3 h-3 bg-green-500 rounded" /> Answered

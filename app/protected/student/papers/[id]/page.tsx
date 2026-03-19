@@ -12,6 +12,7 @@ import {
   BookOpen,
   Hash,
 } from "lucide-react";
+
 import { getPaperById } from "@/lib/actions/paper";
 import { notFound } from "next/navigation";
 
@@ -38,8 +39,6 @@ export default async function PaperViewPage({
       ? `${Math.floor(paper.duration / 60)} Hour${Math.floor(paper.duration / 60) > 1 ? "s" : ""}${paper.duration % 60 > 0 ? ` ${paper.duration % 60} Min` : ""}`
       : `${paper.duration} Minutes`;
 
-  const totalQuestions = paper.mcqCount + paper.essayCount;
-
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <Link
@@ -63,7 +62,7 @@ export default async function PaperViewPage({
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-5 flex flex-col items-center text-center gap-2">
             <Clock className="h-7 w-7 text-blue-500" />
@@ -71,13 +70,24 @@ export default async function PaperViewPage({
             <span className="text-xs text-muted-foreground">Time Limit</span>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-5 flex flex-col items-center text-center gap-2">
-            <Hash className="h-7 w-7 text-purple-500" />
-            <span className="font-bold text-lg">{totalQuestions} Questions</span>
-            <span className="text-xs text-muted-foreground">Total</span>
-          </CardContent>
-        </Card>
+        {paper.mcqCount > 0 && (
+          <Card>
+            <CardContent className="p-5 flex flex-col items-center text-center gap-2">
+              <Hash className="h-7 w-7 text-blue-500" />
+              <span className="font-bold text-lg">{paper.mcqCount}</span>
+              <span className="text-xs text-muted-foreground">MCQs (Part 1)</span>
+            </CardContent>
+          </Card>
+        )}
+        {paper.essayCount > 0 && (
+          <Card>
+            <CardContent className="p-5 flex flex-col items-center text-center gap-2">
+              <FileText className="h-7 w-7 text-purple-500" />
+              <span className="font-bold text-lg">{paper.essayCount}</span>
+              <span className="text-xs text-muted-foreground">Structured (Part 2)</span>
+            </CardContent>
+          </Card>
+        )}
         <Card>
           <CardContent className="p-5 flex flex-col items-center text-center gap-2">
             <CheckCircle2 className="h-7 w-7 text-green-500" />
@@ -135,11 +145,11 @@ export default async function PaperViewPage({
                     </td>
                   </tr>
                 )}
-                <tr className="font-bold bg-gray-50">
+                <tr className="font-bold bg-gray-50 dark:bg-muted/30">
                   <td className="py-3" colSpan={2}>
                     Total
                   </td>
-                  <td className="py-3 text-center">{totalQuestions}</td>
+                  <td className="py-3 text-center">{paper.mcqCount + paper.essayCount}</td>
                   <td className="py-3 text-center">{paper.totalMarks}</td>
                 </tr>
               </tbody>
@@ -191,7 +201,7 @@ export default async function PaperViewPage({
         </Link>
         <p className="mt-3 text-sm text-muted-foreground flex items-center justify-center gap-2">
           <FileText className="h-4 w-4" />
-          {totalQuestions} questions &bull; {paper.totalMarks} marks &bull;{" "}
+          {paper.mcqCount + paper.essayCount} questions &bull; {paper.totalMarks} marks &bull;{" "}
           {durationLabel}
         </p>
       </div>

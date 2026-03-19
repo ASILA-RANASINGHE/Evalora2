@@ -16,6 +16,7 @@ interface PaperQuestionInput {
   subLabel?: string;
   subSubLabel?: string;
   description?: string;
+  imageUrl?: string;
 }
 
 export interface SelectionRule {
@@ -107,6 +108,7 @@ export async function createPaper(input: CreatePaperInput) {
             subLabel: q.subLabel ?? null,
             subSubLabel: q.subSubLabel ?? null,
             description: q.description ?? null,
+            imageUrl: q.imageUrl ?? null,
           })),
         },
       }),
@@ -207,6 +209,7 @@ export interface ExamQuestion {
   subLabel?: string | null;
   subSubLabel?: string | null;
   description?: string | null;
+  imageUrl?: string | null;
 }
 
 export interface ExamPaperData {
@@ -399,6 +402,7 @@ export async function startPaperAttempt(paperId: string): Promise<{
       subLabel: q.subLabel,
       subSubLabel: q.subSubLabel,
       description: q.description,
+      imageUrl: q.imageUrl,
       // correctAnswer is NOT sent to client
     })),
   };

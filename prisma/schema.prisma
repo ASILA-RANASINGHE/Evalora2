@@ -286,6 +286,7 @@ model PaperQuestion {
   subLabel       String?  // first-level sub label (e.g. "a", "b", "c")
   subSubLabel    String?  // second-level sub label (e.g. "i", "ii", "iii")
   description    String?  // optional description shown at the top of a main question group
+  imageUrl       String?  // optional compressed image (base64 data URL) attached to the question
 
   paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
 }

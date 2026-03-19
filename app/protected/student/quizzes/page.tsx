@@ -16,6 +16,15 @@ import {
   Globe,
   Landmark,
   Monitor,
+  Languages,
+  Leaf,
+  ShoppingBag,
+  Wrench,
+  Palette,
+  Music,
+  Mic,
+  Users,
+  Heart,
 } from "lucide-react";
 
 const stats = [
@@ -49,13 +58,25 @@ const stats = [
   },
 ];
 
-const subjects = [
-  { name: "Mathematics", icon: Calculator, topics: 6, completed: 8, total: 12, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30", border: "border-blue-200 dark:border-blue-800", hoverBorder: "hover:border-blue-400" },
-  { name: "Science", icon: FlaskConical, topics: 5, completed: 5, total: 10, color: "text-green-600", bg: "bg-green-50 dark:bg-green-950/30", border: "border-green-200 dark:border-green-800", hoverBorder: "hover:border-green-400" },
-  { name: "English", icon: BookOpen, topics: 4, completed: 6, total: 8, color: "text-red-600", bg: "bg-red-50 dark:bg-red-950/30", border: "border-red-200 dark:border-red-800", hoverBorder: "hover:border-red-400" },
+const workingSubjects = [
   { name: "History", icon: Landmark, topics: 5, completed: 3, total: 10, color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-950/30", border: "border-orange-200 dark:border-orange-800", hoverBorder: "hover:border-orange-400" },
+  { name: "English", icon: BookOpen, topics: 4, completed: 6, total: 8, color: "text-red-600", bg: "bg-red-50 dark:bg-red-950/30", border: "border-red-200 dark:border-red-800", hoverBorder: "hover:border-red-400" },
   { name: "Geography", icon: Globe, topics: 4, completed: 2, total: 8, color: "text-teal-600", bg: "bg-teal-50 dark:bg-teal-950/30", border: "border-teal-200 dark:border-teal-800", hoverBorder: "hover:border-teal-400" },
-  { name: "ICT", icon: Monitor, topics: 5, completed: 4, total: 10, color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30", border: "border-purple-200 dark:border-purple-800", hoverBorder: "hover:border-purple-400" },
+  { name: "Civic Education", icon: Users, topics: 3, completed: 0, total: 6, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30", border: "border-blue-200 dark:border-blue-800", hoverBorder: "hover:border-blue-400" },
+  { name: "Health", icon: Heart, topics: 3, completed: 1, total: 6, color: "text-pink-600", bg: "bg-pink-50 dark:bg-pink-950/30", border: "border-pink-200 dark:border-pink-800", hoverBorder: "hover:border-pink-400" },
+];
+
+const comingSoonSubjects = [
+  { name: "Sinhala", icon: Languages, color: "text-yellow-600", bg: "bg-yellow-50 dark:bg-yellow-950/30", border: "border-yellow-200 dark:border-yellow-800" },
+  { name: "Mathematics", icon: Calculator, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30", border: "border-blue-200 dark:border-blue-800" },
+  { name: "Science", icon: FlaskConical, color: "text-green-600", bg: "bg-green-50 dark:bg-green-950/30", border: "border-green-200 dark:border-green-800" },
+  { name: "Buddhism", icon: Leaf, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/30", border: "border-amber-200 dark:border-amber-800" },
+  { name: "ICT", icon: Monitor, color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30", border: "border-purple-200 dark:border-purple-800" },
+  { name: "Commerce", icon: ShoppingBag, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30", border: "border-emerald-200 dark:border-emerald-800" },
+  { name: "PTS", icon: Wrench, color: "text-gray-600", bg: "bg-gray-50 dark:bg-gray-800/30", border: "border-gray-200 dark:border-gray-700" },
+  { name: "Art", icon: Palette, color: "text-rose-600", bg: "bg-rose-50 dark:bg-rose-950/30", border: "border-rose-200 dark:border-rose-800" },
+  { name: "Music", icon: Music, color: "text-indigo-600", bg: "bg-indigo-50 dark:bg-indigo-950/30", border: "border-indigo-200 dark:border-indigo-800" },
+  { name: "Drama", icon: Mic, color: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950/30", border: "border-violet-200 dark:border-violet-800" },
 ];
 
 const recommended = [
@@ -122,17 +143,17 @@ export default function QuizzesPage() {
         })}
       </div>
 
-      {/* Subject Grid */}
+      {/* Available Subjects */}
       <div>
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-purple-500" />
-          Browse by Subject
+          Available Subjects
         </h3>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {subjects.map((subject) => {
+          {workingSubjects.map((subject) => {
             const Icon = subject.icon;
             return (
-              <Link href={`/protected/student/quizzes/subject/${subject.name.toLowerCase()}`} key={subject.name}>
+              <Link href={`/protected/student/quizzes/subject/${subject.name.toLowerCase().replace(/ /g, "-")}`} key={subject.name}>
                 <Card className={`h-full border ${subject.border} ${subject.hoverBorder} hover:shadow-lg transition-all cursor-pointer group`}>
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">
@@ -159,6 +180,35 @@ export default function QuizzesPage() {
                   </CardContent>
                 </Card>
               </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Coming Soon Subjects */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-muted-foreground" />
+          Coming Soon
+        </h3>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {comingSoonSubjects.map((subject) => {
+            const Icon = subject.icon;
+            return (
+              <div key={subject.name} className="cursor-not-allowed">
+                <Card className={`h-full border ${subject.border} opacity-55`}>
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className={`p-3 rounded-xl ${subject.bg} ${subject.color}`}>
+                        <Icon className="h-6 w-6" />
+                      </div>
+                      <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
+                    </div>
+                    <h4 className="text-lg font-bold text-foreground mb-1">{subject.name}</h4>
+                    <p className="text-sm text-muted-foreground">Not available yet</p>
+                  </CardContent>
+                </Card>
+              </div>
             );
           })}
         </div>

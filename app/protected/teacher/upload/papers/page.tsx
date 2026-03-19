@@ -5,38 +5,66 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Check, Upload, Eye, GripVertical, Plus, Trash2, ChevronDown, ChevronRight, Shuffle } from "lucide-react";
+import { ArrowLeft, Check, Upload, Eye, GripVertical, Plus, Trash2, ChevronDown, ChevronRight, Shuffle, ImagePlus, X, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { getTeacherSubjects } from "@/lib/actions/teacher";
 import { createPaper, type SelectionRule } from "@/lib/actions/paper";
 import type { PaperTerm } from "@/lib/generated/prisma/enums";
 
 const grades = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
-const terms = ["Term 1", "Term 2", "Term 3", "Mid-Year", "End-of-Year"];
-const EXTRA_SUBJECTS = ["Geography", "Health"];
+const terms = ["Term 1", "Term 2", "Term 3"];
+const EXTRA_SUBJECTS = ["Geography", "Health", "Civic Education", "English"];
 
 const termMap: Record<string, PaperTerm> = {
   "Term 1": "TERM_1",
   "Term 2": "TERM_2",
   "Term 3": "TERM_3",
-  "Mid-Year": "MID_YEAR",
-  "End-of-Year": "END_OF_YEAR",
 };
 
 // Roman numerals for sub-sub labels
 const romanNumerals = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x"];
 const subLabels = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"];
 
+/** Compress an image file client-side and return a base64 JPEG data URL */
+async function compressImage(file: File, maxWidth = 1200, quality = 0.72): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { reject(new Error("Canvas not supported")); return; }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 interface McqQuestion {
   text: string;
   options: string[];
   correctAnswer: string;
+  imageData?: string;
 }
 
 interface StructuredSubSub {
   text: string;
   answer: string;
   marks: number;
+  imageData?: string;
 }
 
 interface StructuredSub {
@@ -44,6 +72,7 @@ interface StructuredSub {
   answer: string;
   marks: number;
   subSubs: StructuredSubSub[];
+  imageData?: string;
 }
 
 interface StructuredMain {
@@ -97,6 +126,7 @@ export default function UploadPapersPage() {
   const [mcqQuestions, setMcqQuestions] = useState<McqQuestion[]>([]);
   const [structuredMains, setStructuredMains] = useState<StructuredMain[]>([]);
   const [selectionRules, setSelectionRules] = useState<SelectionRule[]>([]);
+  const [compressingImage, setCompressingImage] = useState<string | null>(null);
 
   useEffect(() => {
     getTeacherSubjects().then(setAllowedSubjects);
@@ -173,6 +203,7 @@ export default function UploadPapersPage() {
         options: q.options,
         correctAnswer: q.correctAnswer,
         order: i,
+        imageUrl: q.imageData || undefined,
       }));
 
       let orderOffset = mcqCountNum;
@@ -195,6 +226,7 @@ export default function UploadPapersPage() {
               subLabel: subLabelStr,
               subSubLabel: undefined,
               description: firstInGroup && main.description ? main.description : undefined,
+              imageUrl: sub.imageData || undefined,
             });
             firstInGroup = false;
           } else {
@@ -211,6 +243,7 @@ export default function UploadPapersPage() {
                 subLabel: subLabelStr,
                 subSubLabel: romanNumerals[ssi],
                 description: firstInGroup && ssi === 0 && main.description ? main.description : undefined,
+                imageUrl: ss.imageData || undefined,
               });
               firstInGroup = false;
             }
@@ -303,6 +336,22 @@ export default function UploadPapersPage() {
         };
       })
     );
+  }
+
+  async function handleImageUpload(
+    file: File,
+    setter: (data: string) => void,
+    key: string
+  ) {
+    setCompressingImage(key);
+    try {
+      const compressed = await compressImage(file);
+      setter(compressed);
+    } catch {
+      alert("Failed to process image. Please try a different file.");
+    } finally {
+      setCompressingImage(null);
+    }
   }
 
   function updateSubSub(mainIdx: number, subIdx: number, ssIdx: number, patch: Partial<StructuredSubSub>) {
@@ -546,6 +595,49 @@ export default function UploadPapersPage() {
                           setMcqQuestions(updated);
                         }}
                       />
+                      {/* Image upload */}
+                      <div className="space-y-1">
+                        {q.imageData ? (
+                          <div className="relative inline-block">
+                            <img src={q.imageData} alt="Question image" className="max-h-36 rounded-lg border object-contain" />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = [...mcqQuestions];
+                                updated[i] = { ...updated[i], imageData: undefined };
+                                setMcqQuestions(updated);
+                              }}
+                              className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                              title="Remove image"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground border border-dashed rounded-md px-3 py-1.5 hover:border-purple-400 transition-colors">
+                            {compressingImage === `mcq-${i}` ? (
+                              <><Loader2 className="h-3 w-3 animate-spin" /> Compressing...</>
+                            ) : (
+                              <><ImagePlus className="h-3 w-3" /> Attach Image (optional)</>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="sr-only"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                handleImageUpload(file, (data) => {
+                                  const updated = [...mcqQuestions];
+                                  updated[i] = { ...updated[i], imageData: data };
+                                  setMcqQuestions(updated);
+                                }, `mcq-${i}`);
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                        )}
+                      </div>
                       <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground">Options (click circle to mark correct answer)</Label>
                         {q.options.map((opt, optIdx) => (
@@ -671,6 +763,43 @@ export default function UploadPapersPage() {
                               </button>
                             </div>
 
+                            {/* Image upload for sub-question */}
+                            {sub.subSubs.length === 0 && (
+                              <div className="space-y-1">
+                                {sub.imageData ? (
+                                  <div className="relative inline-block">
+                                    <img src={sub.imageData} alt="Question image" className="max-h-32 rounded-lg border object-contain" />
+                                    <button
+                                      type="button"
+                                      onClick={() => updateSub(mainIdx, subIdx, { imageData: undefined })}
+                                      className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                                      title="Remove image"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground border border-dashed rounded-md px-3 py-1.5 hover:border-purple-400 transition-colors">
+                                    {compressingImage === `sub-${mainIdx}-${subIdx}` ? (
+                                      <><Loader2 className="h-3 w-3 animate-spin" /> Compressing...</>
+                                    ) : (
+                                      <><ImagePlus className="h-3 w-3" /> Attach Image (optional)</>
+                                    )}
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="sr-only"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+                                        handleImageUpload(file, (data) => updateSub(mainIdx, subIdx, { imageData: data }), `sub-${mainIdx}-${subIdx}`);
+                                        e.target.value = "";
+                                      }}
+                                    />
+                                  </label>
+                                )}
+                              </div>
+                            )}
                             {/* Reference answer (only if no sub-subs) */}
                             {sub.subSubs.length === 0 && (
                               <textarea
@@ -714,13 +843,46 @@ export default function UploadPapersPage() {
                                         <Trash2 className="h-3.5 w-3.5" />
                                       </button>
                                     </div>
-                                    <textarea
-                                      placeholder="Reference answer..."
-                                      value={ss.answer}
-                                      onChange={(e) => updateSubSub(mainIdx, subIdx, ssIdx, { answer: e.target.value })}
-                                      rows={2}
-                                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ml-[1.75rem]"
-                                    />
+                                    <div className="ml-[1.75rem] space-y-1.5">
+                                      {ss.imageData ? (
+                                        <div className="relative inline-block">
+                                          <img src={ss.imageData} alt="Question image" className="max-h-28 rounded-lg border object-contain" />
+                                          <button
+                                            type="button"
+                                            onClick={() => updateSubSub(mainIdx, subIdx, ssIdx, { imageData: undefined })}
+                                            className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground border border-dashed rounded-md px-3 py-1.5 hover:border-purple-400 transition-colors">
+                                          {compressingImage === `ss-${mainIdx}-${subIdx}-${ssIdx}` ? (
+                                            <><Loader2 className="h-3 w-3 animate-spin" /> Compressing...</>
+                                          ) : (
+                                            <><ImagePlus className="h-3 w-3" /> Attach Image</>
+                                          )}
+                                          <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="sr-only"
+                                            onChange={(e) => {
+                                              const file = e.target.files?.[0];
+                                              if (!file) return;
+                                              handleImageUpload(file, (data) => updateSubSub(mainIdx, subIdx, ssIdx, { imageData: data }), `ss-${mainIdx}-${subIdx}-${ssIdx}`);
+                                              e.target.value = "";
+                                            }}
+                                          />
+                                        </label>
+                                      )}
+                                      <textarea
+                                        placeholder="Reference answer..."
+                                        value={ss.answer}
+                                        onChange={(e) => updateSubSub(mainIdx, subIdx, ssIdx, { answer: e.target.value })}
+                                        rows={2}
+                                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                      />
+                                    </div>
                                   </div>
                                 ))}
                                 <Button
