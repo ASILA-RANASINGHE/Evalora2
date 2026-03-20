@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Bell, Shield, Palette, Users, Send, Inbox } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { SearchUsersDialog } from "@/components/relationships/search-users-dialog";
 import { RequestsTab } from "@/components/relationships/requests-tab";
 import { AcceptTab } from "@/components/relationships/accept-tab";
@@ -161,26 +162,19 @@ export default function SettingsPage() {
         <TabsContent value="appearance" className="space-y-4">
             <Card>
                 <CardHeader>
-                    <CardTitle>Display Settings</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                        <Palette className="h-5 w-5" />
+                        Display Settings
+                    </CardTitle>
                     <CardDescription>Customize the look and feel of the platform.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                        <Label>Theme</Label>
-                        <div className="grid grid-cols-3 gap-2">
-                            <div className="flex flex-col items-center gap-2 cursor-pointer border-2 border-purple-500 rounded-lg p-2 bg-gray-50">
-                                <div className="h-10 w-full bg-white border rounded"></div>
-                                <span className="text-sm font-medium">Light</span>
-                            </div>
-                            <div className="flex flex-col items-center gap-2 cursor-pointer border rounded-lg p-2 hover:bg-gray-50">
-                                <div className="h-10 w-full bg-slate-950 border rounded"></div>
-                                <span className="text-sm font-medium">Dark</span>
-                            </div>
-                            <div className="flex flex-col items-center gap-2 cursor-pointer border rounded-lg p-2 hover:bg-gray-50">
-                                <div className="h-10 w-full bg-gradient-to-r from-gray-200 to-slate-800 border rounded"></div>
-                                <span className="text-sm font-medium">System</span>
-                            </div>
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="space-y-1">
+                            <Label>Theme</Label>
+                            <p className="text-sm text-muted-foreground">Switch between light and dark mode.</p>
                         </div>
+                        <ThemeToggle />
                     </div>
                 </CardContent>
             </Card>

@@ -23,7 +23,9 @@ import {
   Users,
   Send,
   Inbox,
+  Palette,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { teacherProfile, subjects } from "@/lib/teacher-mock-data";
 
 export default function SettingsPage() {
@@ -65,6 +67,7 @@ export default function SettingsPage() {
           <TabsTrigger value="class-prefs">Class Preferences</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
+          <TabsTrigger value="appearance">Appearance</TabsTrigger>
         </TabsList>
 
         {/* Profile Tab */}
@@ -253,6 +256,27 @@ export default function SettingsPage() {
                 <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-0">
                   Current
                 </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        {/* Appearance Tab */}
+        <TabsContent value="appearance">
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Palette className="h-4 w-4 text-purple-500" />
+                Appearance
+              </CardTitle>
+              <CardDescription>Customize the look and feel of the platform</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">Theme</p>
+                  <p className="text-xs text-muted-foreground">Switch between light and dark mode</p>
+                </div>
+                <ThemeToggle />
               </div>
             </CardContent>
           </Card>

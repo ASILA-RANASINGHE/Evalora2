@@ -1,20 +1,25 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Check, Upload, Eye } from "lucide-react";
+import { ArrowLeft, Check, Upload, Eye, Paperclip, X } from "lucide-react";
 import Link from "next/link";
-import { subjectTopics } from "@/lib/teacher-mock-data";
 import { getTeacherSubjects } from "@/lib/actions/teacher";
 import { createShortNote } from "@/lib/actions/short-note";
+import { uploadFiles } from "@/lib/supabase/storage";
+
+const grades = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
+const EXTRA_SUBJECTS = ["Geography", "Health"];
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = [".pdf", ".doc", ".docx", ".ppt", ".pptx", ".txt"];
 
 interface FormErrors {
   title?: string;
   subject?: string;
+  grade?: string;
   topic?: string;
   content?: string;
 }
@@ -22,41 +27,62 @@ interface FormErrors {
 export default function UploadShortNotesPage() {
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
+  const [grade, setGrade] = useState("");
   const [topic, setTopic] = useState("");
   const [content, setContent] = useState("");
   const [visibility, setVisibility] = useState<"STUDENTS_ONLY" | "PUBLIC">("STUDENTS_ONLY");
   const [errors, setErrors] = useState<FormErrors>({});
+  const [files, setFiles] = useState<File[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [allowedSubjects, setAllowedSubjects] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     getTeacherSubjects().then(setAllowedSubjects);
   }, []);
 
-  const availableTopics = subject ? subjectTopics[subject] || [] : [];
+  const subjectOptions = [...new Set([...allowedSubjects, ...EXTRA_SUBJECTS])];
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
     if (!title.trim()) newErrors.title = "Title is required";
     if (!subject) newErrors.subject = "Please select a subject";
-    if (!topic) newErrors.topic = "Please select a topic";
+    if (!grade) newErrors.grade = "Please select a grade";
+    if (!topic.trim()) newErrors.topic = "Please enter a topic";
     if (!content.trim()) newErrors.content = "Content is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
+  const handleFileAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newFiles = Array.from(e.target.files || []);
+    const validFiles = newFiles.filter((file) => {
+      if (file.size > MAX_FILE_SIZE) { alert(`${file.name} exceeds 10MB limit`); return false; }
+      const ext = "." + file.name.split(".").pop()?.toLowerCase();
+      if (!ALLOWED_EXTENSIONS.includes(ext)) { alert(`${file.name} is not a supported file type`); return false; }
+      return true;
+    });
+    setFiles((prev) => [...prev, ...validFiles]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeFile = (index: number) => setFiles((prev) => prev.filter((_, i) => i !== index));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
     setSaving(true);
     try {
+      const attachments = files.length > 0 ? await uploadFiles(files) : [];
       await createShortNote({
         title,
         subject,
+        grade,
         topic,
         content,
         visibility,
+        attachments,
       });
       setSubmitted(true);
     } catch (err) {
@@ -78,7 +104,7 @@ export default function UploadShortNotesPage() {
           &quot;{title}&quot; has been uploaded and is now visible to your students.
         </p>
         <div className="flex gap-3 pt-2">
-          <Button variant="outline" onClick={() => { setSubmitted(false); setTitle(""); setSubject(""); setTopic(""); setContent(""); }}>
+          <Button variant="outline" onClick={() => { setSubmitted(false); setTitle(""); setSubject(""); setGrade(""); setTopic(""); setContent(""); setFiles([]); }}>
             Upload Another
           </Button>
           <Link href="/protected/teacher/upload">
@@ -117,17 +143,17 @@ export default function UploadShortNotesPage() {
               {errors.title && <p className="text-xs text-red-500">{errors.title}</p>}
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="subject">Subject</Label>
                 <select
                   id="subject"
                   value={subject}
-                  onChange={(e) => { setSubject(e.target.value); setTopic(""); if (errors.subject) setErrors((p) => ({ ...p, subject: undefined })); }}
+                  onChange={(e) => { setSubject(e.target.value); if (errors.subject) setErrors((p) => ({ ...p, subject: undefined })); }}
                   className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${errors.subject ? "border-red-500" : "border-input"}`}
                 >
                   <option value="">Select subject</option>
-                  {allowedSubjects.map((s) => (
+                  {subjectOptions.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
@@ -135,19 +161,30 @@ export default function UploadShortNotesPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="topic">Topic</Label>
+                <Label htmlFor="grade">Grade</Label>
                 <select
-                  id="topic"
-                  value={topic}
-                  onChange={(e) => { setTopic(e.target.value); if (errors.topic) setErrors((p) => ({ ...p, topic: undefined })); }}
-                  disabled={!subject}
-                  className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 ${errors.topic ? "border-red-500" : "border-input"}`}
+                  id="grade"
+                  value={grade}
+                  onChange={(e) => { setGrade(e.target.value); if (errors.grade) setErrors((p) => ({ ...p, grade: undefined })); }}
+                  className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${errors.grade ? "border-red-500" : "border-input"}`}
                 >
-                  <option value="">Select topic</option>
-                  {availableTopics.map((t) => (
-                    <option key={t} value={t}>{t}</option>
+                  <option value="">Select grade</option>
+                  {grades.map((g) => (
+                    <option key={g} value={g}>{g}</option>
                   ))}
                 </select>
+                {errors.grade && <p className="text-xs text-red-500">{errors.grade}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="topic">Topic</Label>
+                <Input
+                  id="topic"
+                  placeholder="e.g. World War II"
+                  value={topic}
+                  onChange={(e) => { setTopic(e.target.value); if (errors.topic) setErrors((p) => ({ ...p, topic: undefined })); }}
+                  className={errors.topic ? "border-red-500 focus-visible:ring-red-500" : ""}
+                />
                 {errors.topic && <p className="text-xs text-red-500">{errors.topic}</p>}
               </div>
             </div>
@@ -169,6 +206,48 @@ export default function UploadShortNotesPage() {
               className={`flex w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${errors.content ? "border-red-500" : "border-input"}`}
             />
             {errors.content && <p className="text-xs text-red-500 mt-1">{errors.content}</p>}
+          </CardContent>
+        </Card>
+
+        {/* File Attachments */}
+        <Card className="border-border/50 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Attachments</CardTitle>
+            <CardDescription>PDF, DOCX, PPT, TXT — up to 10MB each</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors"
+            >
+              <Paperclip className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm font-medium">Click to attach files</p>
+              <p className="text-xs text-muted-foreground mt-1">or drag and drop</p>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept={ALLOWED_EXTENSIONS.join(",")}
+              onChange={handleFileAdd}
+              className="hidden"
+            />
+            {files.length > 0 && (
+              <div className="space-y-2">
+                {files.map((file, i) => (
+                  <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 border">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm truncate">{file.name}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">({(file.size / 1024 / 1024).toFixed(1)} MB)</span>
+                    </div>
+                    <button type="button" onClick={() => removeFile(i)} className="text-muted-foreground hover:text-red-500 transition-colors">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

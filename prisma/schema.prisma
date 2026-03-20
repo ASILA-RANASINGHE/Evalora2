@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../lib/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../lib/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [vector]
 }
 
 enum UserRole {
@@ -17,6 +19,10 @@ enum UserRole {
 enum QuestionType {
   MCQ
   SHORT
+  FILL_BLANK
+  TRUE_FALSE
+  MATCH_COLUMN
+  FILL_BLANK_OPTIONS
 }
 
 enum QuizType {
@@ -251,12 +257,17 @@ model Paper {
   mcqMarks       Int       @default(1) // marks per MCQ
   essayCount     Int       @default(0)
   essayMarks     Int       @default(10) // marks per essay
+  tfCount        Int       @default(0)
+  tfMarks        Int       @default(1)
+  fbCount        Int       @default(0)
+  fbMarks        Int       @default(1)
   totalMarks     Int
   passPercentage Int       @default(35)
 
-  instructions   String?
-  visibility     ContentVisibility @default(STUDENTS_ONLY)
-  status         ContentStatus @default(DRAFT)
+  instructions     String?
+  selectionRules   Json?     // [{ id, label, questionNumbers: number[], required: number }]
+  visibility       ContentVisibility @default(STUDENTS_ONLY)
+  status           ContentStatus @default(DRAFT)
 
   createdById String   @db.Uuid
   createdAt   DateTime @default(now())
@@ -269,14 +280,21 @@ model Paper {
 }
 
 model PaperQuestion {
-  id            String       @id @default(uuid()) @db.Uuid
-  paperId       String       @db.Uuid
-  text          String
-  type          QuestionType @default(MCQ)
-  points        Int          @default(1)
-  options       String[]
-  correctAnswer String
-  order         Int          @default(0)
+  id             String       @id @default(uuid()) @db.Uuid
+  paperId        String       @db.Uuid
+  text           String
+  type           QuestionType @default(MCQ)
+  points         Int          @default(1)
+  options        String[]
+  correctAnswer  String
+  order          Int          @default(0)
+
+  // Structured question hierarchy
+  questionNumber Int?     // main question group number (e.g. 1, 2, 3)
+  subLabel       String?  // first-level sub label (e.g. "a", "b", "c")
+  subSubLabel    String?  // second-level sub label (e.g. "i", "ii", "iii")
+  description    String?  // optional description shown at the top of a main question group
+  imageUrl       String?  // optional compressed image (base64 data URL) attached to the question
 
   paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
 }
@@ -286,6 +304,10 @@ model PaperAttempt {
   paperId     String    @db.Uuid
   studentId   String    @db.Uuid
   score       Float?
+  timeTaken   Int?      // seconds
+  answers     Json?     // { "questionId": "answer" }
+  flagged     Json?     // ["questionId", ...]
+  results     Json?     // full per-question results object
   startedAt   DateTime  @default(now())
   submittedAt DateTime?
 
@@ -299,6 +321,7 @@ model Note {
   id         String            @id @default(uuid()) @db.Uuid
   title      String
   subjectId  String            @db.Uuid
+  grade      String?
   topic      String
   content    String            // markdown or rich text — TEXT has no size limit
   visibility ContentVisibility @default(STUDENTS_ONLY)
@@ -330,6 +353,7 @@ model ShortNote {
   id          String        @id @default(uuid()) @db.Uuid
   title       String
   subjectId   String        @db.Uuid
+  grade       String?
   topic       String
   content     String
   visibility  ContentVisibility @default(STUDENTS_ONLY)
@@ -339,8 +363,31 @@ model ShortNote {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  subject   Subject @relation(fields: [subjectId], references: [id])
-  createdBy Profile @relation(fields: [createdById], references: [id])
+  subject     Subject               @relation(fields: [subjectId], references: [id])
+  createdBy   Profile               @relation(fields: [createdById], references: [id])
+  attachments ShortNoteAttachment[]
+}
+
+model ShortNoteAttachment {
+  id          String    @id @default(uuid()) @db.Uuid
+  shortNoteId String    @db.Uuid
+  name        String
+  url         String    // Supabase Storage URL
+  size        Int       // bytes
+  type        String    // MIME type
+
+  shortNote ShortNote @relation(fields: [shortNoteId], references: [id], onDelete: Cascade)
+}
+
+// ─── Historical Locations (Map Search) ──────────────────────────
+
+model Location {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique
+  latitude    Float
+  longitude   Float
+  description String?
+  category    String? // e.g. "ancient_city", "kingdom", "temple", "colonial_fort"
 }
 
 // ─── Student Progress & Gamification ─────────────────────────────
@@ -358,4 +405,15 @@ model StudentProgress {
   updatedAt        DateTime @updatedAt
 
   student Profile @relation(fields: [studentId], references: [id])
+}
+
+model DocumentChunk {
+  id        String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title     String
+  topic     String?
+  content   String
+  grade     String?
+  embedding Unsupported("vector(384)")?
+  createdAt DateTime                    @default(now())
+  updatedAt DateTime                    @updatedAt
 }

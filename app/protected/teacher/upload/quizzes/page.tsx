@@ -23,6 +23,7 @@ import type { QuizType } from "@/lib/generated/prisma/enums";
 
 const quizTypes = ["Subject", "Topic"];
 const grades = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
+const EXTRA_SUBJECTS = ["Geography", "Health"];
 
 const quizTypeMap: Record<string, QuizType> = {
   "Topic-based": "TOPIC_BASED",
@@ -80,6 +81,7 @@ export default function UploadQuizzesPage() {
     getTeacherSubjects().then(setAllowedSubjects);
   }, []);
 
+  const subjectOptions = [...new Set([...allowedSubjects, ...EXTRA_SUBJECTS])];
   const availableTopics = subject ? subjectTopics[subject] || [] : [];
   const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
 
@@ -257,7 +259,7 @@ export default function UploadQuizzesPage() {
                   className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${errors.subject ? "border-red-500" : "border-input"}`}
                 >
                   <option value="">Select subject</option>
-                  {allowedSubjects.map((s) => <option key={s} value={s}>{s}</option>)}
+                  {subjectOptions.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
                 {errors.subject && <p className="text-xs text-red-500">{errors.subject}</p>}
               </div>

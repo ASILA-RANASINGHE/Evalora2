@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Space_Grotesk, Source_Sans_3 } from "next/font/google";
+import { Geist, Space_Grotesk, Source_Sans_3, Merriweather } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
@@ -31,6 +31,13 @@ const sourceSans3 = Source_Sans_3({
   subsets: ["latin"],
 });
 
+const merriweather = Merriweather({
+  variable: "--font-merriweather",
+  display: "swap",
+  subsets: ["latin"],
+  weight: ["300", "400", "700", "900"],
+});
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -38,7 +45,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.className} ${spaceGrotesk.variable} ${sourceSans3.variable} antialiased`}>
+      <body className={`${geistSans.className} ${spaceGrotesk.variable} ${sourceSans3.variable} ${merriweather.variable} antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

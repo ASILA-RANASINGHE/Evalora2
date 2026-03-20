@@ -3,12 +3,21 @@
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 
+interface AttachmentInput {
+  name: string;
+  url: string;
+  size: number;
+  type: string;
+}
+
 interface CreateShortNoteInput {
   title: string;
   subject: string;
+  grade?: string;
   topic: string;
   content: string;
   visibility?: string;
+  attachments?: AttachmentInput[];
 }
 
 export async function createShortNote(input: CreateShortNoteInput) {
@@ -18,7 +27,8 @@ export async function createShortNote(input: CreateShortNoteInput) {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
-  // Teacher subject restriction
+  const EXTRA_SUBJECTS = ["Geography", "Health"];
+
   const profile = await prisma.profile.findUnique({
     where: { id: user.id },
     select: { role: true },
@@ -29,27 +39,33 @@ export async function createShortNote(input: CreateShortNoteInput) {
       where: { id: user.id },
     });
     if (!teacherDetails) throw new Error("Teacher details not found");
-    if (teacherDetails.subject !== input.subject) {
+    if (teacherDetails.subject !== input.subject && !EXTRA_SUBJECTS.includes(input.subject)) {
       throw new Error(
         `You are not authorized to upload content for "${input.subject}". Your assigned subject is "${teacherDetails.subject}".`
       );
     }
   }
 
-  const subject = await prisma.subject.findUnique({
+  const subjectCode = input.subject.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 8) || input.subject.slice(0, 8).toUpperCase();
+  const subject = await prisma.subject.upsert({
     where: { name: input.subject },
+    create: { name: input.subject, code: subjectCode },
+    update: {},
   });
-  if (!subject) throw new Error(`Subject "${input.subject}" not found`);
 
   const shortNote = await prisma.shortNote.create({
     data: {
       title: input.title,
       subjectId: subject.id,
+      grade: input.grade || null,
       topic: input.topic,
       content: input.content,
       status: "APPROVED",
       visibility: profile?.role === "ADMIN" ? "PUBLIC" : (input.visibility === "PUBLIC" ? "PUBLIC" : "STUDENTS_ONLY"),
       createdById: user.id,
+      attachments: input.attachments?.length
+        ? { create: input.attachments.map((a) => ({ name: a.name, url: a.url, size: a.size, type: a.type })) }
+        : undefined,
     },
   });
 
@@ -96,6 +112,7 @@ export async function getShortNoteById(id: string) {
     include: {
       subject: { select: { name: true } },
       createdBy: { select: { firstName: true, lastName: true } },
+      attachments: true,
     },
   });
 
@@ -111,5 +128,12 @@ export async function getShortNoteById(id: string) {
       `${shortNote.createdBy.firstName ?? ""} ${shortNote.createdBy.lastName ?? ""}`.trim() ||
       "Teacher",
     createdAt: shortNote.createdAt,
+    attachments: shortNote.attachments.map((a) => ({
+      id: a.id,
+      name: a.name,
+      url: a.url,
+      size: a.size,
+      type: a.type,
+    })),
   };
 }

@@ -13,12 +13,26 @@ export async function getMyContent() {
   const [notes, shortNotes, quizzes, papers] = await Promise.all([
     prisma.note.findMany({
       where: { createdById: user.id },
-      include: { subject: { select: { name: true } } },
+      select: {
+        id: true,
+        title: true,
+        topic: true,
+        status: true,
+        createdAt: true,
+        subject: { select: { name: true } },
+      },
       orderBy: { createdAt: "desc" },
     }),
     prisma.shortNote.findMany({
       where: { createdById: user.id },
-      include: { subject: { select: { name: true } } },
+      select: {
+        id: true,
+        title: true,
+        topic: true,
+        status: true,
+        createdAt: true,
+        subject: { select: { name: true } },
+      },
       orderBy: { createdAt: "desc" },
     }),
     prisma.quiz.findMany({
