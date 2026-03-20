@@ -574,6 +574,41 @@ const AboutSection = () => {
 };
 
 const ContactSection = () => {
+  // Contact form state (scoped to ContactSection)
+  const [category, setCategory] = useState<string>("I can't log in to my account");
+  const [contactName, setContactName] = useState<string>("");
+  const [contactEmail, setContactEmail] = useState<string>("");
+  const [contactMessage, setContactMessage] = useState<string>("");
+  const [sendingContact, setSendingContact] = useState<boolean>(false);
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (sendingContact) return;
+    setSendingContact(true);
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: contactName, email: contactEmail, category, message: contactMessage })
+      });
+
+      if (res.ok) {
+        setContactName('');
+        setContactEmail('');
+        setContactMessage('');
+        setCategory("I can't log in to my account");
+        alert("Message sent — we'll get back to you shortly.");
+      } else {
+        const text = await res.text();
+        alert('Failed to send message: ' + text);
+      }
+    } catch (err) {
+      alert('Failed to send message.');
+    } finally {
+      setSendingContact(false);
+    }
+  };
+
   return (
     <section id="contact" className="relative py-32 bg-white overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
@@ -671,48 +706,50 @@ const ContactSection = () => {
               <div className="relative z-10">
                  <h4 className="text-2xl font-bold text-slate-900 mb-6">Send us a message</h4>
                  
-                 <form className="space-y-5">
+                  <form className="space-y-5" onSubmit={handleContactSubmit}>
                     <div className="space-y-2">
-                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">I need help with...</label>
-                       <div className="relative">
-                          <select className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-medium rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all cursor-pointer hover:border-sky-300">
-                             <option>I can't log in to my account</option>
-                             <option>Payment or subscription issue</option>
-                             <option>Course content inquiry</option>
-                             <option>Technical bug report</option>
-                             <option>Other inquiry</option>
-                          </select>
-                          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
-                          </div>
-                       </div>
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">I need help with...</label>
+                      <div className="relative">
+                        <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-medium rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all cursor-pointer hover:border-sky-300">
+                          <option>I can't log in to my account</option>
+                          <option>Payment or subscription issue</option>
+                          <option>Course content inquiry</option>
+                          <option>Technical bug report</option>
+                          <option>Other inquiry</option>
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                       <div className="space-y-2">
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Name</label>
-                          <input type="text" placeholder="John Doe" className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-medium rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all placeholder:text-slate-300 hover:border-sky-300" />
-                       </div>
-                       <div className="space-y-2">
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Email</label>
-                          <input type="email" placeholder="john@example.com" className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-medium rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all placeholder:text-slate-300 hover:border-sky-300" />
-                       </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Name</label>
+                        <input value={contactName} onChange={(e) => setContactName(e.target.value)} type="text" placeholder="John Doe" className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-medium rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all placeholder:text-slate-300 hover:border-sky-300" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Email</label>
+                        <input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} type="email" placeholder="john@example.com" className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-medium rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all placeholder:text-slate-300 hover:border-sky-300" />
+                      </div>
                     </div>
 
                     <div className="space-y-2">
-                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Message Details</label>
-                       <textarea rows={4} placeholder="Describe your issue or question..." className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-medium rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all placeholder:text-slate-300 resize-none hover:border-sky-300"></textarea>
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Message Details</label>
+                      <textarea value={contactMessage} onChange={(e) => setContactMessage(e.target.value)} rows={4} placeholder="Describe your issue or question..." className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-medium rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all placeholder:text-slate-300 resize-none hover:border-sky-300"></textarea>
                     </div>
 
                     <motion.button 
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="w-full bg-sky-500 text-white font-bold rounded-xl py-4 shadow-lg shadow-sky-500/30 hover:bg-sky-600 transition-colors flex items-center justify-center gap-2 mt-2"
+                     type="submit"
+                     whileHover={{ scale: 1.02 }}
+                     whileTap={{ scale: 0.98 }}
+                     disabled={sendingContact}
+                     className="w-full bg-sky-500 text-white font-bold rounded-xl py-4 shadow-lg shadow-sky-500/30 hover:bg-sky-600 transition-colors flex items-center justify-center gap-2 mt-2 disabled:opacity-60"
                     >
-                       <span>Submit Ticket</span>
-                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                      <span>{sendingContact ? "Sending..." : "Submit Ticket"}</span>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
                     </motion.button>
-                 </form>
+                  </form>
               </div>
            </motion.div>
         </div>
@@ -851,6 +888,8 @@ export default function LandingView({ authSection, contentSection, deployButton 
 
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const x = (e.clientX / window.innerWidth - 0.5) * 2;
