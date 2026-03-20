@@ -1,0 +1,15 @@
+app/protected/chat/conversation/page.tsx(5,37): error TS2724: '"ai"' has no exported member named 'Message'. Did you mean 'UIMessage'?
+app/protected/chat/conversation/page.tsx(267,46): error TS2339: Property 'append' does not exist on type 'UseChatHelpers<UIMessage<unknown, UIDataTypes, UITools>>'.
+app/protected/chat/conversation/page.tsx(316,19): error TS2339: Property 'content' does not exist on type 'UIMessage<unknown, UIDataTypes, UITools>'.
+app/protected/chat/conversation/page.tsx(318,16): error TS2352: Conversion of type '{ id: string; sender: "user" | "bot"; text: any; timestamp: string; citations: Citation[] | undefined; }' to type 'ChatMessage' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'id' are incompatible.
+    Type 'string' is not comparable to type 'number'.
+lib/actions/note.ts(57,7): error TS2353: Object literal may only specify known properties, and 'grade' does not exist in type 'Without<NoteCreateInput, NoteUncheckedCreateInput> & NoteUncheckedCreateInput'.
+lib/actions/short-note.ts(60,7): error TS2353: Object literal may only specify known properties, and 'grade' does not exist in type 'Without<ShortNoteCreateInput, ShortNoteUncheckedCreateInput> & ShortNoteUncheckedCreateInput'.
+lib/actions/short-note.ts(115,7): error TS2353: Object literal may only specify known properties, and 'attachments' does not exist in type 'ShortNoteInclude<DefaultArgs>'.
+lib/actions/short-note.ts(124,24): error TS2551: Property 'subject' does not exist on type '{ content: string; id: string; createdAt: Date; updatedAt: Date; status: ContentStatus; title: string; subjectId: string; topic: string; visibility: ContentVisibility; createdById: string; }'. Did you mean 'subjectId'?
+lib/actions/short-note.ts(128,20): error TS2551: Property 'createdBy' does not exist on type '{ content: string; id: string; createdAt: Date; updatedAt: Date; status: ContentStatus; title: string; subjectId: string; topic: string; visibility: ContentVisibility; createdById: string; }'. Did you mean 'createdById'?
+lib/actions/short-note.ts(128,59): error TS2551: Property 'createdBy' does not exist on type '{ content: string; id: string; createdAt: Date; updatedAt: Date; status: ContentStatus; title: string; subjectId: string; topic: string; visibility: ContentVisibility; createdById: string; }'. Did you mean 'createdById'?
+lib/actions/short-note.ts(131,28): error TS2339: Property 'attachments' does not exist on type '{ content: string; id: string; createdAt: Date; updatedAt: Date; status: ContentStatus; title: string; subjectId: string; topic: string; visibility: ContentVisibility; createdById: string; }'.
+lib/actions/short-note.ts(131,45): error TS7006: Parameter 'a' implicitly has an 'any' type.
+scripts/sync-pdfs-to-db.ts(178,39): error TS2339: Property 'documentChunk' does not exist on type 'PrismaClient<"info" | "query" | "warn" | "error", GlobalOmitConfig | undefined, DefaultArgs>'.

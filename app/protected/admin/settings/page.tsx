@@ -16,7 +16,9 @@ import {
   FileDown,
   Save,
   Check,
+  Palette,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
@@ -126,6 +128,29 @@ export default function SettingsPage() {
               checked={settings.dataExports}
               onChange={() => toggle("dataExports")}
             />
+          </CardContent>
+        </Card>
+
+        {/* Appearance */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Palette className="h-4 w-4 text-purple-500" />
+              Appearance
+            </CardTitle>
+            <CardDescription>Customize the look and feel of the platform.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className="flex items-center gap-3">
+                <span className="text-muted-foreground"><Palette className="h-4 w-4" /></span>
+                <div>
+                  <p className="text-sm font-medium">Theme</p>
+                  <p className="text-xs text-muted-foreground">Switch between light and dark mode</p>
+                </div>
+              </div>
+              <ThemeToggle />
+            </div>
           </CardContent>
         </Card>
 

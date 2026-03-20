@@ -44,7 +44,7 @@ export default function TeacherDashboard() {
         <StatsCard
           title="Recent Uploads"
           value={String(dashboardStats.recentUploads)}
-          subtitle={dashboardStats.uploadPeriod}
+          subtitle="This week"
           icon={FileUp}
           iconColor="bg-purple-500/10 text-purple-600"
         />
@@ -168,11 +168,11 @@ function StatsCard({ title, value, subtitle, icon: Icon, iconColor, trend }: {
   );
 }
 
-function StatusBadge({ status }: { status: "Excellent" | "Active" | "At Risk" }) {
+function StatusBadge({ status }: { status: "Active" | "At Risk" | "Inactive" }) {
   const styles = {
-    Excellent: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
     Active: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
     "At Risk": "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+    Inactive: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
   };
   return (
     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${styles[status]}`}>

@@ -5,14 +5,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   User,
-  Users,
   Save,
   Check,
+  Users,
+  Send,
+  Inbox,
+  Palette,
 } from "lucide-react";
-import { parentProfile, childAccounts } from "@/lib/parent-mock-data";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SearchUsersDialog } from "@/components/relationships/search-users-dialog";
+import { RequestsTab } from "@/components/relationships/requests-tab";
+import { AcceptTab } from "@/components/relationships/accept-tab";
+import { MyConnections } from "@/components/relationships/my-connections";
+import { UserRole, RelationshipType } from "@/lib/generated/prisma/enums";
+import { parentProfile } from "@/lib/parent-mock-data";
 
 export default function ParentSettingsPage() {
   const [name, setName] = useState(parentProfile.name);
@@ -33,94 +42,108 @@ export default function ParentSettingsPage() {
         <p className="text-muted-foreground mt-1">Manage your account and linked students</p>
       </div>
 
-      {/* Account Information */}
-      <Card className="border-border/50 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <User className="h-4 w-4 text-purple-500" />
-            Account Information
-          </CardTitle>
-          <CardDescription>Your personal details and contact preferences</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-xl font-bold">
-              DF
-            </div>
-            <div>
-              <p className="font-semibold">{name}</p>
-              <p className="text-sm text-muted-foreground">{role}</p>
-            </div>
-          </div>
+      <Tabs defaultValue="profile" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="connections">Connections</TabsTrigger>
+          <TabsTrigger value="requests">Requests</TabsTrigger>
+          <TabsTrigger value="accept">Accept</TabsTrigger>
+          <TabsTrigger value="appearance">Appearance</TabsTrigger>
+        </TabsList>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <Input value={role} disabled className="opacity-60" />
-            </div>
-            <div className="space-y-2">
-              <Label>Preferred Contact</Label>
-              <select
-                value={preferredContact}
-                onChange={(e) => setPreferredContact(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="Email">Email</option>
-                <option value="SMS">SMS</option>
-                <option value="Phone">Phone</option>
-                <option value="WhatsApp">WhatsApp</option>
-              </select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Child Accounts */}
-      <Card className="border-border/50 shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
+        {/* Profile Tab */}
+        <TabsContent value="profile" className="space-y-6">
+          {/* Account Information */}
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Users className="h-4 w-4 text-purple-500" />
-                Child Accounts
+                <User className="h-4 w-4 text-purple-500" />
+                Account Information
               </CardTitle>
-              <CardDescription className="mt-1">Students linked to your parent account</CardDescription>
-            </div>
-            <Badge variant="secondary" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-0">
-              {childAccounts.length} linked
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {childAccounts.map((child) => (
-            <div
-              key={child.id}
-              className="flex items-center justify-between p-4 rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/40 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${child.color} flex items-center justify-center text-white font-bold text-xs`}>
-                  {child.initials}
+              <CardDescription>Your personal details and contact preferences</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="h-16 w-16 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-xl font-bold">
+                  DF
                 </div>
                 <div>
-                  <p className="font-medium text-sm">{child.name}</p>
-                  <p className="text-xs text-muted-foreground">{child.grade} &middot; {child.subjects} subjects</p>
+                  <p className="font-semibold">{name}</p>
+                  <p className="text-sm text-muted-foreground">{role}</p>
                 </div>
               </div>
-              <Badge variant="secondary" className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-0">
-                {child.status}
-              </Badge>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Role</Label>
+                  <Input value={role} disabled className="opacity-60" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Preferred Contact</Label>
+                  <select
+                    value={preferredContact}
+                    onChange={(e) => setPreferredContact(e.target.value)}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="Email">Email</option>
+                    <option value="SMS">SMS</option>
+                    <option value="Phone">Phone</option>
+                    <option value="WhatsApp">WhatsApp</option>
+                  </select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Connections Tab */}
+        <TabsContent value="connections" className="space-y-6">
+          <MyConnections />
+          <SearchUsersDialog
+            targetRole={UserRole.STUDENT}
+            relationshipType={RelationshipType.PARENT_STUDENT}
+          />
+        </TabsContent>
+
+        {/* Requests Tab */}
+        <TabsContent value="requests" className="space-y-6">
+          <RequestsTab />
+        </TabsContent>
+
+        {/* Accept Tab */}
+        <TabsContent value="accept" className="space-y-6">
+          <AcceptTab />
+        </TabsContent>
+        {/* Appearance Tab */}
+        <TabsContent value="appearance" className="space-y-6">
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Palette className="h-4 w-4 text-purple-500" />
+                Appearance
+              </CardTitle>
+              <CardDescription>Customize the look and feel of the platform</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">Theme</p>
+                  <p className="text-xs text-muted-foreground">Switch between light and dark mode</p>
+                </div>
+                <ThemeToggle />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Save Button */}
       <div className="flex justify-end pb-6">

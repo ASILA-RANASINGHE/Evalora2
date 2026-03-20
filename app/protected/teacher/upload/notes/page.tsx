@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
   Bold,
@@ -23,16 +22,20 @@ import {
   Eye,
 } from "lucide-react";
 import Link from "next/link";
-import { subjects, subjectTopics } from "@/lib/teacher-mock-data";
 import { createNote } from "@/lib/actions/note";
+import { getTeacherSubjects } from "@/lib/actions/teacher";
+import { uploadFiles } from "@/lib/supabase/storage";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const grades = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
+const EXTRA_SUBJECTS = ["Geography", "Health"];
 const ALLOWED_TYPES = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "text/plain"];
 const ALLOWED_EXTENSIONS = [".pdf", ".doc", ".docx", ".ppt", ".pptx", ".txt"];
 
 interface FormErrors {
   title?: string;
   subject?: string;
+  grade?: string;
   topic?: string;
   content?: string;
 }
@@ -40,21 +43,29 @@ interface FormErrors {
 export default function UploadNotesPage() {
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
+  const [grade, setGrade] = useState("");
   const [topic, setTopic] = useState("");
+  const [allowedSubjects, setAllowedSubjects] = useState<string[]>([]);
   const [content, setContent] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [visibility, setVisibility] = useState<"STUDENTS_ONLY" | "PUBLIC">("STUDENTS_ONLY");
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const availableTopics = subject ? subjectTopics[subject] || [] : [];
+  useEffect(() => {
+    getTeacherSubjects().then(setAllowedSubjects);
+  }, []);
+
+  const subjectOptions = [...new Set([...allowedSubjects, ...EXTRA_SUBJECTS])];
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
     if (!title.trim()) newErrors.title = "Title is required";
     if (!subject) newErrors.subject = "Please select a subject";
-    if (!topic) newErrors.topic = "Please select a topic";
+    if (!grade) newErrors.grade = "Please select a grade";
+    if (!topic.trim()) newErrors.topic = "Please enter a topic";
     if (!content.trim()) newErrors.content = "Note content is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -87,11 +98,15 @@ export default function UploadNotesPage() {
     if (!validate()) return;
     setSaving(true);
     try {
+      const attachments = files.length > 0 ? await uploadFiles(files) : [];
       await createNote({
         title,
         subject,
+        grade,
         topic,
         content,
+        visibility,
+        attachments,
       });
       setSubmitted(true);
     } catch (err) {
@@ -113,7 +128,7 @@ export default function UploadNotesPage() {
           &quot;{title}&quot; has been uploaded and is now visible to your students.
         </p>
         <div className="flex gap-3 pt-2">
-          <Button variant="outline" onClick={() => { setSubmitted(false); setTitle(""); setSubject(""); setTopic(""); setContent(""); setFiles([]); }}>
+          <Button variant="outline" onClick={() => { setSubmitted(false); setTitle(""); setSubject(""); setGrade(""); setTopic(""); setContent(""); setFiles([]); }}>
             Upload Another
           </Button>
           <Link href="/protected/teacher/upload">
@@ -152,18 +167,18 @@ export default function UploadNotesPage() {
               {errors.title && <p className="text-xs text-red-500">{errors.title}</p>}
             </div>
 
-            {/* Subject & Topic */}
-            <div className="grid gap-4 sm:grid-cols-2">
+            {/* Subject, Grade & Topic */}
+            <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="subject">Subject</Label>
                 <select
                   id="subject"
                   value={subject}
-                  onChange={(e) => { setSubject(e.target.value); setTopic(""); if (errors.subject) setErrors((p) => ({ ...p, subject: undefined })); }}
+                  onChange={(e) => { setSubject(e.target.value); if (errors.subject) setErrors((p) => ({ ...p, subject: undefined })); }}
                   className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${errors.subject ? "border-red-500" : "border-input"}`}
                 >
                   <option value="">Select subject</option>
-                  {subjects.map((s) => (
+                  {subjectOptions.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
@@ -171,19 +186,30 @@ export default function UploadNotesPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="topic">Topic</Label>
+                <Label htmlFor="grade">Grade</Label>
                 <select
-                  id="topic"
-                  value={topic}
-                  onChange={(e) => { setTopic(e.target.value); if (errors.topic) setErrors((p) => ({ ...p, topic: undefined })); }}
-                  disabled={!subject}
-                  className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 ${errors.topic ? "border-red-500" : "border-input"}`}
+                  id="grade"
+                  value={grade}
+                  onChange={(e) => { setGrade(e.target.value); if (errors.grade) setErrors((p) => ({ ...p, grade: undefined })); }}
+                  className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${errors.grade ? "border-red-500" : "border-input"}`}
                 >
-                  <option value="">Select topic</option>
-                  {availableTopics.map((t) => (
-                    <option key={t} value={t}>{t}</option>
+                  <option value="">Select grade</option>
+                  {grades.map((g) => (
+                    <option key={g} value={g}>{g}</option>
                   ))}
                 </select>
+                {errors.grade && <p className="text-xs text-red-500">{errors.grade}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="topic">Topic</Label>
+                <Input
+                  id="topic"
+                  placeholder="e.g. World War II"
+                  value={topic}
+                  onChange={(e) => { setTopic(e.target.value); if (errors.topic) setErrors((p) => ({ ...p, topic: undefined })); }}
+                  className={errors.topic ? "border-red-500 focus-visible:ring-red-500" : ""}
+                />
                 {errors.topic && <p className="text-xs text-red-500">{errors.topic}</p>}
               </div>
             </div>
@@ -267,15 +293,30 @@ export default function UploadNotesPage() {
         {/* Visibility & Submit */}
         <Card className="border-border/50 shadow-sm">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-2">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
                 <Eye className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Visibility:</span>
-                <Badge variant="secondary" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-0">
-                  Your Students Only
-                </Badge>
+                <span className="text-sm font-medium">Visibility</span>
               </div>
               <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setVisibility("STUDENTS_ONLY")}
+                  className={`flex-1 p-3 rounded-lg border-2 text-left transition-colors ${visibility === "STUDENTS_ONLY" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" : "border-border hover:border-purple-300"}`}
+                >
+                  <p className="text-sm font-semibold">Your Students Only</p>
+                  <p className="text-xs text-muted-foreground">Only students assigned to you can see this</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibility("PUBLIC")}
+                  className={`flex-1 p-3 rounded-lg border-2 text-left transition-colors ${visibility === "PUBLIC" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" : "border-border hover:border-purple-300"}`}
+                >
+                  <p className="text-sm font-semibold">All Evalora Students</p>
+                  <p className="text-xs text-muted-foreground">Visible to every student on the platform</p>
+                </button>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
                 <Link href="/protected/teacher/upload">
                   <Button variant="outline" type="button">Cancel</Button>
                 </Link>

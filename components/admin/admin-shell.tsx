@@ -14,14 +14,17 @@ import {
   Shield,
   Menu,
   X,
+  FolderOpen,
 } from "lucide-react";
 import { useState } from "react";
+import { LogoutButton } from "@/components/logout-button";
 
 const navItems = [
   { label: "Dashboard", href: "/protected/admin", icon: LayoutDashboard },
   { label: "Users", href: "/protected/admin/users", icon: Users },
   { label: "Relationships", href: "/protected/admin/relationships", icon: Link2 },
   { label: "Upload Hub", href: "/protected/admin/upload", icon: Upload },
+  { label: "My Content", href: "/protected/admin/my-content", icon: FolderOpen },
   { label: "Content Review", href: "/protected/admin/content", icon: FileCheck },
   { label: "Reports", href: "/protected/admin/reports", icon: BarChart3 },
   { label: "Settings", href: "/protected/admin/settings", icon: Settings },
@@ -92,7 +95,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Sidebar footer */}
-        <div className="border-t p-4">
+        <div className="border-t p-4 space-y-3">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">
               SA
@@ -102,6 +105,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <p className="text-xs text-muted-foreground">Administrator</p>
             </div>
           </div>
+          <LogoutButton variant="ghost" size="sm" className="w-full justify-start text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20" />
         </div>
       </aside>
 

@@ -34,43 +34,40 @@ export interface ContentItem {
 }
 
 export const SUBJECTS = [
-  "Mathematics",
-  "Physics",
-  "Chemistry",
-  "Biology",
+  "History",
+  "Geography",
+  "Health",
 ] as const;
 
 export const TOPICS_BY_SUBJECT: Record<string, string[]> = {
-  Mathematics: [
-    "Algebra",
-    "Geometry",
-    "Calculus",
-    "Trigonometry",
-    "Statistics",
-    "Number Theory",
+  History: [
+    "Ancient Civilizations",
+    "Medieval Period",
+    "World Wars",
+    "Industrial Revolution",
+    "Cold War Era",
+    "Sri Lankan History",
   ],
-  Physics: [
-    "Mechanics",
-    "Thermodynamics",
-    "Optics",
-    "Electromagnetism",
-    "Quantum Physics",
-    "Waves",
+  Geography: [
+    "Physical Geography",
+    "Climate & Weather",
+    "Population Studies",
+    "Urban Geography",
+    "Economic Geography",
+    "Map Skills",
+    "Ecosystems",
   ],
-  Chemistry: [
-    "Organic Chemistry",
-    "Inorganic Chemistry",
-    "Physical Chemistry",
-    "Biochemistry",
-    "Analytical Chemistry",
-  ],
-  Biology: [
-    "Cell Biology",
-    "Genetics",
-    "Ecology",
-    "Evolution",
-    "Human Anatomy",
-    "Microbiology",
+  Health: [
+    "Human Body Systems",
+    "Nutrition & Diet",
+    "Mental Health",
+    "Physical Fitness",
+    "Disease Prevention",
+    "First Aid",
+    "Reproductive Health",
+    "Substance Abuse",
+    "Personal Hygiene",
+    "Environmental Health",
   ],
 };
 

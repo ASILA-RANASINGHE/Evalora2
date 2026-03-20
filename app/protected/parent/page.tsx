@@ -1,8 +1,12 @@
+"use client";
+
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Users,
   TrendingUp,
+  TrendingDown,
   CalendarDays,
   BookOpen,
   Clock,
@@ -10,6 +14,9 @@ import {
   FileText,
   BrainCircuit,
   Award,
+  Flame,
+  AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
 import { childAccounts, upcomingMilestones } from "@/lib/parent-mock-data";
@@ -29,26 +36,40 @@ const milestoneColors: Record<string, string> = {
 };
 
 export default function ParentDashboard() {
+  const [selectedId, setSelectedId] = useState(childAccounts[0].id);
+  const selected = childAccounts.find((c) => c.id === selectedId)!;
+  const ps = selected.progressSummary;
+  const studyDiff = ps.studyTimeThisWeek - ps.studyTimeLastWeek;
+
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
+      {/* Welcome */}
       <div>
         <h2 className="font-space-grotesk text-2xl font-bold">Good morning, David</h2>
         <p className="text-muted-foreground mt-1">Here&apos;s how your children are doing</p>
       </div>
 
-      {/* Child Accounts */}
+      {/* Child Selector */}
       <div>
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
           <Users className="h-4 w-4" />
-          Child Accounts
+          Select Child
         </h3>
         <div className="grid gap-4 md:grid-cols-2">
-          {childAccounts.map((child) => (
-            <Card key={child.id} className="border-border/50 bg-card/50 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow ring-1 ring-black/5 dark:ring-white/10">
-              <CardContent className="p-6">
+          {childAccounts.map((child) => {
+            const isSelected = child.id === selectedId;
+            return (
+              <button
+                key={child.id}
+                onClick={() => setSelectedId(child.id)}
+                className={`text-left rounded-xl border-2 p-5 transition-all ${
+                  isSelected
+                    ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20 shadow-md"
+                    : "border-border/50 bg-card/50 hover:border-purple-300 hover:shadow-sm"
+                }`}
+              >
                 <div className="flex items-start gap-4">
-                  <div className={`h-12 w-12 rounded-full bg-gradient-to-br ${child.color} flex items-center justify-center text-white font-bold text-sm shrink-0`}>
+                  <div className={`h-12 w-12 rounded-full bg-gradient-to-br ${child.color} flex items-center justify-center text-white font-bold text-sm shrink-0 ring-2 ${isSelected ? "ring-purple-400" : "ring-transparent"}`}>
                     {child.initials}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -59,8 +80,7 @@ export default function ParentDashboard() {
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mt-0.5">{child.grade}</p>
-
-                    <div className="mt-4 grid grid-cols-3 gap-3">
+                    <div className="mt-3 grid grid-cols-3 gap-2">
                       <div className="text-center p-2 rounded-lg bg-muted/30">
                         <p className="text-lg font-bold">{child.avgScore}%</p>
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Avg Score</p>
@@ -76,11 +96,109 @@ export default function ParentDashboard() {
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              </button>
+            );
+          })}
         </div>
       </div>
+
+      {/* Progress Summary for selected child */}
+      <Card className="border-purple-200 dark:border-purple-800/50 shadow-sm bg-gradient-to-br from-purple-50/50 to-indigo-50/30 dark:from-purple-900/10 dark:to-indigo-900/5">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-purple-500" />
+                {selected.name}&apos;s Progress Summary
+              </CardTitle>
+              <CardDescription>Key highlights from the last 30 days</CardDescription>
+            </div>
+            <Link
+              href={`/protected/parent/progress?child=${selectedId}`}
+              className="flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700 transition-colors"
+            >
+              Full Report
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Stat row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* Avg Score trend */}
+            <div className="p-3 rounded-xl bg-card border border-border/50 text-center">
+              <div className={`flex items-center justify-center gap-1 text-lg font-bold ${ps.scoreTrend >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                {ps.scoreTrend >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                {ps.scoreTrend >= 0 ? "+" : ""}{ps.scoreTrend}%
+              </div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mt-0.5">Score Trend</p>
+            </div>
+
+            {/* Study time */}
+            <div className="p-3 rounded-xl bg-card border border-border/50 text-center">
+              <div className="flex items-center justify-center gap-1">
+                <p className="text-lg font-bold">{ps.studyTimeThisWeek}h</p>
+                <span className={`text-xs font-medium ${studyDiff >= 0 ? "text-emerald-500" : "text-red-400"}`}>
+                  {studyDiff >= 0 ? "↑" : "↓"}{Math.abs(studyDiff).toFixed(1)}h
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mt-0.5">This Week</p>
+            </div>
+
+            {/* Streak */}
+            <div className="p-3 rounded-xl bg-card border border-border/50 text-center">
+              <div className="flex items-center justify-center gap-1 text-lg font-bold text-amber-500">
+                <Flame className="h-4 w-4" />
+                {ps.currentStreak}
+              </div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mt-0.5">Day Streak</p>
+            </div>
+
+            {/* Weak topics */}
+            <div className="p-3 rounded-xl bg-card border border-border/50 text-center">
+              <div className={`flex items-center justify-center gap-1 text-lg font-bold ${ps.weakTopicsCount > 3 ? "text-red-500" : ps.weakTopicsCount > 1 ? "text-amber-500" : "text-emerald-600"}`}>
+                <AlertTriangle className="h-4 w-4" />
+                {ps.weakTopicsCount}
+              </div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mt-0.5">Weak Areas</p>
+            </div>
+          </div>
+
+          {/* Subject highlights */}
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40">
+              <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium uppercase tracking-wider">Strongest Subject</p>
+                <p className="font-semibold truncate">{ps.topSubject.name}</p>
+              </div>
+              <span className="ml-auto text-lg font-bold text-emerald-600 shrink-0">{ps.topSubject.score}%</span>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40">
+              <AlertTriangle className="h-5 w-5 text-red-500 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs text-red-600 dark:text-red-400 font-medium uppercase tracking-wider">Needs Attention</p>
+                <p className="font-semibold truncate">{ps.weakSubject.name}</p>
+              </div>
+              <span className="ml-auto text-lg font-bold text-red-500 shrink-0">{ps.weakSubject.score}%</span>
+            </div>
+          </div>
+
+          {/* Mini score history */}
+          <div className="flex items-center gap-2 px-1">
+            <span className="text-xs text-muted-foreground shrink-0">3-month trend:</span>
+            <div className="flex items-center gap-3">
+              {ps.scoreHistory.map((s, i) => (
+                <div key={i} className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground">{s.month}</span>
+                  <span className={`text-xs font-bold ${s.avgScore >= 80 ? "text-emerald-600" : s.avgScore >= 65 ? "text-amber-500" : "text-red-500"}`}>{s.avgScore}%</span>
+                  {i < ps.scoreHistory.length - 1 && <span className="text-muted-foreground/40">→</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-7">
         {/* Performance Overview */}
@@ -91,7 +209,7 @@ export default function ParentDashboard() {
                 <TrendingUp className="h-5 w-5 text-purple-500" />
                 Performance Overview
               </CardTitle>
-              <CardDescription>Weekly summary of your children&apos;s progress</CardDescription>
+              <CardDescription>Score comparison across all children</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="p-4 rounded-lg bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/10 dark:to-indigo-900/10 border border-purple-200 dark:border-purple-800">
@@ -183,6 +301,14 @@ export default function ParentDashboard() {
       <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-sm ring-1 ring-black/5 dark:ring-white/10">
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-3">
+            <Link
+              href={`/protected/parent/progress?child=${selectedId}`}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800/50 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors text-sm font-medium text-purple-700 dark:text-purple-300 group"
+            >
+              <TrendingUp className="h-4 w-4" />
+              View Progress Dashboard
+              <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
             <Link
               href="/protected/parent/settings"
               className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-muted/30 border border-border/50 hover:bg-muted/60 transition-colors text-sm font-medium group"

@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../lib/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../lib/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [vector]
 }
 
 enum UserRole {
@@ -17,6 +19,10 @@ enum UserRole {
 enum QuestionType {
   MCQ
   SHORT
+  FILL_BLANK
+  TRUE_FALSE
+  MATCH_COLUMN
+  FILL_BLANK_OPTIONS
 }
 
 enum QuizType {
@@ -47,6 +53,17 @@ enum PaperTerm {
   END_OF_YEAR
 }
 
+enum RelationshipType {
+  TEACHER_STUDENT
+  PARENT_STUDENT
+}
+
+enum RelationshipStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
 model Profile {
   id        String   @id @db.Uuid
   email     String   @unique
@@ -62,9 +79,10 @@ model Profile {
   adminDetails   AdminDetails?
 
   // Content created by this user (teacher/admin)
-  createdQuizzes Quiz[]
-  createdPapers  Paper[]
-  createdNotes   Note[]
+  createdQuizzes    Quiz[]
+  createdPapers     Paper[]
+  createdNotes      Note[]
+  createdShortNotes ShortNote[]
 
   // Student attempts
   quizAttempts  QuizAttempt[]
@@ -72,6 +90,18 @@ model Profile {
 
   // Student progress
   progress StudentProgress?
+
+  // Relationship requests
+  sentRequests     RelationshipRequest[] @relation("SentRequests")
+  receivedRequests RelationshipRequest[] @relation("ReceivedRequests")
+
+  // Teacher-Student links
+  teacherStudents TeacherStudentLink[] @relation("TeacherToStudents")
+  studentTeachers TeacherStudentLink[] @relation("StudentToTeachers")
+
+  // Parent-Student links
+  parentStudents ParentStudentLink[] @relation("ParentToStudents")
+  studentParents ParentStudentLink[] @relation("StudentToParents")
 }
 
 model StudentDetails {
@@ -107,6 +137,49 @@ model AdminDetails {
   profile Profile @relation(fields: [id], references: [id], onDelete: Cascade)
 }
 
+// ─── Relationships ──────────────────────────────────────────────
+
+model RelationshipRequest {
+  id          String             @id @default(uuid()) @db.Uuid
+  type        RelationshipType
+  status      RelationshipStatus @default(PENDING)
+  requesterId String             @db.Uuid
+  receiverId  String             @db.Uuid
+  createdAt   DateTime           @default(now())
+  respondedAt DateTime?
+
+  requester Profile @relation("SentRequests", fields: [requesterId], references: [id], onDelete: Cascade)
+  receiver  Profile @relation("ReceivedRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, receiverId, type])
+  @@index([requesterId, status])
+  @@index([receiverId, status])
+}
+
+model TeacherStudentLink {
+  id        String   @id @default(uuid()) @db.Uuid
+  teacherId String   @db.Uuid
+  studentId String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  teacher Profile @relation("TeacherToStudents", fields: [teacherId], references: [id], onDelete: Cascade)
+  student Profile @relation("StudentToTeachers", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, studentId])
+}
+
+model ParentStudentLink {
+  id        String   @id @default(uuid()) @db.Uuid
+  parentId  String   @db.Uuid
+  studentId String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  parent  Profile @relation("ParentToStudents", fields: [parentId], references: [id], onDelete: Cascade)
+  student Profile @relation("StudentToParents", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, studentId])
+}
+
 // ─── Content: Subjects ───────────────────────────────────────────
 
 model Subject {
@@ -114,9 +187,10 @@ model Subject {
   name String @unique // "Mathematics", "Physics", etc.
   code String @unique // "MATH", "PHY", etc.
 
-  quizzes Quiz[]
-  papers  Paper[]
-  notes   Note[]
+  quizzes    Quiz[]
+  papers     Paper[]
+  notes      Note[]
+  shortNotes ShortNote[]
 }
 
 // ─── Content: Quizzes ────────────────────────────────────────────
@@ -128,6 +202,7 @@ model Quiz {
   topic     String
   type      QuizType   @default(TOPIC_BASED)
   duration  Int        // minutes
+  visibility ContentVisibility @default(STUDENTS_ONLY)
   status    ContentStatus @default(DRAFT)
 
   createdById String   @db.Uuid
@@ -182,19 +257,46 @@ model Paper {
   mcqMarks       Int       @default(1) // marks per MCQ
   essayCount     Int       @default(0)
   essayMarks     Int       @default(10) // marks per essay
+  tfCount        Int       @default(0)
+  tfMarks        Int       @default(1)
+  fbCount        Int       @default(0)
+  fbMarks        Int       @default(1)
   totalMarks     Int
   passPercentage Int       @default(35)
 
-  instructions   String?
-  status         ContentStatus @default(DRAFT)
+  instructions     String?
+  selectionRules   Json?     // [{ id, label, questionNumbers: number[], required: number }]
+  visibility       ContentVisibility @default(STUDENTS_ONLY)
+  status           ContentStatus @default(DRAFT)
 
   createdById String   @db.Uuid
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  subject   Subject        @relation(fields: [subjectId], references: [id])
-  createdBy Profile        @relation(fields: [createdById], references: [id])
+  subject   Subject          @relation(fields: [subjectId], references: [id])
+  createdBy Profile          @relation(fields: [createdById], references: [id])
+  questions PaperQuestion[]
   attempts  PaperAttempt[]
+}
+
+model PaperQuestion {
+  id             String       @id @default(uuid()) @db.Uuid
+  paperId        String       @db.Uuid
+  text           String
+  type           QuestionType @default(MCQ)
+  points         Int          @default(1)
+  options        String[]
+  correctAnswer  String
+  order          Int          @default(0)
+
+  // Structured question hierarchy
+  questionNumber Int?     // main question group number (e.g. 1, 2, 3)
+  subLabel       String?  // first-level sub label (e.g. "a", "b", "c")
+  subSubLabel    String?  // second-level sub label (e.g. "i", "ii", "iii")
+  description    String?  // optional description shown at the top of a main question group
+  imageUrl       String?  // optional compressed image (base64 data URL) attached to the question
+
+  paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
 }
 
 model PaperAttempt {
@@ -202,6 +304,10 @@ model PaperAttempt {
   paperId     String    @db.Uuid
   studentId   String    @db.Uuid
   score       Float?
+  timeTaken   Int?      // seconds
+  answers     Json?     // { "questionId": "answer" }
+  flagged     Json?     // ["questionId", ...]
+  results     Json?     // full per-question results object
   startedAt   DateTime  @default(now())
   submittedAt DateTime?
 
@@ -215,6 +321,7 @@ model Note {
   id         String            @id @default(uuid()) @db.Uuid
   title      String
   subjectId  String            @db.Uuid
+  grade      String?
   topic      String
   content    String            // markdown or rich text — TEXT has no size limit
   visibility ContentVisibility @default(STUDENTS_ONLY)
@@ -240,6 +347,49 @@ model NoteAttachment {
   note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
 }
 
+// ─── Content: Short Notes ───────────────────────────────────────
+
+model ShortNote {
+  id          String        @id @default(uuid()) @db.Uuid
+  title       String
+  subjectId   String        @db.Uuid
+  grade       String?
+  topic       String
+  content     String
+  visibility  ContentVisibility @default(STUDENTS_ONLY)
+  status      ContentStatus     @default(DRAFT)
+
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subject     Subject               @relation(fields: [subjectId], references: [id])
+  createdBy   Profile               @relation(fields: [createdById], references: [id])
+  attachments ShortNoteAttachment[]
+}
+
+model ShortNoteAttachment {
+  id          String    @id @default(uuid()) @db.Uuid
+  shortNoteId String    @db.Uuid
+  name        String
+  url         String    // Supabase Storage URL
+  size        Int       // bytes
+  type        String    // MIME type
+
+  shortNote ShortNote @relation(fields: [shortNoteId], references: [id], onDelete: Cascade)
+}
+
+// ─── Historical Locations (Map Search) ──────────────────────────
+
+model Location {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique
+  latitude    Float
+  longitude   Float
+  description String?
+  category    String? // e.g. "ancient_city", "kingdom", "temple", "colonial_fort"
+}
+
 // ─── Student Progress & Gamification ─────────────────────────────
 
 model StudentProgress {
@@ -255,4 +405,15 @@ model StudentProgress {
   updatedAt        DateTime @updatedAt
 
   student Profile @relation(fields: [studentId], references: [id])
+}
+
+model DocumentChunk {
+  id        String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title     String
+  topic     String?
+  content   String
+  grade     String?
+  embedding Unsupported("vector(384)")?
+  createdAt DateTime                    @default(now())
+  updatedAt DateTime                    @updatedAt
 }

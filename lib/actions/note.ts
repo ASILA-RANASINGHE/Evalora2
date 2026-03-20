@@ -3,11 +3,21 @@
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 
+interface AttachmentInput {
+  name: string;
+  url: string;
+  size: number;
+  type: string;
+}
+
 interface CreateNoteInput {
   title: string;
   subject: string;
+  grade?: string;
   topic: string;
   content: string;
+  visibility?: string;
+  attachments?: AttachmentInput[];
 }
 
 export async function createNote(input: CreateNoteInput) {
@@ -17,20 +27,42 @@ export async function createNote(input: CreateNoteInput) {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
-  const subject = await prisma.subject.findUnique({
-    where: { name: input.subject },
+  const EXTRA_SUBJECTS = ["Geography", "Health"];
+
+  const profile = await prisma.profile.findUnique({
+    where: { id: user.id },
+    select: { role: true },
   });
-  if (!subject) throw new Error(`Subject "${input.subject}" not found`);
+  if (profile?.role === "TEACHER") {
+    const teacherDetails = await prisma.teacherDetails.findUnique({
+      where: { id: user.id },
+    });
+    if (!teacherDetails) throw new Error("Teacher details not found");
+    if (teacherDetails.subject !== input.subject && !EXTRA_SUBJECTS.includes(input.subject)) {
+      throw new Error(`You are not authorized to upload content for "${input.subject}".`);
+    }
+  }
+
+  const subjectCode = input.subject.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 8) || input.subject.slice(0, 8).toUpperCase();
+  const subject = await prisma.subject.upsert({
+    where: { name: input.subject },
+    create: { name: input.subject, code: subjectCode },
+    update: {},
+  });
 
   const note = await prisma.note.create({
     data: {
       title: input.title,
       subjectId: subject.id,
+      grade: input.grade || null,
       topic: input.topic,
       content: input.content,
-      visibility: "STUDENTS_ONLY",
+      visibility: profile?.role === "ADMIN" ? "PUBLIC" : (input.visibility === "PUBLIC" ? "PUBLIC" : "STUDENTS_ONLY"),
       status: "APPROVED",
       createdById: user.id,
+      attachments: input.attachments?.length
+        ? { create: input.attachments.map((a) => ({ name: a.name, url: a.url, size: a.size, type: a.type })) }
+        : undefined,
     },
   });
 
@@ -41,7 +73,7 @@ export async function getNotesBySubject(subjectName: string) {
   const subject = await prisma.subject.findFirst({
     where: { name: { equals: subjectName, mode: "insensitive" } },
   });
-  if (!subject) return [];
+  if (!subject) return { adminContent: [], teacherContent: [] };
 
   const notes = await prisma.note.findMany({
     where: {
@@ -49,19 +81,24 @@ export async function getNotesBySubject(subjectName: string) {
       status: "APPROVED",
     },
     include: {
-      createdBy: { select: { firstName: true, lastName: true } },
+      createdBy: { select: { firstName: true, lastName: true, role: true } },
     },
     orderBy: { createdAt: "desc" },
   });
 
-  return notes.map((n) => ({
+  const mapNote = (n: typeof notes[0]) => ({
     id: n.id,
     title: n.title,
     topic: n.topic,
     author: `${n.createdBy.firstName ?? ""} ${n.createdBy.lastName ?? ""}`.trim() || "Teacher",
     createdAt: n.createdAt,
     contentLength: n.content.length,
-  }));
+  });
+
+  const adminContent = notes.filter((n) => n.createdBy.role === "ADMIN").map(mapNote);
+  const teacherContent = notes.filter((n) => n.createdBy.role === "TEACHER").map(mapNote);
+
+  return { adminContent, teacherContent };
 }
 
 export async function getNoteById(id: string) {

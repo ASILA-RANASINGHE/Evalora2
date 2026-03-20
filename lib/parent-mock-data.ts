@@ -17,6 +17,16 @@ export const childAccounts = [
     subjects: 5,
     lastActive: "Today, 9:15 AM",
     color: "from-purple-500 to-indigo-500",
+    progressSummary: {
+      scoreTrend: +5,
+      studyTimeThisWeek: 11.0,
+      studyTimeLastWeek: 9.5,
+      currentStreak: 8,
+      weakTopicsCount: 2,
+      topSubject: { name: "Biology", score: 92 },
+      weakSubject: { name: "Chemistry", score: 68 },
+      scoreHistory: [{ month: "Dec", avgScore: 80 }, { month: "Jan", avgScore: 84 }, { month: "Feb", avgScore: 87 }],
+    },
   },
   {
     id: 2,
@@ -28,6 +38,16 @@ export const childAccounts = [
     subjects: 4,
     lastActive: "Today, 8:40 AM",
     color: "from-blue-500 to-cyan-500",
+    progressSummary: {
+      scoreTrend: +3,
+      studyTimeThisWeek: 8.5,
+      studyTimeLastWeek: 12.0,
+      currentStreak: 5,
+      weakTopicsCount: 4,
+      topSubject: { name: "History", score: 85 },
+      weakSubject: { name: "Mathematics", score: 62 },
+      scoreHistory: [{ month: "Dec", avgScore: 66 }, { month: "Jan", avgScore: 70 }, { month: "Feb", avgScore: 74 }],
+    },
   },
 ];
 
