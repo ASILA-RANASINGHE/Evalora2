@@ -64,6 +64,12 @@ enum RelationshipStatus {
   REJECTED
 }
 
+enum ReviewStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
 model Profile {
   id        String   @id @db.Uuid
   email     String   @unique
@@ -102,6 +108,13 @@ model Profile {
   // Parent-Student links
   parentStudents ParentStudentLink[] @relation("ParentToStudents")
   studentParents ParentStudentLink[] @relation("StudentToParents")
+
+  // Manual reviews
+  studentReviews  ManualReview[] @relation("StudentReviews")
+  reviewerReviews ManualReview[] @relation("ReviewerReviews")
+
+  // Notifications
+  notifications Notification[]
 }
 
 model StudentDetails {
@@ -311,8 +324,9 @@ model PaperAttempt {
   startedAt   DateTime  @default(now())
   submittedAt DateTime?
 
-  paper   Paper   @relation(fields: [paperId], references: [id])
-  student Profile @relation(fields: [studentId], references: [id])
+  paper         Paper          @relation(fields: [paperId], references: [id])
+  student       Profile        @relation(fields: [studentId], references: [id])
+  manualReviews ManualReview[]
 }
 
 // ─── Content: Notes ──────────────────────────────────────────────
@@ -416,4 +430,64 @@ model DocumentChunk {
   embedding Unsupported("vector(384)")?
   createdAt DateTime                    @default(now())
   updatedAt DateTime                    @updatedAt
+}
+
+// ─── Manual Review ────────────────────────────────────────────────────────────
+
+model ManualReview {
+  id             String       @id @default(uuid()) @db.Uuid
+  attemptId      String       @db.Uuid
+  questionId     String       // PaperQuestion id
+  studentId      String       @db.Uuid
+  reviewerId     String?      @db.Uuid
+  status         ReviewStatus @default(PENDING)
+
+  // Denormalised question snapshot (for fast list rendering)
+  questionText    String
+  questionType    String       // QuestionType enum value
+  questionDisplay String       // e.g. "Q1 (a)(i)"
+  marksAvailable  Float
+  correctAnswer   String
+  studentAnswer   String
+
+  // AI assessment copied from results at review-request time
+  aiMarks      Float
+  aiConfidence Float
+  aiFeedback   String @default("")
+
+  // Teacher decision
+  finalMarks      Float?
+  agreeWithAI     Boolean @default(true)
+  overrideReason  String?
+  teacherFeedback String?
+
+  // Timing / audit
+  requestedAt DateTime  @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  attempt  PaperAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  student  Profile      @relation("StudentReviews", fields: [studentId], references: [id], onDelete: Cascade)
+  reviewer Profile?     @relation("ReviewerReviews", fields: [reviewerId], references: [id])
+
+  @@unique([attemptId, questionId])
+  @@index([studentId, status])
+  @@index([status, requestedAt])
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  title     String
+  message   String
+  type      String   @default("info")
+  isRead    Boolean  @default(false)
+  data      Json?
+  createdAt DateTime @default(now())
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
 }

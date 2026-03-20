@@ -1,13 +1,13 @@
 import { getPendingReviews, getReviewStats, getCompletedReviews } from "@/lib/actions/review";
-import { FlaggedDashboard } from "./flagged-dashboard";
+import { FlaggedDashboard } from "@/app/protected/teacher/flagged/flagged-dashboard";
 import { Flag, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
-export default async function ReviewFlaggedPage() {
+export default async function AdminReviewFlaggedPage() {
   const [stats, pendingReviews, completedReviews] = await Promise.all([
-    getReviewStats(false),
-    getPendingReviews(false),
-    getCompletedReviews(false),
+    getReviewStats(true),
+    getPendingReviews(true),
+    getCompletedReviews(true),
   ]);
 
   return (
@@ -18,7 +18,7 @@ export default async function ReviewFlaggedPage() {
           Review Flagged Answers
         </h2>
         <p className="text-muted-foreground mt-1">
-          Manually grade student answers that require teacher review
+          All pending manual reviews across the platform
         </p>
       </div>
 
@@ -31,7 +31,7 @@ export default async function ReviewFlaggedPage() {
               When students flag answers for manual grading, they&apos;ll appear here.
             </p>
           </div>
-          <Link href="/protected/teacher" className="text-sm font-semibold text-purple-600 hover:underline">
+          <Link href="/protected/admin" className="text-sm font-semibold text-purple-600 hover:underline">
             Back to dashboard →
           </Link>
         </div>
@@ -40,7 +40,7 @@ export default async function ReviewFlaggedPage() {
           initialStats={stats}
           initialPending={pendingReviews}
           initialCompleted={completedReviews}
-          adminMode={false}
+          adminMode={true}
         />
       )}
     </div>

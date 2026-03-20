@@ -880,5 +880,47 @@ export async function requestManualReview(attemptId: string, questionId: string)
     });
   }
 
+  // Create (or skip if already exists) a ManualReview record with denormalized question data
+  const existingReview = await prisma.manualReview.findUnique({
+    where: { attemptId_questionId: { attemptId, questionId } },
+  });
+
+  if (!existingReview) {
+    // Extract question data from the stored results JSON
+    const results: QuestionResult[] = Array.isArray(attempt.results)
+      ? (attempt.results as QuestionResult[])
+      : [];
+    const qr = results.find((r) => r.questionId === questionId);
+
+    if (qr) {
+      // Build display label e.g. "Q1 (a)(i)"
+      let questionDisplay = "";
+      if (qr.mainQuestionNumber) {
+        questionDisplay = `Q${qr.mainQuestionNumber}`;
+        if (qr.subLabel) questionDisplay += ` (${qr.subLabel})`;
+        if (qr.subSubLabel) questionDisplay += `(${qr.subSubLabel})`;
+      } else {
+        questionDisplay = `Q${qr.questionNumber}`;
+      }
+
+      await prisma.manualReview.create({
+        data: {
+          attemptId,
+          questionId,
+          studentId: user.id,
+          questionText: qr.questionText,
+          questionType: qr.questionType,
+          questionDisplay,
+          marksAvailable: qr.marksAvailable,
+          correctAnswer: qr.correctAnswer,
+          studentAnswer: qr.studentAnswer,
+          aiMarks: qr.marksAwarded,
+          aiConfidence: qr.aiConfidence,
+          aiFeedback: qr.aiFeedback ?? "",
+        },
+      });
+    }
+  }
+
   return { ok: true };
 }

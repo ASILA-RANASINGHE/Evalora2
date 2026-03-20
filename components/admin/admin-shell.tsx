@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   FolderOpen,
+  Flag,
 } from "lucide-react";
 import { useState } from "react";
 import { LogoutButton } from "@/components/logout-button";
@@ -26,6 +27,7 @@ const navItems = [
   { label: "Upload Hub", href: "/protected/admin/upload", icon: Upload },
   { label: "My Content", href: "/protected/admin/my-content", icon: FolderOpen },
   { label: "Content Review", href: "/protected/admin/content", icon: FileCheck },
+  { label: "Review Flagged", href: "/protected/admin/flagged", icon: Flag },
   { label: "Reports", href: "/protected/admin/reports", icon: BarChart3 },
   { label: "Settings", href: "/protected/admin/settings", icon: Settings },
 ];
