@@ -63,7 +63,7 @@ type ReviewFilter = "all" | "correct" | "incorrect" | "flagged" | "partial";
 
 /** Build a display label like "1(a)(i)" for structured questions, or just the sequential number for MCQ */
 function buildQuestionLabel(q: ExamQuestion): string {
-  if (q.type === "MCQ" || q.type === "TRUE_FALSE" || q.type === "FILL_BLANK" || !q.questionNumber) return String(q.number);
+  if (q.type === "MCQ" || q.type === "TRUE_FALSE" || q.type === "FILL_BLANK" || q.type === "FILL_BLANK_OPTIONS" || q.type === "MATCH_COLUMN" || !q.questionNumber) return String(q.number);
   let label = String(q.questionNumber);
   if (q.subLabel) label += `(${q.subLabel})`;
   if (q.subSubLabel) label += `(${q.subSubLabel})`;
@@ -78,7 +78,7 @@ function getSelectionRule(q: ExamQuestion, rules: SelectionRule[] | null | undef
 
 /** Short label for navigation grid, e.g. "1a" or "2bi" */
 function buildShortLabel(q: ExamQuestion): string {
-  if (q.type === "MCQ" || q.type === "TRUE_FALSE" || q.type === "FILL_BLANK" || !q.questionNumber) return String(q.number);
+  if (q.type === "MCQ" || q.type === "TRUE_FALSE" || q.type === "FILL_BLANK" || q.type === "FILL_BLANK_OPTIONS" || q.type === "MATCH_COLUMN" || !q.questionNumber) return String(q.number);
   let label = String(q.questionNumber);
   if (q.subLabel) label += q.subLabel;
   if (q.subSubLabel) label += q.subSubLabel;
@@ -1017,7 +1017,7 @@ export default function ExamInterface({
               )}
 
               {/* Fill in the Blank review */}
-              {currentReview.questionType === "FILL_BLANK" && (
+              {(currentReview.questionType === "FILL_BLANK" || currentReview.questionType === "FILL_BLANK_OPTIONS") && (
                 <div className="space-y-3">
                   {currentReview.correctAnswer.split("|").map((correct, bi) => {
                     const studentVal = currentReview.studentAnswer ? currentReview.studentAnswer.split("|")[bi] || "" : "";
@@ -1028,6 +1028,35 @@ export default function ExamInterface({
                         <span className="text-muted-foreground min-w-16">Blank {bi + 1}:</span>
                         <span className={`font-medium ${isBlankCorrect ? "text-green-700" : "text-red-600"}`}>{studentVal || <em className="text-muted-foreground not-italic">empty</em>}</span>
                         {!isBlankCorrect && <span className="ml-auto text-xs text-green-700">Correct: <strong>{correct}</strong></span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Match Column review */}
+              {currentReview.questionType === "MATCH_COLUMN" && (
+                <div className="space-y-2">
+                  {currentReview.correctAnswer.split("|").map((pair, pi) => {
+                    const [colA, colBCorrect] = pair.split("::");
+                    const studentPairsReview: Record<string, string> = {};
+                    if (currentReview.studentAnswer) {
+                      currentReview.studentAnswer.split("|").forEach(p => {
+                        const [a, b] = p.split("::");
+                        if (a) studentPairsReview[a] = b || "";
+                      });
+                    }
+                    const studentB = studentPairsReview[colA || ""] || "";
+                    const isMatch = studentB.toLowerCase() === (colBCorrect || "").toLowerCase();
+                    return (
+                      <div key={pi} className="grid grid-cols-2 gap-2 text-sm">
+                        <span className="bg-blue-50 px-2 py-1 rounded text-blue-800">{colA}</span>
+                        <div className="space-y-0.5">
+                          <div className={`px-2 py-1 rounded ${isMatch ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                            You: {studentB || "(no answer)"}
+                          </div>
+                          {!isMatch && <div className="px-2 py-1 rounded bg-gray-100 text-gray-700 text-xs">Correct: {colBCorrect}</div>}
+                        </div>
                       </div>
                     );
                   })}
@@ -1278,7 +1307,11 @@ export default function ExamInterface({
                   ? "Part 1 · True / False"
                   : question.type === "FILL_BLANK"
                     ? "Part 1 · Fill in Blank"
-                    : "Part 1 · MCQ"}
+                    : question.type === "FILL_BLANK_OPTIONS"
+                      ? "Part 1 · Blank + Options"
+                      : question.type === "MATCH_COLUMN"
+                        ? "Part 1 · Match Column"
+                        : "Part 1 · MCQ"}
             </span>
             Q {currentIndex + 1} of {questions.length}
           </span>
@@ -1314,7 +1347,11 @@ export default function ExamInterface({
                       ? "text-amber-600 border-amber-200"
                       : question.type === "FILL_BLANK"
                         ? "text-teal-600 border-teal-200"
-                        : "text-orange-600 border-orange-200"
+                        : question.type === "FILL_BLANK_OPTIONS"
+                          ? "text-purple-600 border-purple-200"
+                          : question.type === "MATCH_COLUMN"
+                            ? "text-indigo-600 border-indigo-200"
+                            : "text-orange-600 border-orange-200"
                 }`}
               >
                 {question.type === "MCQ"
@@ -1323,7 +1360,11 @@ export default function ExamInterface({
                     ? "True / False"
                     : question.type === "FILL_BLANK"
                       ? "Fill in the Blank"
-                      : "Structured"}
+                      : question.type === "FILL_BLANK_OPTIONS"
+                        ? "Blank + Options"
+                        : question.type === "MATCH_COLUMN"
+                          ? "Match Column"
+                          : "Structured"}
               </Badge>
               {/* Total marks for the main question group (structured only) */}
               {question.type === "SHORT" && question.questionNumber != null && (() => {
@@ -1505,6 +1546,97 @@ export default function ExamInterface({
                     </div>
                   );
                 })()
+              ) : question.type === "FILL_BLANK_OPTIONS" ? (
+                (() => {
+                  const parts = question.text.split("___");
+                  const filledValues = question.studentAnswer ? question.studentAnswer.split("|") : [];
+                  return (
+                    <div className="space-y-4">
+                      <div className="leading-relaxed text-base flex flex-wrap items-center gap-1">
+                        {parts.map((part, pi) => (
+                          <React.Fragment key={pi}>
+                            <span className="text-gray-800">{part}</span>
+                            {pi < parts.length - 1 && (
+                              <div className="flex flex-wrap gap-1 inline-flex">
+                                {(question.options[pi] ? question.options[pi].split("|") : []).map((opt, oi) => {
+                                  const selected = filledValues[pi] === opt;
+                                  return (
+                                    <button
+                                      key={oi}
+                                      type="button"
+                                      onClick={() => {
+                                        const newValues = Array.from({ length: parts.length - 1 }, (_, bi) =>
+                                          bi === pi ? opt : (filledValues[bi] || "")
+                                        );
+                                        handleAnswer(newValues.join("|"));
+                                      }}
+                                      className={`px-2 py-0.5 rounded-full border text-sm font-medium transition-colors ${
+                                        selected
+                                          ? "bg-purple-600 border-purple-600 text-white"
+                                          : "border-gray-300 hover:border-purple-400 text-gray-700"
+                                      }`}
+                                    >
+                                      {opt}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Click an option to fill each blank
+                      </p>
+                    </div>
+                  );
+                })()
+              ) : question.type === "MATCH_COLUMN" ? (
+                (() => {
+                  const pairs = (question.correctAnswer || "").split("|").map(p => p.split("::"));
+                  const columnAItems = pairs.map(p => p[0] || "");
+                  const allBOptions = question.options;
+                  const studentPairs: Record<string, string> = {};
+                  if (question.studentAnswer) {
+                    question.studentAnswer.split("|").forEach(p => {
+                      const [a, b] = p.split("::");
+                      if (a) studentPairs[a] = b || "";
+                    });
+                  }
+                  return (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-2 text-xs font-semibold text-muted-foreground pb-1 border-b">
+                        <span>Column A</span>
+                        <span>Column B — your match</span>
+                      </div>
+                      {columnAItems.map((aItem, ai) => {
+                        const currentMatch = studentPairs[aItem] || "";
+                        return (
+                          <div key={ai} className="grid grid-cols-2 gap-2 items-center">
+                            <div className="text-sm text-gray-800 font-medium bg-blue-50 rounded-lg px-3 py-2 border border-blue-100">
+                              {aItem}
+                            </div>
+                            <select
+                              value={currentMatch}
+                              onChange={(e) => {
+                                const updated = { ...studentPairs, [aItem]: e.target.value };
+                                const answer = columnAItems.map(a => `${a}::${updated[a] || ""}`).join("|");
+                                handleAnswer(answer);
+                              }}
+                              className="h-9 rounded-lg border border-gray-300 text-sm px-2 bg-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                            >
+                              <option value="">— select —</option>
+                              {allBOptions.map((opt, oi) => (
+                                <option key={oi} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      })}
+                      <p className="text-xs text-muted-foreground">Match each item in Column A with the correct item in Column B</p>
+                    </div>
+                  );
+                })()
               ) : (
                 <div className="space-y-3">
                   <Textarea
@@ -1585,19 +1717,19 @@ export default function ExamInterface({
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {questions
-                    .filter((q) => q.type === "MCQ" || q.type === "TRUE_FALSE" || q.type === "FILL_BLANK")
+                    .filter((q) => q.type === "MCQ" || q.type === "TRUE_FALSE" || q.type === "FILL_BLANK" || q.type === "FILL_BLANK_OPTIONS" || q.type === "MATCH_COLUMN")
                     .map((q) => {
                       const i = questions.indexOf(q);
                       const isCurrent = i === currentIndex;
                       const isAns = q.isAnswered;
                       const isFlag = q.isFlagged;
                       const label = buildShortLabel(q);
-                      const typeTag = q.type === "TRUE_FALSE" ? " T/F" : q.type === "FILL_BLANK" ? " FB" : "";
+                      const typeTag = q.type === "TRUE_FALSE" ? " T/F" : q.type === "FILL_BLANK" ? " FB" : q.type === "FILL_BLANK_OPTIONS" ? " FBO" : q.type === "MATCH_COLUMN" ? " MC" : "";
                       return (
                         <button
                           key={q.id}
                           onClick={() => navigateTo(i)}
-                          title={`${q.type === "TRUE_FALSE" ? "True/False" : q.type === "FILL_BLANK" ? "Fill Blank" : "MCQ"} ${q.number} — ${q.points} mark${q.points !== 1 ? "s" : ""}`}
+                          title={`${q.type === "TRUE_FALSE" ? "True/False" : q.type === "FILL_BLANK" ? "Fill Blank" : q.type === "FILL_BLANK_OPTIONS" ? "Blank+Options" : q.type === "MATCH_COLUMN" ? "Match Column" : "MCQ"} ${q.number} — ${q.points} mark${q.points !== 1 ? "s" : ""}`}
                           className={`min-w-[2rem] h-8 px-1.5 rounded-lg text-xs font-bold transition-all ${
                             isCurrent
                               ? "bg-blue-600 text-white ring-2 ring-blue-300"
