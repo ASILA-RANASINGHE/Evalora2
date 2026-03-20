@@ -21,6 +21,8 @@ enum QuestionType {
   SHORT
   FILL_BLANK
   TRUE_FALSE
+  MATCH_COLUMN
+  FILL_BLANK_OPTIONS
 }
 
 enum QuizType {

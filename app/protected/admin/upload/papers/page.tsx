@@ -52,12 +52,14 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.72): Promi
 }
 
 interface McqQuestion {
-  qType: "MCQ" | "TRUE_FALSE" | "FILL_BLANK";
+  qType: "MCQ" | "TRUE_FALSE" | "FILL_BLANK" | "FILL_BLANK_OPTIONS" | "MATCH_COLUMN";
   text: string;
-  options: string[];   // MCQ only: 4 answer options
-  correctAnswer: string; // MCQ: selected text; TRUE_FALSE: "True"/"False"; FILL_BLANK: unused (derived from answers)
-  answers: string[];   // FILL_BLANK only: one answer string per ___ blank
+  options: string[];   // MCQ: 4 options; MATCH_COLUMN: correct Column B items (parallel to answers)
+  correctAnswer: string;
+  answers: string[];   // FILL_BLANK/FILL_BLANK_OPTIONS: per-blank answers; MATCH_COLUMN: Column A items
   imageData?: string;
+  matchDistractors?: string[];  // MATCH_COLUMN: extra Column B distractors
+  blankOptions?: string[][];    // FILL_BLANK_OPTIONS: per-blank option arrays
 }
 
 interface StructuredSubSub {
@@ -207,6 +209,27 @@ export default function AdminUploadPapersPage() {
             points: parseInt(mcqMarks) || 1,
             options: q.answers,
             correctAnswer: q.answers.join("|"),
+            order: i,
+            imageUrl: q.imageData || undefined,
+          };
+        } else if (q.qType === "FILL_BLANK_OPTIONS") {
+          return {
+            text: q.text,
+            type: "FILL_BLANK_OPTIONS" as const,
+            points: parseInt(mcqMarks) || 1,
+            options: (q.blankOptions || []).map(opts => opts.join("|")),
+            correctAnswer: q.answers.join("|"),
+            order: i,
+            imageUrl: q.imageData || undefined,
+          };
+        } else if (q.qType === "MATCH_COLUMN") {
+          const allBItems = [...(q.options || []), ...(q.matchDistractors || [])];
+          return {
+            text: q.text,
+            type: "MATCH_COLUMN" as const,
+            points: parseInt(mcqMarks) || 1,
+            options: allBItems,
+            correctAnswer: (q.answers || []).map((a, idx) => `${a}::${q.options[idx] || ""}`).join("|"),
             order: i,
             imageUrl: q.imageData || undefined,
           };
@@ -581,7 +604,7 @@ export default function AdminUploadPapersPage() {
             <h3 className="font-semibold text-lg flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
               Part 1 Questions ({mcqCountNum})
-              <span className="text-sm font-normal text-muted-foreground ml-1">MCQ · True/False · Fill in Blank</span>
+              <span className="text-sm font-normal text-muted-foreground ml-1">MCQ · True/False · Fill in Blank · Match Column</span>
             </h3>
             {mcqQuestions.map((q, i) => (
               <Card key={i} className="border-border/50 shadow-sm">
@@ -594,13 +617,21 @@ export default function AdminUploadPapersPage() {
                     <div className="flex-1 space-y-3">
                       {/* Question type switcher */}
                       <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
-                        {(["MCQ", "TRUE_FALSE", "FILL_BLANK"] as const).map((t) => (
+                        {(["MCQ", "TRUE_FALSE", "FILL_BLANK", "FILL_BLANK_OPTIONS", "MATCH_COLUMN"] as const).map((t) => (
                           <button
                             key={t}
                             type="button"
                             onClick={() => {
                               const updated = [...mcqQuestions];
-                              updated[i] = { ...updated[i], qType: t, correctAnswer: t === "TRUE_FALSE" ? "True" : "", answers: [] };
+                              updated[i] = {
+                                ...updated[i],
+                                qType: t,
+                                correctAnswer: t === "TRUE_FALSE" ? "True" : "",
+                                answers: [],
+                                options: t === "MCQ" ? ["","","",""] : [],
+                                matchDistractors: [],
+                                blankOptions: [],
+                              };
                               setMcqQuestions(updated);
                             }}
                             className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
@@ -609,7 +640,7 @@ export default function AdminUploadPapersPage() {
                                 : "text-muted-foreground hover:text-foreground"
                             }`}
                           >
-                            {t === "MCQ" ? "MCQ" : t === "TRUE_FALSE" ? "True / False" : "Fill in Blank"}
+                            {t === "MCQ" ? "MCQ" : t === "TRUE_FALSE" ? "True / False" : t === "FILL_BLANK" ? "Fill in Blank" : t === "FILL_BLANK_OPTIONS" ? "Blank + Options" : "Match Column"}
                           </button>
                         ))}
                       </div>
@@ -618,12 +649,13 @@ export default function AdminUploadPapersPage() {
                         placeholder="Enter question text..."
                         value={q.text}
                         onChange={(e) => {
-                          if (q.qType === "FILL_BLANK") {
+                          if (q.qType === "FILL_BLANK" || q.qType === "FILL_BLANK_OPTIONS") {
                             const updated = [...mcqQuestions];
                             const newText = e.target.value;
                             const blankCount = (newText.match(/___/g) || []).length;
                             const newAnswers = Array.from({ length: blankCount }, (_, bi) => updated[i].answers[bi] || "");
-                            updated[i] = { ...updated[i], text: newText, answers: newAnswers };
+                            const newBlankOptions = Array.from({ length: blankCount }, (_, bi) => updated[i].blankOptions?.[bi] || []);
+                            updated[i] = { ...updated[i], text: newText, answers: newAnswers, blankOptions: newBlankOptions };
                             setMcqQuestions(updated);
                           } else {
                             const updated = [...mcqQuestions];
@@ -748,6 +780,177 @@ export default function AdminUploadPapersPage() {
                               </div>
                             );
                           })()}
+                        </div>
+                      )}
+
+                      {/* Fill in Blank with Options */}
+                      {q.qType === "FILL_BLANK_OPTIONS" && (
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground">Use <code className="bg-muted px-1 rounded">___</code> in your question text. For each blank, enter the options students can choose from.</p>
+                          {(() => {
+                            const blankCount = (q.text.match(/___/g) || []).length;
+                            if (blankCount === 0) return (
+                              <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">Type ___ in the question above to add blanks</p>
+                            );
+                            return (
+                              <div className="space-y-3">
+                                {Array.from({ length: blankCount }, (_, bi) => {
+                                  const opts = q.blankOptions?.[bi] || [];
+                                  const correctAns = q.answers[bi] || "";
+                                  return (
+                                    <div key={bi} className="border rounded-lg p-3 space-y-2 bg-muted/30">
+                                      <p className="text-xs font-semibold text-purple-700">Blank {bi + 1}</p>
+                                      <div className="space-y-1">
+                                        <Label className="text-xs text-muted-foreground">Options (press Enter or comma to add)</Label>
+                                        <div className="flex flex-wrap gap-1 mb-1">
+                                          {opts.map((opt, oi) => (
+                                            <span key={oi} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${correctAns === opt ? "bg-green-100 border-green-400 text-green-800" : "bg-white border-gray-300 text-gray-700"}`}>
+                                              {opt}
+                                              <button type="button" onClick={() => {
+                                                const updated = [...mcqQuestions];
+                                                const newOpts = opts.filter((_, idx) => idx !== oi);
+                                                const newBlankOptions = [...(updated[i].blankOptions || [])];
+                                                newBlankOptions[bi] = newOpts;
+                                                const newAnswers = [...updated[i].answers];
+                                                if (newAnswers[bi] === opt) newAnswers[bi] = "";
+                                                updated[i] = { ...updated[i], blankOptions: newBlankOptions, answers: newAnswers };
+                                                setMcqQuestions(updated);
+                                              }} className="text-gray-400 hover:text-red-500 ml-0.5">×</button>
+                                            </span>
+                                          ))}
+                                        </div>
+                                        <Input
+                                          placeholder="Type an option and press Enter"
+                                          className="h-8 text-sm"
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter" || e.key === ",") {
+                                              e.preventDefault();
+                                              const val = (e.target as HTMLInputElement).value.trim().replace(/,$/, "");
+                                              if (!val) return;
+                                              const updated = [...mcqQuestions];
+                                              const newBlankOptions = [...(updated[i].blankOptions || [])];
+                                              if (!newBlankOptions[bi]) newBlankOptions[bi] = [];
+                                              if (!newBlankOptions[bi].includes(val)) {
+                                                newBlankOptions[bi] = [...newBlankOptions[bi], val];
+                                              }
+                                              updated[i] = { ...updated[i], blankOptions: newBlankOptions };
+                                              setMcqQuestions(updated);
+                                              (e.target as HTMLInputElement).value = "";
+                                            }
+                                          }}
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label className="text-xs text-muted-foreground">Correct answer</Label>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                          {opts.length === 0 ? (
+                                            <p className="text-xs text-muted-foreground italic">Add options above first</p>
+                                          ) : opts.map((opt, oi) => (
+                                            <button key={oi} type="button" onClick={() => {
+                                              const updated = [...mcqQuestions];
+                                              const newAnswers = [...updated[i].answers];
+                                              newAnswers[bi] = opt;
+                                              updated[i] = { ...updated[i], answers: newAnswers };
+                                              setMcqQuestions(updated);
+                                            }} className={`px-2 py-1 rounded-md text-xs font-medium border transition-colors ${correctAns === opt ? "bg-green-500 border-green-500 text-white" : "border-gray-300 hover:border-green-400"}`}>
+                                              {opt}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      {/* Match Column */}
+                      {q.qType === "MATCH_COLUMN" && (
+                        <div className="space-y-3">
+                          <p className="text-xs text-muted-foreground">Add pairs: each Column A item must match one Column B item. Optionally add extra Column B distractors.</p>
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <Label className="text-xs font-semibold text-blue-700">Column A</Label>
+                              <Label className="text-xs font-semibold text-purple-700">Column B (correct match)</Label>
+                            </div>
+                            {(q.answers || []).map((aItem, pi) => (
+                              <div key={pi} className="grid grid-cols-2 gap-2 items-center">
+                                <Input
+                                  placeholder={`A${pi + 1} item`}
+                                  value={aItem}
+                                  onChange={(e) => {
+                                    const updated = [...mcqQuestions];
+                                    const newAnswers = [...(updated[i].answers || [])];
+                                    newAnswers[pi] = e.target.value;
+                                    updated[i] = { ...updated[i], answers: newAnswers };
+                                    setMcqQuestions(updated);
+                                  }}
+                                  className="h-8 text-sm"
+                                />
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    placeholder={`B${pi + 1} match`}
+                                    value={q.options[pi] || ""}
+                                    onChange={(e) => {
+                                      const updated = [...mcqQuestions];
+                                      const newOpts = [...(updated[i].options || [])];
+                                      newOpts[pi] = e.target.value;
+                                      updated[i] = { ...updated[i], options: newOpts };
+                                      setMcqQuestions(updated);
+                                    }}
+                                    className="h-8 text-sm"
+                                  />
+                                  <button type="button" onClick={() => {
+                                    const updated = [...mcqQuestions];
+                                    const newAnswers = (updated[i].answers || []).filter((_, idx) => idx !== pi);
+                                    const newOpts = (updated[i].options || []).filter((_, idx) => idx !== pi);
+                                    updated[i] = { ...updated[i], answers: newAnswers, options: newOpts };
+                                    setMcqQuestions(updated);
+                                  }} className="text-red-400 hover:text-red-600 shrink-0"><Trash2 className="h-3.5 w-3.5" /></button>
+                                </div>
+                              </div>
+                            ))}
+                            <button type="button" onClick={() => {
+                              const updated = [...mcqQuestions];
+                              updated[i] = { ...updated[i], answers: [...(updated[i].answers || []), ""], options: [...(updated[i].options || []), ""] };
+                              setMcqQuestions(updated);
+                            }} className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-1">
+                              <Plus className="h-3 w-3" /> Add pair
+                            </button>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Extra Column B distractors (optional — these appear as wrong choices)</Label>
+                            <div className="flex flex-wrap gap-1">
+                              {(q.matchDistractors || []).map((d, di) => (
+                                <span key={di} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-orange-50 border border-orange-300 text-orange-800">
+                                  {d}
+                                  <button type="button" onClick={() => {
+                                    const updated = [...mcqQuestions];
+                                    updated[i] = { ...updated[i], matchDistractors: (updated[i].matchDistractors || []).filter((_, idx) => idx !== di) };
+                                    setMcqQuestions(updated);
+                                  }} className="text-orange-400 hover:text-red-500">×</button>
+                                </span>
+                              ))}
+                            </div>
+                            <Input
+                              placeholder="Type a distractor and press Enter"
+                              className="h-8 text-sm"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  const val = (e.target as HTMLInputElement).value.trim();
+                                  if (!val) return;
+                                  const updated = [...mcqQuestions];
+                                  updated[i] = { ...updated[i], matchDistractors: [...(updated[i].matchDistractors || []), val] };
+                                  setMcqQuestions(updated);
+                                  (e.target as HTMLInputElement).value = "";
+                                }
+                              }}
+                            />
+                          </div>
                         </div>
                       )}
                     </div>

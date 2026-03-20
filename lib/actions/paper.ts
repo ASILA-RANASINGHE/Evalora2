@@ -213,7 +213,7 @@ export interface ExamQuestion {
   id: string;
   number: number;
   text: string;
-  type: "MCQ" | "SHORT" | "FILL_BLANK" | "TRUE_FALSE";
+  type: "MCQ" | "SHORT" | "FILL_BLANK" | "TRUE_FALSE" | "MATCH_COLUMN" | "FILL_BLANK_OPTIONS";
   points: number;
   options: string[];
   // Structured question hierarchy
@@ -222,6 +222,8 @@ export interface ExamQuestion {
   subSubLabel?: string | null;
   description?: string | null;
   imageUrl?: string | null;
+  // For MATCH_COLUMN: correctAnswer (A::B pairs) needed client-side to render column A items
+  correctAnswer?: string;
 }
 
 export interface ExamPaperData {
@@ -260,7 +262,7 @@ export interface QuestionResult {
   studentAnswer: string;
   requiresManualReview: boolean;
   questionText: string;
-  questionType: "MCQ" | "SHORT" | "FILL_BLANK" | "TRUE_FALSE";
+  questionType: "MCQ" | "SHORT" | "FILL_BLANK" | "TRUE_FALSE" | "MATCH_COLUMN" | "FILL_BLANK_OPTIONS";
   options: string[];
   // Structured hierarchy fields
   mainQuestionNumber?: number | null;
@@ -415,7 +417,7 @@ export async function startPaperAttempt(paperId: string): Promise<{
       id: q.id,
       number: i + 1,
       text: q.text,
-      type: q.type as "MCQ" | "SHORT" | "FILL_BLANK" | "TRUE_FALSE",
+      type: q.type as "MCQ" | "SHORT" | "FILL_BLANK" | "TRUE_FALSE" | "MATCH_COLUMN" | "FILL_BLANK_OPTIONS",
       points: q.points,
       options: q.options,
       questionNumber: q.questionNumber,
@@ -423,7 +425,8 @@ export async function startPaperAttempt(paperId: string): Promise<{
       subSubLabel: q.subSubLabel,
       description: q.description,
       imageUrl: q.imageUrl,
-      // correctAnswer is NOT sent to client
+      // correctAnswer sent only for MATCH_COLUMN (needed to render column A items client-side)
+      ...(q.type === "MATCH_COLUMN" ? { correctAnswer: q.correctAnswer } : {}),
     })),
   };
 
@@ -522,6 +525,51 @@ export async function submitPaperAttempt(
       } else {
         aiFeedback = `Incorrect. Review the correct answers for this question.`;
       }
+    } else if (q.type === "MATCH_COLUMN") {
+      const correctPairs = q.correctAnswer.split("|").map(p => p.split("::"));
+      const studentPairs = studentAnswer ? studentAnswer.split("|").map(p => p.split("::")) : [];
+      let totalCorrect = 0;
+      for (const [colA, colBCorrect] of correctPairs) {
+        const studentPair = studentPairs.find(p => p[0]?.trim() === colA?.trim());
+        const studentB = studentPair?.[1]?.trim().toLowerCase() ?? "";
+        if (colBCorrect && studentB === colBCorrect.trim().toLowerCase()) totalCorrect++;
+      }
+      const ratio = correctPairs.length > 0 ? totalCorrect / correctPairs.length : 0;
+      const raw = ratio * q.points;
+      marksAwarded = Math.min(Math.round(raw * 2) / 2, q.points);
+      isCorrect = ratio === 1;
+      isPartial = ratio > 0 && ratio < 1;
+      aiConfidence = 99;
+      if (isCorrect) {
+        aiFeedback = "Correct! All items matched correctly.";
+      } else if (isPartial) {
+        aiFeedback = `Partial credit. You matched ${totalCorrect} of ${correctPairs.length} items correctly.`;
+      } else {
+        aiFeedback = `Incorrect. Review the correct column matches.`;
+      }
+    } else if (q.type === "FILL_BLANK_OPTIONS") {
+      // Same logic as FILL_BLANK
+      const correctBlanks = q.correctAnswer.split("|");
+      const studentBlanks = studentAnswer ? studentAnswer.split("|") : [];
+      let totalCorrect = 0;
+      for (let bi = 0; bi < correctBlanks.length; bi++) {
+        const correct = correctBlanks[bi]?.trim().toLowerCase() ?? "";
+        const student = studentBlanks[bi]?.trim().toLowerCase() ?? "";
+        if (correct && student === correct) totalCorrect++;
+      }
+      const ratio = correctBlanks.length > 0 ? totalCorrect / correctBlanks.length : 0;
+      const raw = ratio * q.points;
+      marksAwarded = Math.min(Math.round(raw * 2) / 2, q.points);
+      isCorrect = ratio === 1;
+      isPartial = ratio > 0 && ratio < 1;
+      aiConfidence = 99;
+      if (isCorrect) {
+        aiFeedback = "Correct! All blanks filled correctly.";
+      } else if (isPartial) {
+        aiFeedback = `Partial credit. You got ${totalCorrect} of ${correctBlanks.length} blanks correct.`;
+      } else {
+        aiFeedback = `Incorrect. Review the correct answers for this question.`;
+      }
     } else {
       const result = gradeStructuredQuestion(studentAnswer, q.correctAnswer, q.points);
       marksAwarded = result.marksAwarded;
@@ -544,7 +592,7 @@ export async function submitPaperAttempt(
       studentAnswer,
       requiresManualReview: q.type === "SHORT" && aiConfidence < 80,
       questionText: q.text,
-      questionType: q.type as "MCQ" | "SHORT" | "FILL_BLANK" | "TRUE_FALSE",
+      questionType: q.type as "MCQ" | "SHORT" | "FILL_BLANK" | "TRUE_FALSE" | "MATCH_COLUMN" | "FILL_BLANK_OPTIONS",
       options: q.options,
       mainQuestionNumber: q.questionNumber,
       subLabel: q.subLabel,
@@ -610,6 +658,8 @@ export async function submitPaperAttempt(
   const shortResults = questionResults.filter((r) => r.questionType === "SHORT");
   const tfResults = questionResults.filter((r) => r.questionType === "TRUE_FALSE");
   const fbResults = questionResults.filter((r) => r.questionType === "FILL_BLANK");
+  const fboResults = questionResults.filter((r) => r.questionType === "FILL_BLANK_OPTIONS");
+  const mcResults = questionResults.filter((r) => r.questionType === "MATCH_COLUMN");
   const sectionBreakdown = [];
 
   if (mcqResults.length > 0) {
@@ -673,6 +723,38 @@ export async function submitPaperAttempt(
       marksObtained: fbEarned,
       totalMarks: fbMarks,
       percentage: fbMarks > 0 ? Math.round((fbEarned / fbMarks) * 100) : 0,
+    });
+  }
+
+  if (fboResults.length > 0) {
+    const fboMarks = fboResults.reduce((s, r) => s + r.marksAvailable, 0);
+    const fboEarned = fboResults.reduce((s, r) => s + r.marksAwarded, 0);
+    sectionBreakdown.push({
+      section: "Section E",
+      type: "Blank + Options",
+      questions: fboResults.length,
+      correct: fboResults.filter((r) => r.isCorrect).length,
+      incorrect: fboResults.filter((r) => !r.isCorrect && !r.isPartial).length,
+      partial: fboResults.filter((r) => r.isPartial).length,
+      marksObtained: fboEarned,
+      totalMarks: fboMarks,
+      percentage: fboMarks > 0 ? Math.round((fboEarned / fboMarks) * 100) : 0,
+    });
+  }
+
+  if (mcResults.length > 0) {
+    const mcMarks = mcResults.reduce((s, r) => s + r.marksAvailable, 0);
+    const mcEarned = mcResults.reduce((s, r) => s + r.marksAwarded, 0);
+    sectionBreakdown.push({
+      section: "Section F",
+      type: "Match Column",
+      questions: mcResults.length,
+      correct: mcResults.filter((r) => r.isCorrect).length,
+      incorrect: mcResults.filter((r) => !r.isCorrect && !r.isPartial).length,
+      partial: mcResults.filter((r) => r.isPartial).length,
+      marksObtained: mcEarned,
+      totalMarks: mcMarks,
+      percentage: mcMarks > 0 ? Math.round((mcEarned / mcMarks) * 100) : 0,
     });
   }
 
