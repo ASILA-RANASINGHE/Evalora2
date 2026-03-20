@@ -13,6 +13,7 @@ import {
 } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
+import { createClient } from "@/lib/supabase/client";
 import React, { useState, useEffect, useRef, MouseEvent } from "react";
 
 // --- Types & Interfaces ---
@@ -1021,24 +1022,11 @@ export default function LandingView({ authSection, contentSection, deployButton 
             <div className="flex items-center gap-3 pl-2">
               
               <div className="hidden md:block">
-                 <div className="
-                    flex items-center gap-3 bg-white/50 border border-white rounded-full px-1.5 py-1.5 pl-5 shadow-sm
-                    [&_.flex]:gap-2 [&_.flex]:items-center
-                    [&_form]:flex [&_form]:items-center
-                    [&_div]:!text-[13px] [&_div]:!font-bold [&_div]:!text-slate-500 [&_div]:!tracking-tight
-                    [&_a]:!bg-sky-500 [&_a]:!text-white [&_a]:!px-5 [&_a]:!py-2 [&_a]:!rounded-full 
-                    [&_a]:!text-xs [&_a]:!font-bold [&_a]:!shadow-md [&_a]:!shadow-sky-500/20 
-                    [&_a]:!border-none [&_a:hover]:!bg-sky-600 [&_a:hover]:!scale-105 [&_a]:!transition-all
-                    [&_button:not([type='submit'])]:!bg-sky-500 [&_button:not([type='submit'])]:!text-white 
-                    [&_button:not([type='submit'])]:!rounded-full
-                    [&_form_button]:!bg-white [&_form_button]:!text-slate-500 [&_form_button]:!text-xs 
-                    [&_form_button]:!font-bold [&_form_button]:!shadow-sm [&_form_button]:!px-4 [&_form_button]:!py-2
-                    [&_form_button]:!rounded-full
-                    [&_form_button]:!border [&_form_button]:!border-slate-200
-                    [&_form_button:hover]:!text-red-600 [&_form_button:hover]:!bg-red-50 [&_form_button:hover]:!border-red-100
-                 ">
-                   {authSection}
-                 </div>
+                <div className="flex items-center gap-3 bg-white/50 border border-white rounded-full px-1.5 py-1.5 pl-5 shadow-sm">
+                  <div className="flex items-center gap-3 max-w-[420px]">
+                    {authSection}
+                  </div>
+                </div>
               </div>
 
               <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-full">
@@ -1121,6 +1109,20 @@ export default function LandingView({ authSection, contentSection, deployButton 
               <motion.button 
                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                  className="h-14 px-8 rounded-full bg-sky-600 text-white font-bold text-base shadow-lg shadow-sky-600/30 flex items-center gap-2 hover:bg-sky-500 transition-colors"
+                 onClick={async () => {
+                   const supabase = createClient();
+                   try {
+                     const { data } = await supabase.auth.getSession();
+                     const session = data?.session;
+                     if (session) {
+                       window.location.href = "/protected/student";
+                     } else {
+                       window.location.href = "/auth/login";
+                     }
+                   } catch (e) {
+                     window.location.href = "/auth/login";
+                   }
+                 }}
               >
                  Get Started
                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
