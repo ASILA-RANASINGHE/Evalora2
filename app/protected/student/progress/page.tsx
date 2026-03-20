@@ -1,32 +1,11 @@
-"use client";
+import { getStudentProgressData } from "@/lib/actions/analytics";
+import { ProgressDashboard } from "./progress-dashboard";
+import { AlertCircle } from "lucide-react";
+import Link from "next/link";
 
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { OverviewCards } from "./components/overview-cards";
-import { PerformanceChart } from "./components/performance-chart";
-import { StudyHeatmap } from "./components/study-heatmap";
-import { SubjectBreakdown } from "./components/subject-breakdown";
-import { TopicMasteryTable } from "./components/topic-mastery-table";
-import { QuestionTypeChart } from "./components/question-type-chart";
-import { WeakAreaAnalysis } from "./components/weak-area-analysis";
-import { ComparativeTable } from "./components/comparative-table";
-import { TimeAnalyticsChart } from "./components/time-analytics-chart";
-import { NotesEngagementTable } from "./components/notes-engagement-table";
-import { PredictiveAlerts } from "./components/predictive-alerts";
-import {
-  overviewStats,
-  scoreHistory,
-  heatmapData,
-  subjectScores,
-  topicMastery,
-  questionTypeStats,
-  weakAreas,
-  comparativeData,
-  timePerformance,
-  notesEngagement,
-  riskAlerts,
-} from "@/lib/student-progress-mock-data";
+export default async function ProgressPage() {
+  const data = await getStudentProgressData();
 
-export default function ProgressPage() {
   return (
     <div className="space-y-6">
       <div>
@@ -34,46 +13,25 @@ export default function ProgressPage() {
         <p className="text-muted-foreground mt-1">Track your learning journey and improvements</p>
       </div>
 
-      <Tabs defaultValue="overview">
-        <TabsList className="mb-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="subjects">Subjects</TabsTrigger>
-          <TabsTrigger value="analysis">Analysis</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-          <TabsTrigger value="alerts">Alerts</TabsTrigger>
-        </TabsList>
-
-        {/* Tab 1: Overview */}
-        <TabsContent value="overview" className="space-y-6">
-          <OverviewCards stats={overviewStats} />
-          <PerformanceChart data={scoreHistory} />
-          <StudyHeatmap data={heatmapData} />
-        </TabsContent>
-
-        {/* Tab 2: Subjects */}
-        <TabsContent value="subjects" className="space-y-6">
-          <SubjectBreakdown data={subjectScores} />
-          <TopicMasteryTable data={topicMastery} />
-        </TabsContent>
-
-        {/* Tab 3: Analysis */}
-        <TabsContent value="analysis" className="space-y-6">
-          <QuestionTypeChart data={questionTypeStats} />
-          <WeakAreaAnalysis data={weakAreas} />
-          <ComparativeTable data={comparativeData} />
-        </TabsContent>
-
-        {/* Tab 4: Activity */}
-        <TabsContent value="activity" className="space-y-6">
-          <TimeAnalyticsChart data={timePerformance} />
-          <NotesEngagementTable data={notesEngagement} />
-        </TabsContent>
-
-        {/* Tab 5: Alerts */}
-        <TabsContent value="alerts" className="space-y-6">
-          <PredictiveAlerts alerts={riskAlerts} />
-        </TabsContent>
-      </Tabs>
+      {data ? (
+        <ProgressDashboard data={data} />
+      ) : (
+        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+          <AlertCircle className="h-10 w-10 text-muted-foreground/40" />
+          <div>
+            <p className="text-base font-medium text-muted-foreground">No progress data yet</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Complete quizzes and papers to start tracking your progress here.
+            </p>
+          </div>
+          <Link
+            href="/protected/student/quizzes"
+            className="text-sm font-semibold text-purple-600 hover:underline"
+          >
+            Browse quizzes →
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
