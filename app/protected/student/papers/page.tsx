@@ -61,8 +61,8 @@ export default function PapersPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Past Papers</h2>
-        <p className="text-muted-foreground mt-1">Practice with previous term papers and exams</p>
+        <h2 className="text-3xl font-black tracking-tight">Past Papers 📄</h2>
+        <p className="text-muted-foreground mt-1 text-base">Practice with past papers to boost your marks. Pick a subject below!</p>
       </div>
 
       {/* Working subjects */}
@@ -72,31 +72,31 @@ export default function PapersPage() {
           {workingSubjects.map((subject) => {
             const Icon = subject.icon;
             return (
-              <Card key={subject.name} className="hover:shadow-md transition-shadow">
-                <CardHeader className="bg-gray-50 dark:bg-muted/30 border-b pb-4">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Icon className="h-5 w-5 text-purple-600" />
+              <Card key={subject.name} className="overflow-hidden hover:shadow-xl transition-all duration-300 border-2 hover:border-[#696FC7] group">
+                <CardHeader className="bg-gradient-to-r from-[#4D2FB2]/8 to-[#696FC7]/8 dark:from-[#4D2FB2]/20 dark:to-[#696FC7]/20 border-b pb-4">
+                  <CardTitle className="flex items-center gap-3 text-base font-bold">
+                    <div className="p-2 rounded-xl bg-[#B7BDF7]/50 dark:bg-[#4D2FB2]/30 group-hover:scale-110 transition-transform">
+                      <Icon className="h-5 w-5 text-[#4D2FB2] dark:text-[#B7BDF7]" />
+                    </div>
                     {subject.name}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-4">
-                  <div className="space-y-2">
-                    {subject.terms.map((term) => (
-                      <Link
-                        key={term}
-                        href={`/protected/student/papers/subject/${subject.name.toLowerCase().replace(/ /g, "-")}/term/${term}`}
-                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-purple-50 dark:hover:bg-purple-900/10 hover:border-purple-200 transition-colors group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="bg-gray-100 dark:bg-muted p-2 rounded group-hover:bg-white dark:group-hover:bg-background text-gray-500 group-hover:text-purple-600 transition-colors">
-                            <CalendarDays className="h-4 w-4" />
-                          </div>
-                          <span className="font-medium text-sm">Term {term}</span>
+                <CardContent className="pt-4 space-y-2">
+                  {subject.terms.map((term) => (
+                    <Link
+                      key={term}
+                      href={`/protected/student/papers/subject/${subject.name.toLowerCase().replace(/ /g, "-")}/term/${term}`}
+                      className="flex items-center justify-between p-3.5 rounded-xl border-2 border-border/40 hover:bg-[#FFFDF1] dark:hover:bg-[#4D2FB2]/15 hover:border-[#696FC7] dark:hover:border-[#696FC7] transition-all group/term"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="bg-[#B7BDF7]/40 dark:bg-[#4D2FB2]/20 p-2 rounded-lg group-hover/term:bg-[#4D2FB2] transition-colors">
+                          <CalendarDays className="h-4 w-4 text-[#4D2FB2] group-hover/term:text-white transition-colors" />
                         </div>
-                        <Badge variant="secondary" className="group-hover:bg-white dark:group-hover:bg-background text-xs">View Papers</Badge>
-                      </Link>
-                    ))}
-                  </div>
+                        <span className="font-bold text-sm">Term {term}</span>
+                      </div>
+                      <Badge className="bg-[#B7BDF7]/50 text-[#4D2FB2] hover:bg-[#B7BDF7] dark:bg-[#4D2FB2]/20 dark:text-[#B7BDF7] border-0 text-xs font-bold">View Papers →</Badge>
+                    </Link>
+                  ))}
                 </CardContent>
               </Card>
             );
@@ -106,19 +106,19 @@ export default function PapersPage() {
 
       {/* Coming soon subjects */}
       <div>
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">Coming Soon</h3>
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">🔜 More subjects coming soon</h3>
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
           {comingSoonSubjects.map((subject) => {
             const Icon = subject.icon;
             return (
               <div key={subject.name} className="cursor-not-allowed">
-                <Card className="h-full border-border/30 opacity-55">
-                  <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
-                    <div className="p-3 rounded-full bg-muted mt-2">
-                      <Icon className="h-5 w-5 text-muted-foreground" />
+                <Card className="h-full border-2 border-dashed border-border/40 opacity-50 hover:opacity-60 transition-opacity">
+                  <CardContent className="p-5 flex flex-col items-center text-center space-y-2">
+                    <div className="p-3 rounded-2xl bg-muted mt-2">
+                      <Icon className="h-6 w-6 text-muted-foreground" />
                     </div>
-                    <p className="text-sm font-semibold text-foreground">{subject.name}</p>
-                    <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
+                    <p className="text-sm font-bold text-foreground">{subject.name}</p>
+                    <Badge variant="secondary" className="text-xs font-semibold">Coming Soon</Badge>
                   </CardContent>
                 </Card>
               </div>

@@ -20,7 +20,7 @@ export function WeakAreaAnalysis({ data }: { data: WeakArea[] }) {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       {/* Prioritized List */}
-      <Card>
+      <Card className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/10 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -32,7 +32,7 @@ export function WeakAreaAnalysis({ data }: { data: WeakArea[] }) {
           {data.map((area) => (
             <div
               key={`${area.subject}-${area.topic}`}
-              className="p-4 border rounded-lg space-y-3"
+              className="p-4 border border-[#B7BDF7]/30 bg-white/50 dark:bg-[#4D2FB2]/10 rounded-lg space-y-3"
             >
               <div className="flex items-start justify-between">
                 <div>
@@ -52,7 +52,7 @@ export function WeakAreaAnalysis({ data }: { data: WeakArea[] }) {
 
               <div className="flex gap-2">
                 <Link href={`/protected/student/quizzes/subject/${area.subject.toLowerCase()}`}>
-                  <Button size="sm" className="text-xs bg-purple-600 hover:bg-purple-700">
+                  <Button size="sm" className="text-xs bg-[#4D2FB2] hover:bg-[#696FC7]">
                     Practice Now
                   </Button>
                 </Link>
@@ -68,7 +68,7 @@ export function WeakAreaAnalysis({ data }: { data: WeakArea[] }) {
       </Card>
 
       {/* Knowledge Gap Bars */}
-      <Card>
+      <Card className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/10 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5">
         <CardHeader>
           <CardTitle className="text-lg">Knowledge Gap</CardTitle>
           <CardDescription>Accuracy per topic vs 75% target</CardDescription>

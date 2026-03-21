@@ -19,9 +19,12 @@ export default function LeaderboardPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      <div className="text-center space-y-4 mb-4">
-        <h2 className="text-4xl font-bold tracking-tight">Leaderboard</h2>
-        <p className="text-muted-foreground">See who's topping the charts this week!</p>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#4D2FB2] via-[#696FC7] to-[#B7BDF7] p-6 text-white shadow-lg text-center">
+        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
+        <div className="relative space-y-1">
+          <h2 className="text-2xl font-black tracking-tight">Leaderboard 🏆</h2>
+          <p className="text-[#B7BDF7] text-sm font-medium">See who&apos;s topping the charts this week!</p>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6 mb-8 transform md:translate-y-4">
@@ -37,7 +40,7 @@ export default function LeaderboardPage() {
             </div>
             <div className="text-center mt-4">
                 <div className="font-bold text-lg">John Doe (You)</div>
-                <div className="text-purple-600 font-bold">2720 pts</div>
+                <div className="text-[#4D2FB2] dark:text-[#B7BDF7] font-bold">2720 pts</div>
             </div>
         </div>
 
@@ -56,7 +59,7 @@ export default function LeaderboardPage() {
             </div>
             <div className="text-center mt-4">
                 <div className="font-bold text-xl">Sarah Connor</div>
-                <div className="text-purple-600 font-bold text-lg">2850 pts</div>
+                <div className="text-[#4D2FB2] dark:text-[#B7BDF7] font-bold text-lg">2850 pts</div>
             </div>
         </div>
 
@@ -72,12 +75,12 @@ export default function LeaderboardPage() {
             </div>
             <div className="text-center mt-4">
                 <div className="font-bold text-lg">Emily Watson</div>
-                <div className="text-purple-600 font-bold">2680 pts</div>
+                <div className="text-[#4D2FB2] dark:text-[#B7BDF7] font-bold">2680 pts</div>
             </div>
         </div>
       </div>
 
-      <Card>
+      <Card className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/10 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5 shadow-sm">
         <CardHeader>
             <div className="flex items-center justify-between">
                 <CardTitle>Rankings</CardTitle>
@@ -95,7 +98,7 @@ export default function LeaderboardPage() {
                 {topUsers.map((user, img) => (
                     <div 
                         key={user.id} 
-                        className={`flex items-center justify-between p-4 px-6 hover:bg-gray-50 transition-colors ${user.isCurrentUser ? 'bg-purple-50 hover:bg-purple-100 border-l-4 border-l-purple-600' : ''}`}
+                        className={`flex items-center justify-between p-4 px-6 hover:bg-[#FFFDF1] dark:hover:bg-[#4D2FB2]/10 transition-colors ${user.isCurrentUser ? 'bg-[#B7BDF7]/20 dark:bg-[#4D2FB2]/20 hover:bg-[#B7BDF7]/30 border-l-4 border-l-[#4D2FB2]' : ''}`}
                     >
                         <div className="flex items-center gap-4">
                             <div className="w-8 font-bold text-gray-500 text-center">
@@ -110,14 +113,14 @@ export default function LeaderboardPage() {
                             </Avatar>
                             <div>
                                 <div className="font-bold text-gray-800 flex items-center gap-2">
-                                    {user.name} {user.isCurrentUser && <span className="text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded-full">You</span>}
+                                    {user.name} {user.isCurrentUser && <span className="text-xs bg-[#B7BDF7]/50 text-[#4D2FB2] dark:bg-[#4D2FB2]/30 dark:text-[#B7BDF7] px-2 py-0.5 rounded-full">You</span>}
                                 </div>
                                 <div className="text-xs text-muted-foreground">Level 12 Scholar</div>
                             </div>
                         </div>
                         <div className="flex items-center gap-6">
                             <div className="flex flex-col items-end">
-                                <span className="font-bold text-lg text-purple-700">{user.points}</span>
+                                <span className="font-bold text-lg text-[#4D2FB2] dark:text-[#B7BDF7]">{user.points}</span>
                                 <span className="text-xs text-muted-foreground">Points</span>
                             </div>
                              {user.trend === 'up' && <TrendingUp className="h-4 w-4 text-green-500" />}
@@ -130,12 +133,13 @@ export default function LeaderboardPage() {
         </CardContent>
       </Card>
       
-      <div className="bg-purple-900 text-white rounded-xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div>
+      <div className="relative overflow-hidden bg-gradient-to-r from-[#4D2FB2] to-[#696FC7] text-white rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg">
+        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
+        <div className="relative">
             <h3 className="font-bold text-lg">Keep it up, John! 🚀</h3>
-            <p className="text-purple-200 text-sm">You are only 130 points away from Rank #1. Take a quiz now to boost your score.</p>
+            <p className="text-[#B7BDF7] text-sm">You are only 130 points away from Rank #1. Take a quiz now to boost your score.</p>
         </div>
-        <button className="px-6 py-2 bg-white text-purple-900 font-bold rounded-lg hover:bg-purple-50 transition-colors">
+        <button className="relative px-6 py-2 bg-white text-[#4D2FB2] font-bold rounded-xl hover:bg-[#FFFDF1] transition-colors shadow-md">
             Attempt Quiz (+50 pts)
         </button>
       </div>

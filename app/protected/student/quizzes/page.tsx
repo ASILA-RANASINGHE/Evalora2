@@ -112,10 +112,13 @@ const recommended = [
 export default function QuizzesPage() {
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Practice Quizzes</h2>
-        <p className="text-muted-foreground mt-1">Test your knowledge across different subjects and topics</p>
+      {/* Header Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#4D2FB2] via-[#696FC7] to-[#B7BDF7] p-6 text-white shadow-lg">
+        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
+        <div className="relative">
+          <h2 className="text-2xl font-black tracking-tight">Practice Quizzes ⚡</h2>
+          <p className="text-[#B7BDF7] mt-1 text-sm font-medium">Test your knowledge and improve your scores. The more you practice, the better you get!</p>
+        </div>
       </div>
 
       {/* Quick Stats Row */}
@@ -123,13 +126,13 @@ export default function QuizzesPage() {
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card key={stat.title} className="overflow-hidden border-border/50 bg-card shadow-sm hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
+            <Card key={stat.title} className="overflow-hidden border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/15 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5 shadow-sm hover:shadow-md transition-shadow rounded-2xl">
+              <CardContent className="p-5">
                 <div className="flex items-center justify-between">
                   <div className={`p-2.5 rounded-xl ${stat.iconColor}`}>
                     <Icon className="h-5 w-5" />
                   </div>
-                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-semibold text-[#4D2FB2] dark:text-[#B7BDF7] bg-[#B7BDF7]/30 dark:bg-[#4D2FB2]/20 px-2 py-0.5 rounded-full">
                     {stat.trend}
                   </span>
                 </div>
@@ -145,8 +148,8 @@ export default function QuizzesPage() {
 
       {/* Available Subjects */}
       <div>
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <BookOpen className="h-5 w-5 text-purple-500" />
+        <h3 className="text-xl font-black mb-4 flex items-center gap-2">
+          <BookOpen className="h-5 w-5 text-[#4D2FB2]" />
           Available Subjects
         </h3>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -154,8 +157,8 @@ export default function QuizzesPage() {
             const Icon = subject.icon;
             return (
               <Link href={`/protected/student/quizzes/subject/${subject.name.toLowerCase().replace(/ /g, "-")}`} key={subject.name}>
-                <Card className={`h-full border ${subject.border} ${subject.hoverBorder} hover:shadow-lg transition-all cursor-pointer group`}>
-                  <CardContent className="p-6">
+                <Card className={`h-full border-2 ${subject.border} ${subject.hoverBorder} hover:shadow-xl transition-all duration-300 cursor-pointer group rounded-2xl`}>
+                  <CardContent className="p-6 space-y-1">
                     <div className="flex items-start justify-between mb-4">
                       <div className={`p-3 rounded-xl ${subject.bg} ${subject.color} group-hover:scale-110 transition-transform`}>
                         <Icon className="h-6 w-6" />
@@ -164,18 +167,18 @@ export default function QuizzesPage() {
                         <span className="text-xs font-medium text-muted-foreground">{subject.completed}/{subject.total} done</span>
                         <div className="h-1.5 w-16 bg-secondary rounded-full overflow-hidden mt-1">
                           <div
-                            className="h-full bg-purple-500 rounded-full"
+                            className="h-full bg-[#4D2FB2] rounded-full"
                             style={{ width: `${(subject.completed / subject.total) * 100}%` }}
                           />
                         </div>
                       </div>
                     </div>
-                    <h4 className="text-lg font-bold text-foreground mb-1">{subject.name}</h4>
+                    <h4 className="text-xl font-black text-foreground">{subject.name}</h4>
                     <p className="text-sm text-muted-foreground">
                       Subject quiz &middot; {subject.topics} topic quizzes
                     </p>
-                    <div className="flex items-center gap-1 mt-3 text-xs font-medium text-purple-600 dark:text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                      View quizzes <ChevronRight className="h-3 w-3" />
+                    <div className="flex items-center gap-1 mt-3 text-xs font-medium text-[#4D2FB2] dark:text-[#B7BDF7] opacity-0 group-hover:opacity-100 transition-opacity">
+                      Start Quizzes → <ChevronRight className="h-3 w-3" />
                     </div>
                   </CardContent>
                 </Card>
@@ -187,7 +190,7 @@ export default function QuizzesPage() {
 
       {/* Coming Soon Subjects */}
       <div>
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <h3 className="text-xl font-black mb-4 flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-muted-foreground" />
           Coming Soon
         </h3>
@@ -216,13 +219,13 @@ export default function QuizzesPage() {
 
       {/* Recommended Quizzes */}
       <div>
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-purple-500" />
+        <h3 className="text-xl font-black mb-4 flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-amber-500" />
           Recommended For You
         </h3>
         <div className="grid gap-4 md:grid-cols-3">
           {recommended.map((quiz) => (
-            <Card key={quiz.id} className="border-border/50 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+            <Card key={quiz.id} className="border-2 border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/10 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5 shadow-sm hover:shadow-lg hover:border-[#696FC7] transition-all duration-300 overflow-hidden rounded-2xl">
               <CardContent className="p-5 space-y-4">
                 <div>
                   <h4 className="font-semibold text-foreground">{quiz.title}</h4>
@@ -238,7 +241,7 @@ export default function QuizzesPage() {
                     <Clock className="h-3 w-3" /> {quiz.duration}
                   </span>
                   <Link href={`/protected/student/quizzes/${quiz.id}`}>
-                    <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white">
+                    <Button size="sm" className="bg-[#4D2FB2] hover:bg-[#696FC7] text-white">
                       <Play className="h-3 w-3 mr-1" /> Start Quiz
                     </Button>
                   </Link>

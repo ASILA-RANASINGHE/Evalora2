@@ -12,7 +12,7 @@ export function TimeAnalyticsChart({ data }: { data: TimeSlotPerformance[] }) {
   const weakest = data.reduce((min, d) => (d.avgScore < min.avgScore ? d : min), data[0]);
 
   return (
-    <Card>
+    <Card className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/10 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>

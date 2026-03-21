@@ -53,7 +53,7 @@ export function PerformanceChart({
 
   if (data.length === 0) {
     return (
-      <Card>
+      <Card className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/10 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5">
         <CardHeader>
           <CardTitle className="text-lg">Performance Over Time</CardTitle>
         </CardHeader>
@@ -65,7 +65,7 @@ export function PerformanceChart({
   }
 
   return (
-    <Card>
+    <Card className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/10 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg">Performance Over Time</CardTitle>
         <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg">

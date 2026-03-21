@@ -17,9 +17,12 @@ import { UserRole, RelationshipType } from "@/lib/generated/prisma/enums";
 export default function SettingsPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
-        <p className="text-muted-foreground mt-1">Manage your account preferences and learning settings</p>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#4D2FB2] via-[#696FC7] to-[#B7BDF7] p-6 text-white shadow-lg">
+        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
+        <div className="relative">
+          <h2 className="text-2xl font-black tracking-tight">Settings ⚙️</h2>
+          <p className="text-[#B7BDF7] mt-1 text-sm font-medium">Manage your account preferences and learning settings</p>
+        </div>
       </div>
 
       <Tabs defaultValue="profile" className="space-y-4">
@@ -34,14 +37,14 @@ export default function SettingsPage() {
         </TabsList>
         
         <TabsContent value="profile" className="space-y-4">
-            <Card>
+            <Card className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/10 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5">
                 <CardHeader>
                     <CardTitle>Profile Information</CardTitle>
                     <CardDescription>Update your personal details here.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex items-center gap-4 mb-4">
-                        <div className="h-20 w-20 rounded-full bg-purple-200 flex items-center justify-center text-2xl font-bold text-purple-700">JD</div>
+                        <div className="h-20 w-20 rounded-full bg-gradient-to-br from-[#4D2FB2] to-[#696FC7] flex items-center justify-center text-2xl font-bold text-white shadow-md">JD</div>
                         <Button variant="outline">Change Avatar</Button>
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
@@ -70,7 +73,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="connections" className="space-y-4">
-            <Card>
+            <Card className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/10 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Users className="h-5 w-5" />
@@ -95,7 +98,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="requests" className="space-y-4">
-            <Card>
+            <Card className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/10 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Send className="h-5 w-5" />
@@ -110,7 +113,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="accept" className="space-y-4">
-            <Card>
+            <Card className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/10 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Inbox className="h-5 w-5" />
@@ -125,7 +128,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-4">
-            <Card>
+            <Card className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/10 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5">
                 <CardHeader>
                     <CardTitle>Notification Preferences</CardTitle>
                     <CardDescription>Choose what you want to be notified about.</CardDescription>
@@ -160,7 +163,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="appearance" className="space-y-4">
-            <Card>
+            <Card className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/10 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Palette className="h-5 w-5" />

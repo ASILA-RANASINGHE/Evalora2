@@ -29,7 +29,7 @@ export function TopicMasteryTable({ data }: { data: TopicMastery[] }) {
   const filtered = selectedSubject === "All" ? data : data.filter((d) => d.subject === selectedSubject);
 
   return (
-    <Card>
+    <Card className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/10 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg">Topic Mastery</CardTitle>
         <select

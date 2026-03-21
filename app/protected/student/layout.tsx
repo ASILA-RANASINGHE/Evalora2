@@ -1,5 +1,6 @@
 import { StudentNav } from "./components/student-nav";
 import { StudentHeader } from "./components/student-header";
+import { CursorGlow } from "./components/cursor-glow";
 
 export default function StudentLayout({
   children,
@@ -7,13 +8,14 @@ export default function StudentLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col relative">
+      <CursorGlow />
       <StudentHeader />
 
       {/* Navigation Bar */}
-      <div className="bg-slate-900 text-white shadow-inner">
-        <div className="container mx-auto px-4 py-2">
-            <StudentNav />
+      <div className="bg-[#4D2FB2] backdrop-blur-md border-b border-[#696FC7]/30 shadow-lg shadow-[#4D2FB2]/40">
+        <div className="flex justify-center px-4 py-3">
+          <StudentNav />
         </div>
       </div>
 
