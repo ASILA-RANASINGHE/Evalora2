@@ -1,45 +1,52 @@
-"use client";
-
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { FileText, ClipboardList, HelpCircle, StickyNote, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { connection } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-const uploadTypes = [
-  {
-    title: "Notes",
-    description: "Upload study notes with rich text content, attachments, and subject tagging.",
-    icon: FileText,
-    href: "/protected/admin/upload/notes",
-    color: "from-blue-500 to-blue-700",
-    count: 342,
-  },
-  {
-    title: "Papers",
-    description: "Upload exam papers and past papers for student practice and revision.",
-    icon: ClipboardList,
-    href: "/protected/admin/upload/papers",
-    color: "from-emerald-500 to-emerald-700",
-    count: 128,
-  },
-  {
-    title: "Quizzes",
-    description: "Create and upload interactive quizzes with multiple question types.",
-    icon: HelpCircle,
-    href: "/protected/admin/upload/quizzes",
-    color: "from-amber-500 to-amber-700",
-    count: 215,
-  },
-  {
-    title: "Short Notes",
-    description: "Create quick reference and summary cards for student revision.",
-    icon: StickyNote,
-    href: "/protected/admin/upload/short-notes",
-    color: "from-teal-500 to-teal-700",
-    count: 0,
-  },
-];
+export default async function UploadHubPage() {
+  await connection();
+  const [noteCount, paperCount, quizCount] = await Promise.all([
+    prisma.note.count(),
+    prisma.paper.count(),
+    prisma.quiz.count(),
+  ]);
 
-export default function UploadHubPage() {
+  const uploadTypes = [
+    {
+      title: "Notes",
+      description: "Upload study notes with rich text content, attachments, and subject tagging.",
+      icon: FileText,
+      href: "/protected/admin/upload/notes",
+      color: "from-blue-500 to-blue-700",
+      count: noteCount,
+    },
+    {
+      title: "Papers",
+      description: "Upload exam papers and past papers for student practice and revision.",
+      icon: ClipboardList,
+      href: "/protected/admin/upload/papers",
+      color: "from-emerald-500 to-emerald-700",
+      count: paperCount,
+    },
+    {
+      title: "Quizzes",
+      description: "Create and upload interactive quizzes with multiple question types.",
+      icon: HelpCircle,
+      href: "/protected/admin/upload/quizzes",
+      color: "from-amber-500 to-amber-700",
+      count: quizCount,
+    },
+    {
+      title: "Short Notes",
+      description: "Create quick reference and summary cards for student revision.",
+      icon: StickyNote,
+      href: "/protected/admin/upload/short-notes",
+      color: "from-teal-500 to-teal-700",
+      count: 0,
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
