@@ -1027,6 +1027,7 @@ export async function getTeacherAnalyticsData(): Promise<TeacherAnalyticsPayload
 
     return {
       id: sd.id,
+      uuid: sd.uuid,
       name: sd.name,
       grade: sd.grade,
       subjects: sd.subjects,
@@ -1229,5 +1230,81 @@ export async function getTeacherAnalyticsData(): Promise<TeacherAnalyticsPayload
       topicDifficulty,
       studyTimeStats,
     },
+  };
+}
+
+// ─── 5. Leaderboard ──────────────────────────────────────────────────────────
+
+export interface LeaderboardEntry {
+  rank: number;
+  studentId: string;
+  name: string;
+  totalPoints: number;
+  averageScore: number;
+  studyStreak: number;
+  isCurrentUser: boolean;
+}
+
+export interface LeaderboardData {
+  entries: LeaderboardEntry[];
+  currentUserRank: number;
+  currentUserPoints: number;
+  firstPlacePoints: number;
+  currentUserName: string;
+  totalStudents: number;
+}
+
+export async function getLeaderboardData(): Promise<LeaderboardData | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const allProgress = await prisma.studentProgress.findMany({
+    include: {
+      student: {
+        select: { id: true, firstName: true, lastName: true },
+      },
+    },
+    orderBy: { totalPoints: "desc" },
+  });
+
+  if (allProgress.length === 0) {
+    return {
+      entries: [],
+      currentUserRank: 0,
+      currentUserPoints: 0,
+      firstPlacePoints: 0,
+      currentUserName: "",
+      totalStudents: 0,
+    };
+  }
+
+  const entries: LeaderboardEntry[] = allProgress.map((p, idx) => ({
+    rank: idx + 1,
+    studentId: p.studentId,
+    name:
+      `${p.student.firstName ?? ""} ${p.student.lastName ?? ""}`.trim() ||
+      "Student",
+    totalPoints: p.totalPoints,
+    averageScore: Math.round(p.averageScore),
+    studyStreak: p.studyStreak,
+    isCurrentUser: p.studentId === user.id,
+  }));
+
+  const currentUserEntry = entries.find((e) => e.isCurrentUser);
+  const currentUserRank = currentUserEntry?.rank ?? entries.length + 1;
+  const currentUserPoints = currentUserEntry?.totalPoints ?? 0;
+  const currentUserName = currentUserEntry?.name ?? "";
+  const firstPlacePoints = entries[0]?.totalPoints ?? 0;
+
+  return {
+    entries,
+    currentUserRank,
+    currentUserPoints,
+    firstPlacePoints,
+    currentUserName,
+    totalStudents: allProgress.length,
   };
 }

@@ -34,6 +34,7 @@ export interface RiskSignal {
 
 export interface Student {
   id: number;
+  uuid: string; // Supabase profile UUID — empty string for mock/fallback entries
   name: string;
   grade: "Grade 9" | "Grade 10" | "Grade 11";
   subjects: string[];
@@ -166,7 +167,7 @@ export const subjects = ["History", "Geography", "Civics", "Health"];
 
 export const students: Student[] = [
   {
-    id: 1, name: "Aisha Fernando", grade: "Grade 10",
+    id: 1, uuid: "", name: "Aisha Fernando", grade: "Grade 10",
     subjects: ["History", "Geography", "Civics"], avgScore: 91,
     trend: "up", papersCompleted: 24, lastActive: "Today, 9:15 AM",
     status: "Active", parentEmail: "david.fernando@email.com",
@@ -189,7 +190,7 @@ export const students: Student[] = [
     riskSignals: [],
   },
   {
-    id: 2, name: "Kavindu Perera", grade: "Grade 10",
+    id: 2, uuid: "", name: "Kavindu Perera", grade: "Grade 10",
     subjects: ["History", "Geography"], avgScore: 78,
     trend: "stable", papersCompleted: 18, lastActive: "Today, 8:30 AM",
     status: "Active", parentEmail: "perera.family@email.com",
@@ -211,7 +212,7 @@ export const students: Student[] = [
     riskSignals: [],
   },
   {
-    id: 3, name: "Nethmi Silva", grade: "Grade 11",
+    id: 3, uuid: "", name: "Nethmi Silva", grade: "Grade 11",
     subjects: ["History", "Civics"], avgScore: 85,
     trend: "up", papersCompleted: 21, lastActive: "Yesterday, 4:00 PM",
     status: "Active", parentEmail: "silva.parent@email.com",
@@ -234,7 +235,7 @@ export const students: Student[] = [
     riskSignals: [],
   },
   {
-    id: 4, name: "Dineth Rajapaksha", grade: "Grade 10",
+    id: 4, uuid: "", name: "Dineth Rajapaksha", grade: "Grade 10",
     subjects: ["History", "Geography", "Civics"], avgScore: 48,
     trend: "down", papersCompleted: 8, lastActive: "3 days ago",
     status: "At Risk", parentEmail: "rajapaksha@email.com",
@@ -262,7 +263,7 @@ export const students: Student[] = [
     ],
   },
   {
-    id: 5, name: "Sithumi Jayawardena", grade: "Grade 11",
+    id: 5, uuid: "", name: "Sithumi Jayawardena", grade: "Grade 11",
     subjects: ["History", "Geography"], avgScore: 74,
     trend: "stable", papersCompleted: 17, lastActive: "Today, 7:50 AM",
     status: "Active", parentEmail: "jayawardena@email.com",
@@ -284,7 +285,7 @@ export const students: Student[] = [
     riskSignals: [],
   },
   {
-    id: 6, name: "Ravindu Mendis", grade: "Grade 10",
+    id: 6, uuid: "", name: "Ravindu Mendis", grade: "Grade 10",
     subjects: ["History", "Civics"], avgScore: 68,
     trend: "stable", papersCompleted: 15, lastActive: "Yesterday, 3:30 PM",
     status: "Active", parentEmail: "mendis.home@email.com",
@@ -306,7 +307,7 @@ export const students: Student[] = [
     riskSignals: [],
   },
   {
-    id: 7, name: "Tharushi Wickrama", grade: "Grade 11",
+    id: 7, uuid: "", name: "Tharushi Wickrama", grade: "Grade 11",
     subjects: ["History", "Geography", "Civics"], avgScore: 43,
     trend: "down", papersCompleted: 5, lastActive: "10 days ago",
     status: "Inactive", parentEmail: "wickrama.parent@email.com",
@@ -333,7 +334,7 @@ export const students: Student[] = [
     ],
   },
   {
-    id: 8, name: "Isuru Bandara", grade: "Grade 10",
+    id: 8, uuid: "", name: "Isuru Bandara", grade: "Grade 10",
     subjects: ["History", "Geography"], avgScore: 82,
     trend: "up", papersCompleted: 20, lastActive: "Today, 10:00 AM",
     status: "Active", parentEmail: "bandara.isuru@email.com",
@@ -355,7 +356,7 @@ export const students: Student[] = [
     riskSignals: [],
   },
   {
-    id: 9, name: "Amara Liyanage", grade: "Grade 9",
+    id: 9, uuid: "", name: "Amara Liyanage", grade: "Grade 9",
     subjects: ["History", "Geography", "Civics"], avgScore: 93,
     trend: "up", papersCompleted: 26, lastActive: "Today, 8:00 AM",
     status: "Active", parentEmail: "liyanage.amara@email.com",
@@ -378,7 +379,7 @@ export const students: Student[] = [
     riskSignals: [],
   },
   {
-    id: 10, name: "Lakshan Gunawardena", grade: "Grade 9",
+    id: 10, uuid: "", name: "Lakshan Gunawardena", grade: "Grade 9",
     subjects: ["History", "Geography"], avgScore: 65,
     trend: "stable", papersCompleted: 13, lastActive: "Yesterday, 2:00 PM",
     status: "Active", parentEmail: "gunawardena@email.com",
@@ -400,7 +401,7 @@ export const students: Student[] = [
     riskSignals: [],
   },
   {
-    id: 11, name: "Nisali Dissanayake", grade: "Grade 9",
+    id: 11, uuid: "", name: "Nisali Dissanayake", grade: "Grade 9",
     subjects: ["History", "Geography", "Civics"], avgScore: 55,
     trend: "down", papersCompleted: 10, lastActive: "4 days ago",
     status: "At Risk", parentEmail: "dissanayake.n@email.com",
@@ -426,7 +427,7 @@ export const students: Student[] = [
     ],
   },
   {
-    id: 12, name: "Pavan Rathnayake", grade: "Grade 9",
+    id: 12, uuid: "", name: "Pavan Rathnayake", grade: "Grade 9",
     subjects: ["History", "Civics"], avgScore: 71,
     trend: "up", papersCompleted: 16, lastActive: "Today, 11:00 AM",
     status: "Active", parentEmail: "rathnayake.p@email.com",
@@ -448,7 +449,7 @@ export const students: Student[] = [
     riskSignals: [],
   },
   {
-    id: 13, name: "Ruwani Perera", grade: "Grade 9",
+    id: 13, uuid: "", name: "Ruwani Perera", grade: "Grade 9",
     subjects: ["History", "Geography", "Civics"], avgScore: 88,
     trend: "up", papersCompleted: 22, lastActive: "Today, 9:45 AM",
     status: "Active", parentEmail: "perera.ruwani@email.com",
@@ -470,7 +471,7 @@ export const students: Student[] = [
     riskSignals: [],
   },
   {
-    id: 14, name: "Thilina Jayasuriya", grade: "Grade 9",
+    id: 14, uuid: "", name: "Thilina Jayasuriya", grade: "Grade 9",
     subjects: ["History", "Geography"], avgScore: 76,
     trend: "stable", papersCompleted: 17, lastActive: "Yesterday, 5:00 PM",
     status: "Active", parentEmail: "jayasuriya.t@email.com",
@@ -492,7 +493,7 @@ export const students: Student[] = [
     riskSignals: [],
   },
   {
-    id: 15, name: "Dulani Weerasinghe", grade: "Grade 11",
+    id: 15, uuid: "", name: "Dulani Weerasinghe", grade: "Grade 11",
     subjects: ["History", "Civics"], avgScore: 62,
     trend: "up", papersCompleted: 14, lastActive: "Today, 7:30 AM",
     status: "Active", parentEmail: "weerasinghe.d@email.com",
@@ -514,7 +515,7 @@ export const students: Student[] = [
     riskSignals: [],
   },
   {
-    id: 16, name: "Chamara Fernando", grade: "Grade 11",
+    id: 16, uuid: "", name: "Chamara Fernando", grade: "Grade 11",
     subjects: ["History", "Geography", "Civics"], avgScore: 57,
     trend: "down", papersCompleted: 9, lastActive: "5 days ago",
     status: "At Risk", parentEmail: "chamara.f@email.com",
@@ -540,7 +541,7 @@ export const students: Student[] = [
     ],
   },
   {
-    id: 17, name: "Hasini Kumari", grade: "Grade 11",
+    id: 17, uuid: "", name: "Hasini Kumari", grade: "Grade 11",
     subjects: ["History", "Civics"], avgScore: 80,
     trend: "stable", papersCompleted: 19, lastActive: "Today, 8:15 AM",
     status: "Active", parentEmail: "kumari.hasini@email.com",
@@ -562,7 +563,7 @@ export const students: Student[] = [
     riskSignals: [],
   },
   {
-    id: 18, name: "Sachith Bandara", grade: "Grade 10",
+    id: 18, uuid: "", name: "Sachith Bandara", grade: "Grade 10",
     subjects: ["History", "Geography"], avgScore: 69,
     trend: "stable", papersCompleted: 14, lastActive: "Yesterday, 6:00 PM",
     status: "Active", parentEmail: "bandara.s@email.com",

@@ -32,7 +32,15 @@ const navItems = [
   { label: "Settings", href: "/protected/admin/settings", icon: Settings },
 ];
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+export function AdminShell({
+  children,
+  adminName = "Admin",
+  adminInitials = "A",
+}: {
+  children: React.ReactNode;
+  adminName?: string;
+  adminInitials?: string;
+}) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -100,10 +108,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="border-t p-4 space-y-3">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">
-              SA
+              {adminInitials}
             </div>
             <div className="flex-1 truncate">
-              <p className="text-sm font-medium">Senuka Admin</p>
+              <p className="text-sm font-medium">{adminName}</p>
               <p className="text-xs text-muted-foreground">Administrator</p>
             </div>
           </div>
@@ -126,10 +134,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </h1>
           <div className="ml-auto flex items-center gap-3">
             <span className="hidden text-sm opacity-90 sm:inline">
-              Welcome back, Senuka
+              Welcome back, {adminName.split(" ")[0]}
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm font-bold">
-              SA
+              {adminInitials}
             </div>
           </div>
         </header>
