@@ -39,7 +39,8 @@ export async function createShortNote(input: CreateShortNoteInput) {
       where: { id: user.id },
     });
     if (!teacherDetails) throw new Error("Teacher details not found");
-    if (teacherDetails.subject !== input.subject && !EXTRA_SUBJECTS.includes(input.subject)) {
+    const allowedSubjects = teacherDetails.subject.split(',').map(s => s.trim().toLowerCase());
+    if (!allowedSubjects.includes(input.subject.trim().toLowerCase()) && !EXTRA_SUBJECTS.includes(input.subject)) {
       throw new Error(
         `You are not authorized to upload content for "${input.subject}". Your assigned subject is "${teacherDetails.subject}".`
       );

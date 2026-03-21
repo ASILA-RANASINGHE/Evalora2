@@ -68,7 +68,7 @@ export function AdminShell({
       >
         {/* Sidebar header */}
         <div className="flex h-16 items-center gap-2 border-b px-6">
-          <Shield className="h-6 w-6 text-purple-600" />
+          <Shield className="h-6 w-6 text-slate-700" />
           <span className="font-space-grotesk text-lg font-bold">
             Evalora Admin
           </span>
@@ -93,7 +93,7 @@ export function AdminShell({
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                   active
-                    ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                    ? "bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
@@ -107,7 +107,7 @@ export function AdminShell({
         {/* Sidebar footer */}
         <div className="border-t p-4 space-y-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-xs font-bold text-white">
               {adminInitials}
             </div>
             <div className="flex-1 truncate">
@@ -122,7 +122,7 @@ export function AdminShell({
       {/* Main content area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top header with purple gradient */}
-        <header className="flex h-16 shrink-0 items-center gap-4 bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-600 px-6 text-white shadow-md">
+        <header className="flex h-16 shrink-0 items-center gap-4 bg-gradient-to-r from-slate-800 via-slate-700 to-slate-900 px-6 text-white shadow-md">
           <button
             className="lg:hidden"
             onClick={() => setSidebarOpen(true)}

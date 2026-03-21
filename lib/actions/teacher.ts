@@ -16,7 +16,7 @@ export async function getTeacherSubjects(): Promise<string[]> {
 
   if (!teacherDetails) return [];
 
-  return [teacherDetails.subject];
+  return teacherDetails.subject.split(',').map(s => s.trim());
 }
 
 export async function getTeacherSubjectTopics(): Promise<

@@ -36,7 +36,7 @@ export function TeacherShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background font-source-sans">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-purple-100 via-purple-50 to-purple-100 dark:from-purple-950 dark:via-purple-900/50 dark:to-purple-900 font-source-sans">
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
@@ -46,11 +46,11 @@ export function TeacherShell({ children }: { children: React.ReactNode }) {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-card transition-transform duration-200 lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-purple-200/50 dark:border-purple-800/50 bg-purple-50/60 dark:bg-purple-950/60 backdrop-blur-xl transition-transform duration-200 lg:static lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex h-16 items-center gap-2 border-b px-6">
+        <div className="flex h-16 items-center gap-2 border-b border-purple-200/50 dark:border-purple-800/50 px-6">
           <GraduationCap className="h-6 w-6 text-purple-600" />
           <span className="font-space-grotesk text-lg font-bold">
             Evalora Teacher
@@ -75,8 +75,8 @@ export function TeacherShell({ children }: { children: React.ReactNode }) {
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                   active
-                    ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "bg-purple-200/80 text-purple-800 dark:bg-purple-900/60 dark:text-purple-200 shadow-sm"
+                    : "text-muted-foreground hover:bg-purple-100/50 hover:text-purple-900 dark:hover:bg-purple-900/20 dark:hover:text-purple-100"
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -86,9 +86,9 @@ export function TeacherShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="border-t p-4 space-y-3">
+        <div className="border-t border-purple-200/50 dark:border-purple-800/50 p-4 space-y-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-xs font-bold text-white shadow-sm">
               SJ
             </div>
             <div className="flex-1 truncate">
@@ -100,8 +100,8 @@ export function TeacherShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-16 shrink-0 items-center gap-4 bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-600 px-6 text-white shadow-md">
+      <div className="flex flex-1 flex-col overflow-hidden bg-transparent">
+        <header className="flex h-16 shrink-0 items-center gap-4 bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-600 px-6 text-white shadow-md z-10 relative">
           <button
             className="lg:hidden"
             onClick={() => setSidebarOpen(true)}

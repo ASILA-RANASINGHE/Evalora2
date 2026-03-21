@@ -67,7 +67,8 @@ export async function createPaper(input: CreatePaperInput) {
       where: { id: user.id },
     });
     if (!teacherDetails) throw new Error("Teacher details not found");
-    if (teacherDetails.subject !== input.subject) {
+    const allowedSubjects = teacherDetails.subject.split(',').map(s => s.trim().toLowerCase());
+    if (!allowedSubjects.includes(input.subject.trim().toLowerCase())) {
       throw new Error(`You are not authorized to upload content for "${input.subject}".`);
     }
   }
