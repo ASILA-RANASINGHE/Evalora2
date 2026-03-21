@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/lib/generated/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -344,12 +345,12 @@ export async function completeReview(
       isCorrect: fm >= review.marksAvailable,
       isPartial: fm > 0 && fm < review.marksAvailable,
       manuallyReviewed: true,
-      teacherFeedback: data.teacherFeedback ?? null,
+      teacherFeedback: data.teacherFeedback ?? undefined,
     };
   });
 
   // Recalculate total score
-  const newMarksEarned = updatedResults.reduce(
+  const newMarksEarned = (updatedResults as StoredResult[]).reduce(
     (s: number, r: StoredResult) => s + (r.marksAwarded ?? 0),
     0
   );
@@ -368,7 +369,7 @@ export async function completeReview(
     prisma.paperAttempt.update({
       where: { id: review.attemptId },
       data: {
-        results: updatedResults,
+        results: updatedResults as unknown as Prisma.InputJsonValue,
         score: newScore,
         flagged: updatedFlagged,
       },

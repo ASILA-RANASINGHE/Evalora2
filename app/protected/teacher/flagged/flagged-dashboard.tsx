@@ -199,6 +199,7 @@ export function FlaggedDashboard({ initialStats, initialPending, initialComplete
     setReviewModalOpen(true);
     try {
       const detail = await getReviewDetail(reviewId);
+      if (!detail) return;
       setReviewDetail(detail);
       setFinalMarks(detail.finalMarks ?? detail.aiMarks);
       setAgreeWithAI(detail.agreeWithAI);
@@ -612,7 +613,7 @@ export function FlaggedDashboard({ initialStats, initialPending, initialComplete
       </Tabs>
 
       {/* ── Review Detail Modal ── */}
-      <Dialog open={reviewModalOpen} onOpenChange={(open) => { if (!open) closeReviewModal(); }}>
+      <Dialog open={reviewModalOpen} onOpenChange={(open: boolean) => { if (!open) closeReviewModal(); }}>
         <DialogContent className="max-w-5xl w-full max-h-[90vh] overflow-y-auto p-0">
           {reviewLoading || !reviewDetail ? (
             <div className="flex items-center justify-center py-20">
@@ -808,7 +809,7 @@ export function FlaggedDashboard({ initialStats, initialPending, initialComplete
                 </Button>
                 <Button
                   onClick={() => setConfirmOpen(true)}
-                  disabled={isPending || finalMarks === "" || (finalMarks !== "" && Number(finalMarks) > reviewDetail.marksAvailable)}
+                  disabled={isPending || finalMarks === "" || (typeof finalMarks === "number" && finalMarks > reviewDetail.marksAvailable)}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
                   <CheckCircle2 className="h-4 w-4 mr-1" />
