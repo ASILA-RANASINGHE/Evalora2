@@ -49,7 +49,7 @@ export default function UploadHub() {
         <p className="text-muted-foreground mt-1">Create and share educational content with your students</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {uploadCards.map((card) => {
           const Icon = card.icon;
           return (

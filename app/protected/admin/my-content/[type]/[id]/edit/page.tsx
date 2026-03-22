@@ -14,6 +14,7 @@ import { getQuizDetails } from "@/lib/actions/quiz";
 import { getPaperWithQuestions } from "@/lib/actions/paper";
 import { QuizEditForm } from "@/app/protected/teacher/my-content/[type]/[id]/edit/quiz-edit";
 import { PaperEditForm } from "@/app/protected/teacher/my-content/[type]/[id]/edit/paper-edit";
+import { RichTextEditor } from "@/components/editor/rich-text-editor";
 
 const GRADES = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
 
@@ -80,7 +81,6 @@ export default function AdminEditContentPage() {
       if (type === "notes") await updateNote(id, { title, topic, grade, content });
       else if (type === "short-notes") await updateShortNote(id, { title, topic, grade, content });
       router.push(backHref);
-      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save changes");
       setSaving(false);
@@ -171,12 +171,7 @@ export default function AdminEditContentPage() {
             <CardTitle className="text-base">Content</CardTitle>
           </CardHeader>
           <CardContent>
-            <textarea
-              className="min-h-[250px] w-full rounded-md border bg-transparent p-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              required
-            />
+            <RichTextEditor value={content} onChange={setContent} />
           </CardContent>
         </Card>
 

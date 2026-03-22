@@ -89,9 +89,10 @@ export async function updateNote(id: string, input: { title: string; topic: stri
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
+  const profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true } });
   const note = await prisma.note.findUnique({ where: { id }, select: { createdById: true } });
   if (!note) throw new Error("Not found");
-  if (note.createdById !== user.id) throw new Error("Forbidden");
+  if (note.createdById !== user.id && profile?.role !== "ADMIN") throw new Error("Forbidden");
 
   await prisma.note.update({ where: { id }, data: { title: input.title, topic: input.topic, grade: input.grade || null, content: input.content } });
   return { ok: true };

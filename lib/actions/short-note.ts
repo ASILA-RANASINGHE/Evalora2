@@ -92,9 +92,10 @@ export async function updateShortNote(id: string, input: { title: string; topic:
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
+  const profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true } });
   const shortNote = await prisma.shortNote.findUnique({ where: { id }, select: { createdById: true } });
   if (!shortNote) throw new Error("Not found");
-  if (shortNote.createdById !== user.id) throw new Error("Forbidden");
+  if (shortNote.createdById !== user.id && profile?.role !== "ADMIN") throw new Error("Forbidden");
 
   await prisma.shortNote.update({ where: { id }, data: { title: input.title, topic: input.topic, grade: input.grade || null, content: input.content } });
   return { ok: true };

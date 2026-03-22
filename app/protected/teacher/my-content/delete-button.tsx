@@ -31,7 +31,6 @@ export function DeleteContentButton({ type, id, title, backHref }: Props) {
         case "papers": await deletePaper(id); break;
       }
       router.push(backHref);
-      router.refresh();
     } catch {
       alert("Failed to delete. Please try again.");
       setLoading(false);
