@@ -101,6 +101,18 @@ export async function updateShortNote(id: string, input: { title: string; topic:
 }
 
 export async function getShortNotesBySubject(subjectName: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { adminContent: [], teacherContent: [] };
+
+  const [studentDetails, teacherLinks] = await Promise.all([
+    prisma.studentDetails.findUnique({ where: { id: user.id }, select: { grade: true } }),
+    prisma.teacherStudentLink.findMany({ where: { studentId: user.id }, select: { teacherId: true } }),
+  ]);
+
+  const studentGrade = studentDetails?.grade ?? null;
+  const assignedTeacherIds = teacherLinks.map((l) => l.teacherId);
+
   const subject = await prisma.subject.findFirst({
     where: { name: { equals: subjectName, mode: "insensitive" } },
   });
@@ -110,6 +122,14 @@ export async function getShortNotesBySubject(subjectName: string) {
     where: {
       subjectId: subject.id,
       status: "APPROVED",
+      OR: [
+        // PUBLIC: visible if grade matches student's grade or no grade restriction
+        studentGrade
+          ? { visibility: "PUBLIC", OR: [{ grade: null }, { grade: studentGrade }] }
+          : { visibility: "PUBLIC" },
+        // STUDENTS_ONLY: visible only to students assigned to the creating teacher
+        { visibility: "STUDENTS_ONLY", createdById: { in: assignedTeacherIds } },
+      ],
     },
     include: {
       createdBy: { select: { firstName: true, lastName: true, role: true } },
