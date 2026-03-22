@@ -46,7 +46,7 @@ export default async function StudentLayout({
       </div>
 
       {/* Main Content Area */}
-      <main className="container mx-auto px-4 py-8 flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <main className="container mx-auto px-4 py-8 flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
         {children}
       </main>
     </div>

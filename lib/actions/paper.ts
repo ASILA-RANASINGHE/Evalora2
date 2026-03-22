@@ -1008,9 +1008,8 @@ export async function requestManualReview(attemptId: string, questionId: string)
 
   if (!existingReview) {
     // Extract question data from the stored results JSON
-    const results: QuestionResult[] = Array.isArray(attempt.results)
-      ? (attempt.results as unknown as QuestionResult[])
-      : [];
+    const examResults = attempt.results as unknown as ExamResults | null;
+    const results: QuestionResult[] = examResults?.questionResults ?? [];
     const qr = results.find((r) => r.questionId === questionId);
 
     if (qr) {

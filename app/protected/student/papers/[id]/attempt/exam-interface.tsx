@@ -196,6 +196,7 @@ export default function ExamInterface({
   const [paper, setPaper] = useState<ExamPaperData | null>(null);
   const [attemptId, setAttemptId] = useState<string>("");
   const [questions, setQuestions] = useState<QuestionState[]>([]);
+  const [examLoadError, setExamLoadError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [totalTime, setTotalTime] = useState(0);
@@ -220,6 +221,7 @@ export default function ExamInterface({
 
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activityTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasSubmittedRef = useRef(false);
 
   // ── Load exam ──────────────────────────────────────────────────────────────
 
@@ -275,6 +277,7 @@ export default function ExamInterface({
       setScreen("exam");
     } catch (err) {
       console.error(err);
+      setExamLoadError(err instanceof Error ? err.message : "Failed to load the exam. Please try again.");
     }
   }
 
@@ -286,7 +289,6 @@ export default function ExamInterface({
       setTimeRemaining((t) => {
         if (t <= 1) {
           clearInterval(interval);
-          handleTimerExpired();
           return 0;
         }
         return t - 1;
@@ -299,9 +301,12 @@ export default function ExamInterface({
     return () => clearInterval(interval);
   }, [screen, currentIndex]);
 
-  async function handleTimerExpired() {
-    await doSubmit();
-  }
+  // Trigger auto-submit when timer hits zero (separate from the interval setter)
+  useEffect(() => {
+    if (timeRemaining === 0 && screen === "exam") {
+      doSubmit();
+    }
+  }, [timeRemaining]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Online/offline detection ───────────────────────────────────────────────
 
@@ -427,6 +432,8 @@ export default function ExamInterface({
   // ── Submit ─────────────────────────────────────────────────────────────────
 
   async function doSubmit() {
+    if (hasSubmittedRef.current) return;
+    hasSubmittedRef.current = true;
     setScreen("processing");
     const answers: Record<string, string> = {};
     const flagged: string[] = [];
@@ -456,6 +463,7 @@ export default function ExamInterface({
     } catch (err) {
       clearInterval(stepInterval);
       console.error(err);
+      hasSubmittedRef.current = false;
       setScreen("exam");
       alert("Submission failed. Please try again.");
     }
@@ -501,10 +509,28 @@ export default function ExamInterface({
   // ── Loading ────────────────────────────────────────────────────────────────
   if (screen === "loading") {
     return (
-      <div className="fixed inset-0 z-50 bg-white flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto" />
-          <p className="text-lg font-medium text-gray-700">Loading exam...</p>
+      <div className="fixed inset-0 z-50 bg-white flex items-center justify-center p-4">
+        <div className="text-center space-y-4 max-w-md">
+          {examLoadError ? (
+            <>
+              <XCircle className="h-12 w-12 text-red-500 mx-auto" />
+              <p className="text-lg font-semibold text-red-700">Failed to Load Exam</p>
+              <p className="text-sm text-red-600">{examLoadError}</p>
+              <div className="flex gap-3 justify-center">
+                <Button onClick={() => { setExamLoadError(null); loadExam(false); }} className="bg-purple-600 hover:bg-purple-700">
+                  Try Again
+                </Button>
+                <Button variant="outline" onClick={() => router.push("/protected/student/papers")}>
+                  <Home className="h-4 w-4 mr-2" /> Back to Papers
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto" />
+              <p className="text-lg font-medium text-gray-700">Loading exam...</p>
+            </>
+          )}
         </div>
       </div>
     );
