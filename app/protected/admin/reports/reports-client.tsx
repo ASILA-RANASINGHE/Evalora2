@@ -21,15 +21,19 @@ import {
   Flag,
   Medal,
 } from "lucide-react";
+import { DownloadAdminReport } from "./download-report-button";
 
 export function ReportsClient({ data }: { data: AdminReportData }) {
   const { totals, usersByRole, contentByType, contentBySubject, registrationsByMonth, attemptsByMonth, topStudents } = data;
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="font-space-grotesk text-2xl font-bold">Reports</h2>
-        <p className="text-sm text-muted-foreground">Platform analytics and data insights.</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="font-space-grotesk text-2xl font-bold">Reports</h2>
+          <p className="text-sm text-muted-foreground">Platform analytics and data insights.</p>
+        </div>
+        <DownloadAdminReport data={data} />
       </div>
 
       {/* Quick stats */}

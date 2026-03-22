@@ -127,6 +127,126 @@ export async function createPaper(input: CreatePaperInput) {
   return { id: paper.id };
 }
 
+export async function updatePaperMetadata(
+  id: string,
+  input: {
+    title: string;
+    grade: string;
+    term: PaperTerm;
+    duration: number;
+    year?: number;
+    isModel: boolean;
+    passPercentage: number;
+    instructions?: string;
+    visibility: string;
+  }
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const paper = await prisma.paper.findUnique({ where: { id }, select: { createdById: true } });
+  if (!paper) throw new Error("Not found");
+  if (paper.createdById !== user.id) throw new Error("Forbidden");
+
+  await prisma.paper.update({
+    where: { id },
+    data: {
+      title: input.title,
+      grade: input.grade,
+      term: input.term,
+      duration: input.duration,
+      year: input.year || null,
+      isModel: input.isModel,
+      passPercentage: input.passPercentage,
+      instructions: input.instructions || null,
+      visibility: input.visibility === "PUBLIC" ? "PUBLIC" : "STUDENTS_ONLY",
+    },
+  });
+  return { ok: true };
+}
+
+export async function getPaperWithQuestions(id: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true } });
+  const paper = await prisma.paper.findUnique({
+    where: { id },
+    include: {
+      subject: { select: { name: true } },
+      questions: { orderBy: { order: "asc" } },
+    },
+  });
+  if (!paper) return null;
+  if (paper.createdById !== user.id && profile?.role !== "ADMIN") return null;
+
+  return {
+    id: paper.id,
+    title: paper.title,
+    subject: paper.subject.name,
+    term: paper.term,
+    grade: paper.grade,
+    year: paper.year,
+    duration: paper.duration,
+    isModel: paper.isModel,
+    mcqCount: paper.mcqCount,
+    mcqMarks: paper.mcqMarks,
+    essayCount: paper.essayCount,
+    essayMarks: paper.essayMarks,
+    totalMarks: paper.totalMarks,
+    passPercentage: paper.passPercentage,
+    instructions: paper.instructions,
+    visibility: paper.visibility,
+    questions: paper.questions.map((q) => ({
+      id: q.id,
+      text: q.text,
+      type: q.type,
+      points: q.points,
+      options: q.options as string[],
+      correctAnswer: q.correctAnswer,
+      order: q.order,
+    })),
+  };
+}
+
+export async function updatePaperQuestion(
+  questionId: string,
+  input: { text: string; options: string[]; correctAnswer: string }
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const question = await prisma.paperQuestion.findUnique({
+    where: { id: questionId },
+    include: { paper: { select: { createdById: true } } },
+  });
+  if (!question) throw new Error("Not found");
+  if (question.paper.createdById !== user.id) throw new Error("Forbidden");
+
+  await prisma.paperQuestion.update({
+    where: { id: questionId },
+    data: { text: input.text, options: input.options, correctAnswer: input.correctAnswer },
+  });
+  return { ok: true };
+}
+
+export async function deletePaper(id: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true } });
+  const paper = await prisma.paper.findUnique({ where: { id }, select: { createdById: true } });
+  if (!paper) throw new Error("Not found");
+  if (paper.createdById !== user.id && profile?.role !== "ADMIN") throw new Error("Forbidden");
+
+  await prisma.paper.delete({ where: { id } });
+  return { ok: true };
+}
+
 export async function getPapersBySubjectAndTerm(
   subjectName: string,
   term: string

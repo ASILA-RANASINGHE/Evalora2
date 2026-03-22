@@ -17,6 +17,7 @@ interface CreateQuizInput {
     points: number;
     options: string[];
     correctAnswer: string;
+    imageUrl?: string;
   }[];
 }
 
@@ -67,12 +68,69 @@ export async function createQuiz(input: CreateQuizInput) {
           options: q.options.filter((o) => o.trim() !== ""),
           correctAnswer: q.correctAnswer,
           order: index,
+          imageUrl: q.imageUrl ?? null,
         })),
       },
     },
   });
 
   return { id: quiz.id };
+}
+
+export async function updateQuiz(
+  id: string,
+  input: {
+    title: string;
+    topic: string;
+    duration: number;
+    visibility: string;
+    questions: { text: string; type: QuestionType; points: number; options: string[]; correctAnswer: string }[];
+  }
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const quiz = await prisma.quiz.findUnique({ where: { id }, select: { createdById: true } });
+  if (!quiz) throw new Error("Not found");
+  if (quiz.createdById !== user.id) throw new Error("Forbidden");
+
+  // Delete old questions and recreate
+  await prisma.quizQuestion.deleteMany({ where: { quizId: id } });
+  await prisma.quiz.update({
+    where: { id },
+    data: {
+      title: input.title,
+      topic: input.topic,
+      duration: input.duration,
+      visibility: input.visibility === "PUBLIC" ? "PUBLIC" : "STUDENTS_ONLY",
+      questions: {
+        create: input.questions.map((q, i) => ({
+          text: q.text,
+          type: q.type,
+          points: q.points,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          order: i,
+        })),
+      },
+    },
+  });
+  return { ok: true };
+}
+
+export async function deleteQuiz(id: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true } });
+  const quiz = await prisma.quiz.findUnique({ where: { id }, select: { createdById: true } });
+  if (!quiz) throw new Error("Not found");
+  if (quiz.createdById !== user.id && profile?.role !== "ADMIN") throw new Error("Forbidden");
+
+  await prisma.quiz.delete({ where: { id } });
+  return { ok: true };
 }
 
 export async function getQuizzesBySubject(subjectName: string) {

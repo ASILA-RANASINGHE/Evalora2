@@ -6,15 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Check, Upload, Eye, Paperclip, X } from "lucide-react";
+import { RichTextEditor } from "@/components/editor/rich-text-editor";
 import Link from "next/link";
 import { getTeacherSubjects } from "@/lib/actions/teacher";
 import { createShortNote } from "@/lib/actions/short-note";
 import { uploadFiles } from "@/lib/supabase/storage";
 
 const grades = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
-const EXTRA_SUBJECTS = ["Geography", "Health"];
+const EXTRA_SUBJECTS = ["English", "Geography", "Civic Education", "Health"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const ALLOWED_EXTENSIONS = [".pdf", ".doc", ".docx", ".ppt", ".pptx", ".txt"];
+const ALLOWED_EXTENSIONS = [".pdf", ".doc", ".docx", ".ppt", ".pptx", ".txt", ".jpg", ".jpeg", ".png", ".gif", ".webp"];
 
 interface FormErrors {
   title?: string;
@@ -50,7 +51,7 @@ export default function UploadShortNotesPage() {
     if (!subject) newErrors.subject = "Please select a subject";
     if (!grade) newErrors.grade = "Please select a grade";
     if (!topic.trim()) newErrors.topic = "Please enter a topic";
-    if (!content.trim()) newErrors.content = "Content is required";
+    if (!content.replace(/<[^>]*>/g, "").trim()) newErrors.content = "Content is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -195,17 +196,17 @@ export default function UploadShortNotesPage() {
         <Card className="border-border/50 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Content</CardTitle>
-            <CardDescription>Write a concise summary or quick reference note</CardDescription>
+            <CardDescription>Write and format your short note — supports images, headings, lists, and more</CardDescription>
           </CardHeader>
-          <CardContent>
-            <textarea
+          <CardContent className="p-0">
+            <RichTextEditor
               value={content}
-              onChange={(e) => { setContent(e.target.value); if (errors.content) setErrors((p) => ({ ...p, content: undefined })); }}
+              onChange={(html) => { setContent(html); if (errors.content) setErrors((p) => ({ ...p, content: undefined })); }}
               placeholder="Write your short note content here..."
-              rows={6}
-              className={`flex w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${errors.content ? "border-red-500" : "border-input"}`}
+              minHeight={300}
+              error={!!errors.content}
             />
-            {errors.content && <p className="text-xs text-red-500 mt-1">{errors.content}</p>}
+            {errors.content && <p className="text-xs text-red-500 px-4 py-2">{errors.content}</p>}
           </CardContent>
         </Card>
 
@@ -213,7 +214,7 @@ export default function UploadShortNotesPage() {
         <Card className="border-border/50 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Attachments</CardTitle>
-            <CardDescription>PDF, DOCX, PPT, TXT — up to 10MB each</CardDescription>
+            <CardDescription>PDF, DOCX, PPT, TXT, Images (JPG, PNG, GIF, WebP) — up to 10MB each</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div

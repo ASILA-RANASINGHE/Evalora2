@@ -51,8 +51,18 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.72): Promi
   });
 }
 
-interface McqQuestion {
+interface McqPassageSub {
   qType: "MCQ" | "TRUE_FALSE" | "FILL_BLANK" | "FILL_BLANK_OPTIONS" | "MATCH_COLUMN";
+  text: string;
+  options: string[];
+  correctAnswer: string;
+  answers: string[];            // FILL_BLANK / FILL_BLANK_OPTIONS / MATCH_COLUMN col A
+  matchDistractors?: string[];  // MATCH_COLUMN extra wrong B items
+  blankOptions?: string[][];    // FILL_BLANK_OPTIONS per-blank option lists
+}
+
+interface McqQuestion {
+  qType: "MCQ" | "TRUE_FALSE" | "FILL_BLANK" | "FILL_BLANK_OPTIONS" | "MATCH_COLUMN" | "PASSAGE_MCQ";
   text: string;
   options: string[];   // MCQ: 4 options; MATCH_COLUMN: correct Column B items (parallel to answers)
   correctAnswer: string;
@@ -60,6 +70,8 @@ interface McqQuestion {
   imageData?: string;
   matchDistractors?: string[];  // MATCH_COLUMN: extra Column B distractors
   blankOptions?: string[][];    // FILL_BLANK_OPTIONS: per-blank option arrays
+  passageText?: string;               // PASSAGE_MCQ: the scenario paragraph
+  passageSubQuestions?: McqPassageSub[]; // PASSAGE_MCQ: sub-questions
 }
 
 interface StructuredSubSub {
@@ -100,6 +112,13 @@ function newSubSub(): StructuredSubSub {
   return { text: "", answer: "", marks: 1 };
 }
 
+function getMcqFlatCount(qs: McqQuestion[]): number {
+  return qs.reduce(
+    (s, q) => s + (q.qType === "PASSAGE_MCQ" ? (q.passageSubQuestions?.length || 0) : 1),
+    0
+  );
+}
+
 function mainQuestionTotalMarks(main: StructuredMain): number {
   return main.subs.reduce((total, sub) => {
     if (sub.subSubs.length === 0) return total + sub.marks;
@@ -132,10 +151,26 @@ export default function AdminUploadPapersPage() {
   const mcqCountNum = parseInt(mcqCount) || 0;
   useEffect(() => {
     setMcqQuestions((prev) => {
+      const flatCount = getMcqFlatCount(prev);
       if (mcqCountNum === 0) return [];
-      if (mcqCountNum > prev.length)
-        return [...prev, ...Array.from({ length: mcqCountNum - prev.length }, () => ({ qType: "MCQ" as const, text: "", options: ["", "", "", ""], correctAnswer: "", answers: [] }))];
-      return prev.slice(0, mcqCountNum);
+      if (mcqCountNum > flatCount) {
+        const toAdd = mcqCountNum - flatCount;
+        return [...prev, ...Array.from({ length: toAdd }, () => ({ qType: "MCQ" as const, text: "", options: ["", "", "", ""], correctAnswer: "", answers: [] }))];
+      }
+      if (mcqCountNum < flatCount) {
+        let remaining = mcqCountNum;
+        const result: McqQuestion[] = [];
+        for (const q of prev) {
+          if (remaining <= 0) break;
+          if (q.qType === "PASSAGE_MCQ") {
+            const subs = q.passageSubQuestions || [];
+            if (subs.length <= remaining) { result.push(q); remaining -= subs.length; }
+            else { result.push({ ...q, passageSubQuestions: subs.slice(0, remaining) }); remaining = 0; }
+          } else { result.push(q); remaining -= 1; }
+        }
+        return result;
+      }
+      return prev;
     });
   }, [mcqCountNum]);
 
@@ -171,7 +206,8 @@ export default function AdminUploadPapersPage() {
     [mcqCountNum, mcqMarks, structuredTotalMarks]
   );
 
-  const totalQuestions = mcqCountNum + essayCountNum;
+  const totalMcqFlat = getMcqFlatCount(mcqQuestions);
+  const totalQuestions = totalMcqFlat + essayCountNum;
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
@@ -180,7 +216,7 @@ export default function AdminUploadPapersPage() {
     if (!term) newErrors.term = "Please select a term";
     if (!grade) newErrors.grade = "Please select a grade";
     if (!duration || parseInt(duration) <= 0) newErrors.duration = "Enter a valid duration";
-    if (!mcqCount && !essayCount) newErrors.mcqCount = "Add at least one question type";
+    if (getMcqFlatCount(mcqQuestions) === 0 && essayCountNum === 0) newErrors.mcqCount = "Add at least one question type";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -191,62 +227,81 @@ export default function AdminUploadPapersPage() {
     setSaving(true);
     setSaveError(null);
     try {
-      const mcqFlat = mcqQuestions.map((q, i) => {
-        if (q.qType === "TRUE_FALSE") {
-          return {
+      const mcqFlat: Parameters<typeof createPaper>[0]["questions"] = [];
+      let mcqOrderIdx = 0;
+      mcqQuestions.forEach((q) => {
+        if (q.qType === "PASSAGE_MCQ") {
+          (q.passageSubQuestions || []).forEach((sub) => {
+            const desc = q.passageText || undefined;
+            const pts = parseInt(mcqMarks) || 1;
+            if (sub.qType === "TRUE_FALSE") {
+              mcqFlat.push({ text: sub.text, type: "TRUE_FALSE" as const, points: pts, options: ["True", "False"], correctAnswer: sub.correctAnswer || "True", order: mcqOrderIdx++, description: desc });
+            } else if (sub.qType === "FILL_BLANK") {
+              mcqFlat.push({ text: sub.text, type: "FILL_BLANK" as const, points: pts, options: sub.answers, correctAnswer: sub.answers.join("|"), order: mcqOrderIdx++, description: desc });
+            } else if (sub.qType === "FILL_BLANK_OPTIONS") {
+              mcqFlat.push({ text: sub.text, type: "FILL_BLANK_OPTIONS" as const, points: pts, options: (sub.blankOptions || []).map((opts) => opts.join("|")), correctAnswer: sub.answers.join("|"), order: mcqOrderIdx++, description: desc });
+            } else if (sub.qType === "MATCH_COLUMN") {
+              const allB = [...(sub.options || []), ...(sub.matchDistractors || [])];
+              mcqFlat.push({ text: sub.text, type: "MATCH_COLUMN" as const, points: pts, options: allB, correctAnswer: (sub.answers || []).map((a, idx) => `${a}::${sub.options[idx] || ""}`).join("|"), order: mcqOrderIdx++, description: desc });
+            } else {
+              mcqFlat.push({ text: sub.text, type: "MCQ" as const, points: pts, options: sub.options.filter((o) => o.trim()), correctAnswer: sub.correctAnswer, order: mcqOrderIdx++, description: desc });
+            }
+          });
+        } else if (q.qType === "TRUE_FALSE") {
+          mcqFlat.push({
             text: q.text,
             type: "TRUE_FALSE" as const,
             points: parseInt(mcqMarks) || 1,
             options: ["True", "False"],
             correctAnswer: q.correctAnswer || "True",
-            order: i,
+            order: mcqOrderIdx++,
             imageUrl: q.imageData || undefined,
-          };
+          });
         } else if (q.qType === "FILL_BLANK") {
-          return {
+          mcqFlat.push({
             text: q.text,
             type: "FILL_BLANK" as const,
             points: parseInt(mcqMarks) || 1,
             options: q.answers,
             correctAnswer: q.answers.join("|"),
-            order: i,
+            order: mcqOrderIdx++,
             imageUrl: q.imageData || undefined,
-          };
+          });
         } else if (q.qType === "FILL_BLANK_OPTIONS") {
-          return {
+          mcqFlat.push({
             text: q.text,
             type: "FILL_BLANK_OPTIONS" as const,
             points: parseInt(mcqMarks) || 1,
-            options: (q.blankOptions || []).map(opts => opts.join("|")),
+            options: (q.blankOptions || []).map((opts) => opts.join("|")),
             correctAnswer: q.answers.join("|"),
-            order: i,
+            order: mcqOrderIdx++,
             imageUrl: q.imageData || undefined,
-          };
+          });
         } else if (q.qType === "MATCH_COLUMN") {
           const allBItems = [...(q.options || []), ...(q.matchDistractors || [])];
-          return {
+          mcqFlat.push({
             text: q.text,
             type: "MATCH_COLUMN" as const,
             points: parseInt(mcqMarks) || 1,
             options: allBItems,
             correctAnswer: (q.answers || []).map((a, idx) => `${a}::${q.options[idx] || ""}`).join("|"),
-            order: i,
+            order: mcqOrderIdx++,
             imageUrl: q.imageData || undefined,
-          };
+          });
         } else {
-          return {
+          mcqFlat.push({
             text: q.text,
             type: "MCQ" as const,
             points: parseInt(mcqMarks) || 1,
             options: q.options,
             correctAnswer: q.correctAnswer,
-            order: i,
+            order: mcqOrderIdx++,
             imageUrl: q.imageData || undefined,
-          };
+          });
         }
       });
 
-      let orderOffset = mcqCountNum;
+      let orderOffset = mcqFlat.length;
       const structuredFlat: Parameters<typeof createPaper>[0]["questions"] = [];
       for (const main of structuredMains) {
         let firstInGroup = true;
@@ -297,7 +352,7 @@ export default function AdminUploadPapersPage() {
         grade,
         duration: parseInt(duration),
         isModel,
-        mcqCount: mcqCountNum,
+        mcqCount: mcqFlat.length,
         mcqMarks: parseInt(mcqMarks) || 0,
         essayCount: essayCountNum,
         essayMarks: 0,
@@ -406,6 +461,80 @@ export default function AdminUploadPapersPage() {
       })
     );
   }
+
+  // ── Passage MCQ helpers ──────────────────────────────────────────────────────
+
+  const addPassageBlock = () => {
+    setMcqQuestions((prev) => [
+      ...prev,
+      {
+        qType: "PASSAGE_MCQ" as const,
+        text: "",
+        passageText: "",
+        passageSubQuestions: [
+          { qType: "MCQ" as const, text: "", options: ["", "", "", ""], correctAnswer: "", answers: [] },
+          { qType: "MCQ" as const, text: "", options: ["", "", "", ""], correctAnswer: "", answers: [] },
+        ],
+        options: [],
+        correctAnswer: "",
+        answers: [],
+      },
+    ]);
+  };
+
+  const removeQEntry = (idx: number) => {
+    setMcqQuestions((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const updatePassageSub = (qIdx: number, sIdx: number, patch: Partial<McqPassageSub>) => {
+    setMcqQuestions((prev) =>
+      prev.map((q, i) => {
+        if (i !== qIdx) return q;
+        const subs = (q.passageSubQuestions || []).map((s, si) => (si === sIdx ? { ...s, ...patch } : s));
+        return { ...q, passageSubQuestions: subs };
+      })
+    );
+  };
+
+  const updatePassageSubOption = (qIdx: number, sIdx: number, oIdx: number, val: string) => {
+    setMcqQuestions((prev) =>
+      prev.map((q, i) => {
+        if (i !== qIdx) return q;
+        const subs = (q.passageSubQuestions || []).map((s, si) => {
+          if (si !== sIdx) return s;
+          const opts = [...s.options];
+          opts[oIdx] = val;
+          return { ...s, options: opts };
+        });
+        return { ...q, passageSubQuestions: subs };
+      })
+    );
+  };
+
+  const addPassageSub = (qIdx: number) => {
+    setMcqQuestions((prev) =>
+      prev.map((q, i) => {
+        if (i !== qIdx) return q;
+        return {
+          ...q,
+          passageSubQuestions: [
+            ...(q.passageSubQuestions || []),
+            { qType: "MCQ" as const, text: "", options: ["", "", "", ""], correctAnswer: "", answers: [] },
+          ],
+        };
+      })
+    );
+  };
+
+  const removePassageSub = (qIdx: number, sIdx: number) => {
+    setMcqQuestions((prev) =>
+      prev.map((q, i) => {
+        if (i !== qIdx) return q;
+        const subs = (q.passageSubQuestions || []).filter((_, si) => si !== sIdx);
+        return { ...q, passageSubQuestions: subs };
+      })
+    );
+  };
 
   // ── Success screen ───────────────────────────────────────────────────────────
 
@@ -603,20 +732,227 @@ export default function AdminUploadPapersPage() {
           <div className="space-y-4">
             <h3 className="font-semibold text-lg flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-              Part 1 Questions ({mcqCountNum})
+              Part 1 Questions ({totalMcqFlat})
               <span className="text-sm font-normal text-muted-foreground ml-1">MCQ · True/False · Fill in Blank · Match Column</span>
             </h3>
-            {mcqQuestions.map((q, i) => (
+            {mcqQuestions.map((q, i) => {
+              const startNum = getMcqFlatCount(mcqQuestions.slice(0, i)) + 1;
+              if (q.qType === "PASSAGE_MCQ") {
+                const endNum = startNum + (q.passageSubQuestions?.length || 0) - 1;
+                return (
+                  <Card key={i} className="border-[#4D2FB2]/40 shadow-sm">
+                    <CardContent className="p-5 space-y-4">
+                      {/* Header */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#4D2FB2] text-white">Passage Block</span>
+                          <span className="text-sm font-semibold text-muted-foreground">
+                            Questions {startNum}–{endNum}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeQEntry(i)}
+                          className="text-muted-foreground hover:text-red-500 transition-colors"
+                          title="Remove passage block"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      {/* Passage text */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold">Passage / Scenario Text</Label>
+                        <textarea
+                          placeholder="Enter the reading passage or scenario that all questions in this block are based on..."
+                          value={q.passageText || ""}
+                          onChange={(e) => {
+                            const updated = [...mcqQuestions];
+                            updated[i] = { ...updated[i], passageText: e.target.value };
+                            setMcqQuestions(updated);
+                          }}
+                          rows={5}
+                          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
+                        />
+                      </div>
+
+                      {/* Sub-questions */}
+                      <div className="space-y-3">
+                        <Label className="text-xs font-semibold text-[#4D2FB2]">Questions based on this passage</Label>
+                        {(q.passageSubQuestions || []).map((sub, si) => (
+                          <div key={si} className="border border-[#B7BDF7]/50 rounded-lg p-3 bg-[#4D2FB2]/3 space-y-2">
+                            {/* Sub-question header */}
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-[#4D2FB2]">Q{startNum + si}</span>
+                              {(q.passageSubQuestions?.length || 0) > 1 && (
+                                <button type="button" onClick={() => removePassageSub(i, si)} className="text-muted-foreground hover:text-red-500">
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Mini type switcher */}
+                            <div className="flex flex-wrap gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-md w-fit">
+                              {(["MCQ", "TRUE_FALSE", "FILL_BLANK", "FILL_BLANK_OPTIONS", "MATCH_COLUMN"] as const).map((t) => (
+                                <button
+                                  key={t}
+                                  type="button"
+                                  onClick={() => updatePassageSub(i, si, {
+                                    qType: t,
+                                    correctAnswer: t === "TRUE_FALSE" ? "True" : "",
+                                    options: t === "MCQ" ? ["", "", "", ""] : [],
+                                    answers: [],
+                                    matchDistractors: [],
+                                    blankOptions: [],
+                                    text: t === "FILL_BLANK" || t === "FILL_BLANK_OPTIONS" ? "" : sub.text,
+                                  })}
+                                  className={`px-2 py-0.5 rounded text-xs font-semibold transition-colors ${sub.qType === t ? "bg-white dark:bg-gray-700 shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                                >
+                                  {t === "MCQ" ? "MCQ" : t === "TRUE_FALSE" ? "T/F" : t === "FILL_BLANK" ? "Fill Blank" : t === "FILL_BLANK_OPTIONS" ? "Blank+Opts" : "Match"}
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Question text */}
+                            <Input
+                              placeholder={`Question ${startNum + si} text${sub.qType === "FILL_BLANK" || sub.qType === "FILL_BLANK_OPTIONS" ? " (use ___ for blanks)" : ""}...`}
+                              value={sub.text}
+                              onChange={(e) => {
+                                if (sub.qType === "FILL_BLANK" || sub.qType === "FILL_BLANK_OPTIONS") {
+                                  const newText = e.target.value;
+                                  const blankCount = (newText.match(/___/g) || []).length;
+                                  updatePassageSub(i, si, {
+                                    text: newText,
+                                    answers: Array.from({ length: blankCount }, (_, bi) => sub.answers[bi] || ""),
+                                    blankOptions: Array.from({ length: blankCount }, (_, bi) => sub.blankOptions?.[bi] || []),
+                                  });
+                                } else {
+                                  updatePassageSub(i, si, { text: e.target.value });
+                                }
+                              }}
+                              className="h-8 text-sm"
+                            />
+
+                            {/* MCQ options */}
+                            {sub.qType === "MCQ" && (
+                              <div className="space-y-1.5">
+                                <Label className="text-xs text-muted-foreground">Options (click ● to mark correct)</Label>
+                                {sub.options.map((opt, oi) => (
+                                  <div key={oi} className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground w-4">{String.fromCharCode(65 + oi)}.</span>
+                                    <Input value={opt} placeholder={`Option ${String.fromCharCode(65 + oi)}`} onChange={(e) => updatePassageSubOption(i, si, oi, e.target.value)} className="h-7 text-xs" />
+                                    <button type="button" onClick={() => updatePassageSub(i, si, { correctAnswer: opt })} className={`shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${sub.correctAnswer === opt && opt ? "bg-emerald-500 border-emerald-500 text-white" : "border-input hover:border-emerald-400"}`}>
+                                      {sub.correctAnswer === opt && opt && <Check className="h-3 w-3" />}
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* True/False */}
+                            {sub.qType === "TRUE_FALSE" && (
+                              <div className="flex gap-2">
+                                {(["True", "False"] as const).map((v) => (
+                                  <button key={v} type="button" onClick={() => updatePassageSub(i, si, { correctAnswer: v })}
+                                    className={`flex-1 py-1.5 rounded-lg border-2 text-xs font-bold transition-colors ${sub.correctAnswer === v ? (v === "True" ? "border-green-500 bg-green-50 text-green-700" : "border-red-500 bg-red-50 text-red-700") : "border-input hover:border-gray-400"}`}>
+                                    {v === "True" ? "✓ True" : "✗ False"}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Fill in Blank */}
+                            {sub.qType === "FILL_BLANK" && (() => {
+                              const bc = (sub.text.match(/___/g) || []).length;
+                              return bc === 0 ? (
+                                <p className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">Type ___ in the question above for each blank</p>
+                              ) : (
+                                <div className="space-y-1">
+                                  {Array.from({ length: bc }, (_, bi) => (
+                                    <div key={bi} className="flex items-center gap-2">
+                                      <span className="text-xs font-medium text-[#4D2FB2] w-16 shrink-0">Blank {bi + 1}:</span>
+                                      <Input placeholder={`Answer ${bi + 1}`} value={sub.answers[bi] || ""} onChange={(e) => { const a = [...sub.answers]; a[bi] = e.target.value; updatePassageSub(i, si, { answers: a }); }} className="h-7 text-xs" />
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })()}
+
+                            {/* Fill in Blank with Options */}
+                            {sub.qType === "FILL_BLANK_OPTIONS" && (() => {
+                              const bc = (sub.text.match(/___/g) || []).length;
+                              return bc === 0 ? (
+                                <p className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">Type ___ in the question above for each blank</p>
+                              ) : (
+                                <div className="space-y-2">
+                                  {Array.from({ length: bc }, (_, bi) => {
+                                    const opts = sub.blankOptions?.[bi] || [];
+                                    return (
+                                      <div key={bi} className="border rounded p-2 space-y-1 bg-muted/20">
+                                        <p className="text-xs font-semibold text-[#4D2FB2]">Blank {bi + 1}</p>
+                                        <div className="flex flex-wrap gap-1">
+                                          {opts.map((opt, oi) => (
+                                            <span key={oi} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border ${sub.answers[bi] === opt ? "bg-green-100 border-green-400 text-green-800" : "bg-white border-gray-300 text-gray-700"}`}>
+                                              {opt}
+                                              <button type="button" onClick={() => { const nb = [...(sub.blankOptions || [])]; nb[bi] = opts.filter((_, oi2) => oi2 !== oi); const na = [...sub.answers]; if (na[bi] === opt) na[bi] = ""; updatePassageSub(i, si, { blankOptions: nb, answers: na }); }} className="text-gray-400 hover:text-red-500 ml-0.5">×</button>
+                                            </span>
+                                          ))}
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <Input placeholder="Add option, press Enter" className="h-6 text-xs" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); const val = (e.target as HTMLInputElement).value.trim(); if (!val) return; const nb = [...(sub.blankOptions || [])]; if (!nb[bi]) nb[bi] = []; if (!nb[bi].includes(val)) nb[bi] = [...nb[bi], val]; updatePassageSub(i, si, { blankOptions: nb }); (e.target as HTMLInputElement).value = ""; } }} />
+                                          <Label className="text-xs text-muted-foreground whitespace-nowrap">Correct:</Label>
+                                          <select value={sub.answers[bi] || ""} onChange={(e) => { const na = [...sub.answers]; na[bi] = e.target.value; updatePassageSub(i, si, { answers: na }); }} className="h-6 text-xs border rounded px-1">
+                                            <option value="">—</option>
+                                            {opts.map((o, oi) => <option key={oi} value={o}>{o}</option>)}
+                                          </select>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
+
+                            {/* Match Column */}
+                            {sub.qType === "MATCH_COLUMN" && (
+                              <div className="space-y-2">
+                                <Label className="text-xs text-muted-foreground">Column A → Column B pairs</Label>
+                                {(sub.answers || []).map((colA, pi) => (
+                                  <div key={pi} className="flex items-center gap-1">
+                                    <Input value={colA} placeholder="Column A" onChange={(e) => { const a = [...(sub.answers || [])]; a[pi] = e.target.value; updatePassageSub(i, si, { answers: a }); }} className="h-7 text-xs" />
+                                    <span className="text-xs text-muted-foreground">→</span>
+                                    <Input value={sub.options[pi] || ""} placeholder="Column B" onChange={(e) => { const o = [...(sub.options || [])]; o[pi] = e.target.value; updatePassageSub(i, si, { options: o }); }} className="h-7 text-xs" />
+                                    <button type="button" onClick={() => { const a = (sub.answers || []).filter((_, idx) => idx !== pi); const o = (sub.options || []).filter((_, idx) => idx !== pi); updatePassageSub(i, si, { answers: a, options: o }); }} className="text-red-400 hover:text-red-600"><Trash2 className="h-3 w-3" /></button>
+                                  </div>
+                                ))}
+                                <button type="button" onClick={() => updatePassageSub(i, si, { answers: [...(sub.answers || []), ""], options: [...(sub.options || []), ""] })} className="text-xs text-[#4D2FB2] flex items-center gap-1"><Plus className="h-3 w-3" /> Add pair</button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => addPassageSub(i)}
+                          className="w-full py-2 border border-dashed border-[#696FC7]/50 rounded-lg text-xs font-medium text-[#4D2FB2] hover:bg-[#4D2FB2]/5 transition-colors flex items-center justify-center gap-1"
+                        >
+                          <Plus className="h-3 w-3" /> Add Question to Passage
+                        </button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              }
+              return (
               <Card key={i} className="border-border/50 shadow-sm">
                 <CardContent className="p-5 space-y-4">
                   <div className="flex items-start gap-3">
                     <div className="flex items-center gap-1 pt-2 text-muted-foreground">
                       <GripVertical className="h-4 w-4" />
-                      <span className="text-sm font-bold min-w-6">{i + 1}.</span>
+                      <span className="text-sm font-bold min-w-6">{startNum}.</span>
                     </div>
                     <div className="flex-1 space-y-3">
                       {/* Question type switcher */}
-                      <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
+                      <div className="flex flex-wrap gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
                         {(["MCQ", "TRUE_FALSE", "FILL_BLANK", "FILL_BLANK_OPTIONS", "MATCH_COLUMN"] as const).map((t) => (
                           <button
                             key={t}
@@ -643,6 +979,29 @@ export default function AdminUploadPapersPage() {
                             {t === "MCQ" ? "MCQ" : t === "TRUE_FALSE" ? "True / False" : t === "FILL_BLANK" ? "Fill in Blank" : t === "FILL_BLANK_OPTIONS" ? "Blank + Options" : "Match Column"}
                           </button>
                         ))}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = [...mcqQuestions];
+                            updated[i] = {
+                              ...updated[i],
+                              qType: "PASSAGE_MCQ",
+                              passageText: "",
+                              passageSubQuestions: [
+                                { qType: "MCQ" as const, text: "", options: ["", "", "", ""], correctAnswer: "", answers: [] },
+                                { qType: "MCQ" as const, text: "", options: ["", "", "", ""], correctAnswer: "", answers: [] },
+                              ],
+                              text: "",
+                              options: [],
+                              correctAnswer: "",
+                              answers: [],
+                            };
+                            setMcqQuestions(updated);
+                          }}
+                          className="px-3 py-1 rounded-md text-xs font-semibold transition-colors text-[#4D2FB2] bg-[#B7BDF7]/30 hover:bg-[#4D2FB2]/10"
+                        >
+                          Passage
+                        </button>
                       </div>
 
                       <Input
@@ -954,12 +1313,28 @@ export default function AdminUploadPapersPage() {
                         </div>
                       )}
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => removeQEntry(i)}
+                      className="shrink-0 pt-2 text-muted-foreground hover:text-red-500 transition-colors"
+                      title="Remove question"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        )}
+              );
+            })}
+          <button
+            type="button"
+            onClick={addPassageBlock}
+            className="w-full py-3 border-2 border-dashed border-[#4D2FB2]/30 rounded-xl text-sm font-medium text-[#4D2FB2] hover:bg-[#4D2FB2]/5 hover:border-[#4D2FB2]/50 transition-colors flex items-center justify-center gap-2"
+          >
+            <Plus className="h-4 w-4" /> Add Passage Block (scenario + multiple questions)
+          </button>
+        </div>
+      )}
 
         {/* Structured Question Builder */}
         {essayCountNum > 0 && (
@@ -1268,20 +1643,21 @@ export default function AdminUploadPapersPage() {
             <CardTitle className="text-base">Additional Options</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                role="checkbox"
-                aria-checked={isModel}
-                onClick={() => setIsModel(!isModel)}
-                className={`h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${isModel ? "bg-purple-600 border-purple-600 text-white" : "border-input"}`}
-              >
-                {isModel && <Check className="h-3 w-3" />}
-              </button>
-              <div>
-                <Label className="cursor-pointer" onClick={() => setIsModel(!isModel)}>Model Paper</Label>
-                <p className="text-xs text-muted-foreground">Mark this as a model/sample paper for reference</p>
+            <div className="space-y-2">
+              <Label>Paper Type</Label>
+              <div className="flex gap-3">
+                {([{ label: "Past Paper", val: false }, { label: "Model Paper", val: true }] as const).map((opt) => (
+                  <button
+                    key={String(opt.val)}
+                    type="button"
+                    onClick={() => setIsModel(opt.val)}
+                    className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-semibold transition-colors ${isModel === opt.val ? "border-[#4D2FB2] bg-[#4D2FB2]/10 text-[#4D2FB2]" : "border-border text-muted-foreground hover:border-[#696FC7]/50"}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
+              <p className="text-xs text-muted-foreground">Select whether this is an original past paper or a model/sample paper</p>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">

@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, User, Clock, CalendarDays, FileText } from "lucide-react";
+import { ChevronLeft, Clock, CalendarDays, FileText, Pencil } from "lucide-react";
 import { getNoteById } from "@/lib/actions/note";
 import { getShortNoteById } from "@/lib/actions/short-note";
 import { getPaperById } from "@/lib/actions/paper";
 import { getQuizDetails } from "@/lib/actions/quiz";
 import { notFound } from "next/navigation";
+import { DeleteContentButton } from "@/app/protected/teacher/my-content/delete-button";
 
 function formatDate(date: Date) {
   return new Date(date).toLocaleDateString("en-US", {
@@ -67,7 +68,12 @@ export default async function AdminContentViewPage({
           <ChevronLeft className="h-4 w-4" /> Back to My Content
         </Link>
         <div className="flex gap-2">
-          {/* Admin specific actions could go here */}
+          <Link href={`${backLink}/${type}/${id}/edit`}>
+            <Button variant="outline" size="sm">
+              <Pencil className="h-4 w-4 mr-1" /> Edit
+            </Button>
+          </Link>
+          <DeleteContentButton type={type} id={id} title={content.title} backHref={backLink} />
         </div>
       </div>
 

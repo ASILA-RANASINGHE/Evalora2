@@ -150,7 +150,11 @@ export const subjectTopics: Record<string, string[]> = {
     "Physical Geography", "Climate & Weather", "Population Studies",
     "Urban Geography", "Economic Geography", "Map Skills", "Ecosystems",
   ],
-  Civics: [
+  English: [
+    "Grammar", "Comprehension", "Essay Writing", "Poetry", "Literature",
+    "Vocabulary", "Letter Writing", "Descriptive Writing", "Short Stories",
+  ],
+  "Civic Education": [
     "Government Systems", "Human Rights", "Democracy", "Elections & Voting",
     "International Relations", "Law & Justice", "Citizenship",
   ],
@@ -161,7 +165,7 @@ export const subjectTopics: Record<string, string[]> = {
   ],
 };
 
-export const subjects = ["History", "Geography", "Civics", "Health"];
+export const subjects = ["History", "English", "Geography", "Civic Education", "Health"];
 
 // ─── Students (18) ──────────────────────────────────────────────
 

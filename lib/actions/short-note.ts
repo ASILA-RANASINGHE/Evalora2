@@ -27,7 +27,7 @@ export async function createShortNote(input: CreateShortNoteInput) {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
-  const EXTRA_SUBJECTS = ["Geography", "Health"];
+  const EXTRA_SUBJECTS = ["English", "Geography", "Civic Education", "Health"];
 
   const profile = await prisma.profile.findUnique({
     where: { id: user.id },
@@ -71,6 +71,33 @@ export async function createShortNote(input: CreateShortNoteInput) {
   });
 
   return { id: shortNote.id };
+}
+
+export async function deleteShortNote(id: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true } });
+  const shortNote = await prisma.shortNote.findUnique({ where: { id }, select: { createdById: true } });
+  if (!shortNote) throw new Error("Not found");
+  if (shortNote.createdById !== user.id && profile?.role !== "ADMIN") throw new Error("Forbidden");
+
+  await prisma.shortNote.delete({ where: { id } });
+  return { ok: true };
+}
+
+export async function updateShortNote(id: string, input: { title: string; topic: string; grade?: string; content: string }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const shortNote = await prisma.shortNote.findUnique({ where: { id }, select: { createdById: true } });
+  if (!shortNote) throw new Error("Not found");
+  if (shortNote.createdById !== user.id) throw new Error("Forbidden");
+
+  await prisma.shortNote.update({ where: { id }, data: { title: input.title, topic: input.topic, grade: input.grade || null, content: input.content } });
+  return { ok: true };
 }
 
 export async function getShortNotesBySubject(subjectName: string) {
@@ -123,6 +150,7 @@ export async function getShortNoteById(id: string) {
     id: shortNote.id,
     title: shortNote.title,
     subject: shortNote.subject.name,
+    grade: shortNote.grade,
     topic: shortNote.topic,
     content: shortNote.content,
     author:

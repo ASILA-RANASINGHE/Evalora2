@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, Share2, Bookmark, Clock, User, BrainCircuit, Play, Paperclip, Download } from "lucide-react";
 import { getNoteById } from "@/lib/actions/note";
 import { notFound } from "next/navigation";
+import { RichTextContent } from "@/components/editor/rich-text-content";
 
 export default async function NoteViewerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -55,9 +56,7 @@ export default async function NoteViewerPage({ params }: { params: Promise<{ id:
           </div>
         </header>
 
-        <article className="prose prose-purple max-w-none text-gray-800 whitespace-pre-wrap">
-          {note.content}
-        </article>
+        <RichTextContent html={note.content} className="text-gray-800" />
 
         {note.attachments.length > 0 && (
           <div className="mt-8 pt-6 border-t">

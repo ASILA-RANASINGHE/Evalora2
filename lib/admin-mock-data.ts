@@ -35,7 +35,9 @@ export interface ContentItem {
 
 export const SUBJECTS = [
   "History",
+  "English",
   "Geography",
+  "Civic Education",
   "Health",
 ] as const;
 
