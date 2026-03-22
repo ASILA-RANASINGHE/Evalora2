@@ -11,18 +11,32 @@ export default async function StudentLayout({
 }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const progress = user
-    ? await prisma.studentProgress.findUnique({
-        where: { studentId: user.id },
-        select: { studyStreak: true },
-      })
-    : null;
+
+  const [progress, profile] = await Promise.all([
+    user
+      ? prisma.studentProgress.findUnique({
+          where: { studentId: user.id },
+          select: { studyStreak: true },
+        })
+      : null,
+    user
+      ? prisma.profile.findUnique({
+          where: { id: user.id },
+          select: { firstName: true, lastName: true },
+        })
+      : null,
+  ]);
+
   const studyStreak = progress?.studyStreak ?? 0;
+  const firstName = profile?.firstName ?? "";
+  const lastName = profile?.lastName ?? "";
+  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || "?";
+  const avatarEmoji = (user?.user_metadata?.avatarEmoji as string | undefined) ?? null;
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col relative">
       <CursorGlow />
-      <StudentHeader streak={studyStreak} />
+      <StudentHeader streak={studyStreak} initials={initials} avatarEmoji={avatarEmoji} />
 
       {/* Navigation Bar */}
       <div className="bg-[#4D2FB2] backdrop-blur-md border-b border-[#696FC7]/30 shadow-lg shadow-[#4D2FB2]/40">

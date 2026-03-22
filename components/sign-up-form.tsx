@@ -19,8 +19,22 @@ import { useState } from "react";
 type Role = "STUDENT" | "TEACHER" | "PARENT" | "ADMIN";
 
 const GRADES = ["6", "7", "8", "9", "10", "11"];
-const SUBJECTS = ["History", "Health"];
-const RELATIONSHIPS = ["Mother", "Father", "Guardian"];
+const ALL_SUBJECTS = [
+  "Mathematics", "Physics", "Chemistry", "Biology", "English Language",
+  "Sinhala Language", "Tamil Language", "History", "Geography",
+  "Civic Education", "ICT", "Economics", "Commerce", "Business Studies",
+  "Art", "Music", "Drama", "Physical Education", "Health",
+  "Agriculture Science", "Buddhism", "Hinduism", "Christianity", "Islam",
+];
+const RELATIONSHIPS = ["Mother", "Father", "Guardian", "Other"];
+
+const AVATARS = [
+  "🧑‍🎓", "👨‍🎓", "👩‍🎓", "🧑‍🏫", "👨‍🏫", "👩‍🏫",
+  "🦊", "🐱", "🐶", "🐸", "🦁", "🐯",
+  "🐧", "🐼", "🦄", "🐨", "🦋", "🦅",
+  "🌟", "⭐", "🎓", "📚", "🔮", "🎯",
+  "🚀", "🌈", "💡", "🏆", "🎨", "🌺",
+];
 
 export function SignUpForm({
   className,
@@ -32,13 +46,14 @@ export function SignUpForm({
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [role, setRole] = useState<Role>("STUDENT");
+  const [avatarEmoji, setAvatarEmoji] = useState("");
 
   // Student fields
   const [grade, setGrade] = useState(GRADES[0]);
   const [dob, setDob] = useState("");
 
   // Teacher fields
-  const [subject, setSubject] = useState(SUBJECTS[0]);
+  const [subject, setSubject] = useState(ALL_SUBJECTS[0]);
 
   // Parent fields
   const [relationship, setRelationship] = useState(RELATIONSHIPS[0]);
@@ -52,7 +67,7 @@ export function SignUpForm({
   const router = useRouter();
 
   const buildMetadata = () => {
-    const base = { firstName, lastName, role };
+    const base = { firstName, lastName, role, avatarEmoji: avatarEmoji || undefined };
 
     switch (role) {
       case "STUDENT":
@@ -99,6 +114,8 @@ export function SignUpForm({
   const selectClass =
     "w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
+  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || "?";
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
@@ -109,6 +126,37 @@ export function SignUpForm({
         <CardContent>
           <form onSubmit={handleSignUp}>
             <div className="flex flex-col gap-6">
+              {/* Avatar Selection */}
+              <div className="grid gap-2">
+                <Label>Choose Your Avatar</Label>
+                <div className="flex items-center gap-3 mb-1">
+                  <div className={`h-12 w-12 rounded-full flex items-center justify-center text-2xl flex-shrink-0 shadow-sm ${avatarEmoji ? "bg-muted border border-border" : "bg-gradient-to-br from-[#4D2FB2] to-[#696FC7] text-white text-sm font-bold"}`}>
+                    {avatarEmoji || initials || "?"}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {avatarEmoji ? "Looking good!" : "Pick an avatar below or leave blank to use your initials"}
+                  </p>
+                </div>
+                <div className="grid grid-cols-10 gap-1.5">
+                  {AVATARS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() =>
+                        setAvatarEmoji(avatarEmoji === emoji ? "" : emoji)
+                      }
+                      className={`h-9 w-9 rounded-lg text-xl flex items-center justify-center transition-all hover:scale-110 ${
+                        avatarEmoji === emoji
+                          ? "bg-purple-100 dark:bg-purple-900/30 ring-2 ring-purple-500 scale-110"
+                          : "hover:bg-muted"
+                      }`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Name fields */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
@@ -224,7 +272,7 @@ export function SignUpForm({
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                   >
-                    {SUBJECTS.map((s) => (
+                    {ALL_SUBJECTS.map((s) => (
                       <option key={s} value={s}>
                         {s}
                       </option>

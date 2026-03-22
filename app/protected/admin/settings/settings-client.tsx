@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   User,
@@ -15,14 +17,21 @@ import {
   Save,
   Check,
   Palette,
+  Pencil,
+  X,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { AvatarPicker } from "@/components/avatar-picker";
+import { updateMyProfile } from "@/lib/actions/profile";
+import { useAdminProfile } from "@/components/admin/admin-shell";
 
-interface SettingsClientProps {
-  name: string;
+interface Profile {
+  id: string;
   email: string;
-  role: string;
-  department: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  avatarEmoji: string | null;
+  adminDetails: { department: string | null } | null;
 }
 
 function ToggleRow({
@@ -66,8 +75,20 @@ function ToggleRow({
   );
 }
 
-export function SettingsClient({ name, email, role, department }: SettingsClientProps) {
+export function SettingsClient({ profile }: { profile: Profile }) {
+  const fullName = `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim();
+
+  const [editing, setEditing] = useState(false);
+  const [firstName, setFirstName] = useState(profile.firstName ?? "");
+  const [lastName, setLastName] = useState(profile.lastName ?? "");
+  const [department, setDepartment] = useState(profile.adminDetails?.department ?? "");
+  const [avatar, setAvatar] = useState(profile.avatarEmoji ?? "");
+
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const { setAdminName, setAvatarEmoji: setShellAvatar } = useAdminProfile();
+
   const [settings, setSettings] = useState({
     sessionTimeout: true,
     autoBackups: true,
@@ -82,9 +103,36 @@ export function SettingsClient({ name, email, role, department }: SettingsClient
     setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || "AD";
+
   const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setError(null);
+    startTransition(async () => {
+      const result = await updateMyProfile({
+        firstName,
+        lastName,
+        avatarEmoji: avatar,
+        department,
+      });
+      if (result?.error) {
+        setError(result.error);
+      } else {
+        setAdminName(`${firstName} ${lastName}`.trim());
+        setShellAvatar(avatar);
+        setSaved(true);
+        setEditing(false);
+        setTimeout(() => setSaved(false), 2000);
+      }
+    });
+  };
+
+  const handleCancel = () => {
+    setFirstName(profile.firstName ?? "");
+    setLastName(profile.lastName ?? "");
+    setDepartment(profile.adminDetails?.department ?? "");
+    setAvatar(profile.avatarEmoji ?? "");
+    setError(null);
+    setEditing(false);
   };
 
   return (
@@ -97,42 +145,109 @@ export function SettingsClient({ name, email, role, department }: SettingsClient
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Account Info */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Account Information</CardTitle>
-            <CardDescription>Your admin profile details.</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <div>
+              <CardTitle className="text-base">Account Information</CardTitle>
+              <CardDescription>Your admin profile details.</CardDescription>
+            </div>
+            {!editing ? (
+              <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+                <Pencil className="h-4 w-4 mr-1" /> Edit
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" onClick={handleCancel}>
+                <X className="h-4 w-4 mr-1" /> Cancel
+              </Button>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-3 rounded-lg border p-3">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <div className="flex-1">
-                <p className="text-xs text-muted-foreground">Name</p>
-                <p className="text-sm font-medium">{name}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-lg border p-3">
-              <Mail className="h-4 w-4 text-muted-foreground" />
-              <div className="flex-1">
-                <p className="text-xs text-muted-foreground">Email</p>
-                <p className="text-sm font-medium">{email}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-lg border p-3">
-              <Shield className="h-4 w-4 text-muted-foreground" />
-              <div className="flex-1">
-                <p className="text-xs text-muted-foreground">Role</p>
-                <Badge className="mt-0.5 border-0 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                  {role}
-                </Badge>
-              </div>
-            </div>
-            {department && (
-              <div className="flex items-center gap-3 rounded-lg border p-3">
-                <Shield className="h-4 w-4 text-muted-foreground" />
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground">Department</p>
-                  <p className="text-sm font-medium">{department}</p>
+            {editing ? (
+              <>
+                <AvatarPicker value={avatar} initials={initials} onChange={setAvatar} />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label htmlFor="department">Department</Label>
+                    <Input
+                      id="department"
+                      placeholder="e.g. Administration"
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                    />
+                  </div>
                 </div>
-              </div>
+                {error && <p className="text-sm text-red-500">{error}</p>}
+                <Button
+                  onClick={handleSave}
+                  disabled={isPending}
+                  className="w-full bg-purple-600 hover:bg-purple-700"
+                >
+                  {saved ? (
+                    <><Check className="mr-2 h-4 w-4" /> Saved!</>
+                  ) : (
+                    <><Save className="mr-2 h-4 w-4" />{isPending ? "Saving..." : "Save Changes"}</>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="h-12 w-12 rounded-full flex items-center justify-center text-2xl bg-muted border border-border flex-shrink-0">
+                    {avatar || initials}
+                  </div>
+                  <div>
+                    <p className="font-semibold">{fullName || "Admin"}</p>
+                    <p className="text-xs text-muted-foreground">{profile.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg border p-3">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground">Name</p>
+                    <p className="text-sm font-medium">{fullName || "—"}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg border p-3">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground">Email</p>
+                    <p className="text-sm font-medium">{profile.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg border p-3">
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground">Role</p>
+                    <Badge className="mt-0.5 border-0 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                      ADMIN
+                    </Badge>
+                  </div>
+                </div>
+                {profile.adminDetails?.department && (
+                  <div className="flex items-center gap-3 rounded-lg border p-3">
+                    <Shield className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground">Department</p>
+                      <p className="text-sm font-medium">{profile.adminDetails.department}</p>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
@@ -187,7 +302,9 @@ export function SettingsClient({ name, email, role, department }: SettingsClient
           <CardContent>
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div className="flex items-center gap-3">
-                <span className="text-muted-foreground"><Palette className="h-4 w-4" /></span>
+                <span className="text-muted-foreground">
+                  <Palette className="h-4 w-4" />
+                </span>
                 <div>
                   <p className="text-sm font-medium">Theme</p>
                   <p className="text-xs text-muted-foreground">Switch between light and dark mode</p>
@@ -228,22 +345,6 @@ export function SettingsClient({ name, email, role, department }: SettingsClient
             />
           </CardContent>
         </Card>
-      </div>
-
-      <div className="flex justify-end">
-        <Button onClick={handleSave} className="bg-purple-600 hover:bg-purple-700">
-          {saved ? (
-            <>
-              <Check className="mr-2 h-4 w-4" />
-              Saved!
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" />
-              Save Settings
-            </>
-          )}
-        </Button>
       </div>
     </div>
   );

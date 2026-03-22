@@ -1,6 +1,6 @@
 import { requireRole } from "@/lib/auth/require-role";
 import { AdminShell } from "@/components/admin/admin-shell";
-import { getAdminProfile } from "@/lib/actions/admin";
+import { getMyProfile } from "@/lib/actions/profile";
 
 export default async function AdminLayout({
   children,
@@ -8,12 +8,18 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   await requireRole("ADMIN");
-  const profile = await getAdminProfile();
+  const profile = await getMyProfile();
+  const firstName = profile?.firstName ?? "";
+  const lastName = profile?.lastName ?? "";
+  const fullName = `${firstName} ${lastName}`.trim() || "Admin";
+  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || "A";
+  const avatarEmoji = profile?.avatarEmoji ?? null;
 
   return (
     <AdminShell
-      adminName={profile?.name ?? "Admin"}
-      adminInitials={profile?.initials ?? "A"}
+      adminName={fullName}
+      adminInitials={initials}
+      avatarEmoji={avatarEmoji}
     >
       {children}
     </AdminShell>
