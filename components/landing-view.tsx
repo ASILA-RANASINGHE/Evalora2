@@ -846,9 +846,32 @@ const Footer = () => {
             <p className="text-xs text-slate-500 mb-4">
               Get the latest updates on features and releases.
             </p>
-            <form className="flex flex-col gap-3">
+            <form className="flex flex-col gap-3" onSubmit={async (e) => {
+               e.preventDefault();
+               try {
+                 const el = document.getElementById('subscribe-email') as HTMLInputElement | null;
+                 const email = el?.value?.trim();
+                 if (!email) return alert('Please enter a valid email');
+                 const res = await fetch('/api/subscribe', {
+                   method: 'POST',
+                   headers: { 'content-type': 'application/json' },
+                   body: JSON.stringify({ email }),
+                 });
+                 const json = await res.json();
+                 if (json?.success) {
+                   alert('Subscribed — check your inbox for a welcome message.');
+                   if (el) el.value = '';
+                 } else {
+                   alert(json?.error || 'Subscription failed');
+                 }
+               } catch (err) {
+                 console.error('subscribe error', err);
+                 alert('Subscription failed');
+               }
+             }}>
                <div className="relative">
                  <input 
+                   id="subscribe-email"
                    type="email" 
                    placeholder="Enter your email" 
                    className="w-full bg-slate-900 border border-slate-800 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500/50 transition-colors placeholder:text-slate-600"
