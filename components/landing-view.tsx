@@ -958,7 +958,7 @@ export default function LandingView({ authSection, contentSection, deployButton 
         if (res.ok) {
           const data = await res.json();
           if (data?.url) {
-            setPdfUrl(data.url);
+            openPdf(data.url);
             setSnackbar(null);
             return;
           }
@@ -973,6 +973,20 @@ export default function LandingView({ authSection, contentSection, deployButton 
     } else {
       setSnackbar('Coming soon');
       setTimeout(() => setSnackbar(null), 2000);
+    }
+  }
+
+  function openPdf(url: string) {
+    setPdfUrl(url);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("pdf:open"));
+    }
+  }
+
+  function closePdf() {
+    setPdfUrl(null);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("pdf:close"));
     }
   }
 
@@ -1343,7 +1357,7 @@ export default function LandingView({ authSection, contentSection, deployButton 
       {pdfUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white w-[90%] h-[90%] rounded-lg overflow-hidden shadow-xl relative">
-            <button onClick={() => setPdfUrl(null)} className="absolute right-4 top-4 z-40 bg-white rounded-full p-2 shadow">
+            <button onClick={() => closePdf()} className="absolute right-4 top-4 z-40 bg-white rounded-full p-2 shadow">
               <svg className="w-5 h-5 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
             <iframe src={pdfUrl} className="w-full h-full" />
