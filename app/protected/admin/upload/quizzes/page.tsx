@@ -161,6 +161,7 @@ export default function AdminUploadQuizzesPage() {
     try {
       await createQuiz({
         title,
+        grade: grade || undefined,
         subject,
         topic: topic || subject,
         type: quizType === "Topic" ? "TOPIC_BASED" : "UNIT_REVIEW",

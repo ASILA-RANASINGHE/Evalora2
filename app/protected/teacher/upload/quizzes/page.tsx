@@ -175,6 +175,7 @@ export default function UploadQuizzesPage() {
     try {
       await createQuiz({
         title,
+        grade: grade || undefined,
         subject,
         topic,
         type: quizTypeMap[quizType] || "TOPIC_BASED",

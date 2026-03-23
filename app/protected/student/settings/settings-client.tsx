@@ -25,7 +25,7 @@ import { AvatarPicker } from "@/components/avatar-picker";
 import { updateMyProfile } from "@/lib/actions/profile";
 import { useStudentProfile } from "@/app/protected/student/components/student-header";
 
-const GRADES = ["6", "7", "8", "9", "10", "11"];
+const GRADES = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
 
 interface Profile {
   id: string;
@@ -39,7 +39,10 @@ interface Profile {
 export function StudentSettingsClient({ profile }: { profile: Profile }) {
   const [firstName, setFirstName] = useState(profile.firstName ?? "");
   const [lastName, setLastName] = useState(profile.lastName ?? "");
-  const [grade, setGrade] = useState(profile.studentDetails?.grade ?? GRADES[0]);
+  const rawGrade = profile.studentDetails?.grade ?? GRADES[0];
+  const [grade, setGrade] = useState(
+    /^\d+$/.test(rawGrade) ? `Grade ${rawGrade}` : rawGrade
+  );
   const [avatar, setAvatar] = useState(profile.avatarEmoji ?? "");
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -129,7 +132,7 @@ export function StudentSettingsClient({ profile }: { profile: Profile }) {
                   >
                     {GRADES.map((g) => (
                       <option key={g} value={g}>
-                        Grade {g}
+                        {g}
                       </option>
                     ))}
                   </select>

@@ -52,11 +52,15 @@ export async function updateMyProfile(data: {
   const profile = await prisma.profile.findUnique({ where: { id: user.id } });
   if (!profile) return { error: "Profile not found" };
 
-  // Update avatarEmoji in Supabase user_metadata
-  if (data.avatarEmoji !== undefined) {
-    await supabase.auth.updateUser({
-      data: { avatarEmoji: data.avatarEmoji },
-    });
+  // Update avatarEmoji and grade in Supabase user_metadata
+  const metaUpdate: Record<string, unknown> = {};
+  if (data.avatarEmoji !== undefined) metaUpdate.avatarEmoji = data.avatarEmoji;
+  if (data.grade !== undefined) {
+    // Always store in "Grade X" format so any DB trigger reads the correct value
+    metaUpdate.grade = /^\d+$/.test(data.grade) ? `Grade ${data.grade}` : data.grade;
+  }
+  if (Object.keys(metaUpdate).length > 0) {
+    await supabase.auth.updateUser({ data: metaUpdate });
   }
 
   // Update name in Profile table
@@ -69,10 +73,12 @@ export async function updateMyProfile(data: {
   });
 
   if (profile.role === "STUDENT" && data.grade) {
+    // Normalize to "Grade X" format regardless of what the client sends
+    const normalizedGrade = /^\d+$/.test(data.grade) ? `Grade ${data.grade}` : data.grade;
     await prisma.studentDetails.upsert({
       where: { id: user.id },
-      update: { grade: data.grade },
-      create: { id: user.id, grade: data.grade },
+      update: { grade: normalizedGrade },
+      create: { id: user.id, grade: normalizedGrade },
     });
   }
 
