@@ -45,8 +45,8 @@ export default function ParentDashboard() {
     <div className="space-y-6">
       {/* Welcome */}
       <div>
-        <h2 className="font-space-grotesk text-2xl font-bold">Good morning, David</h2>
-        <p className="text-muted-foreground mt-1">Here&apos;s how your children are doing</p>
+        <h2 className="font-space-grotesk text-2xl font-bold">Good morning, Ranjith</h2>
+        <p className="text-muted-foreground mt-1">Here&apos;s how Lia is doing</p>
       </div>
 
       {/* Child Selector */}

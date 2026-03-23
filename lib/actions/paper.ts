@@ -290,9 +290,10 @@ export async function getPapersBySubjectAndTerm(
       term: paperTerm,
       status: "APPROVED",
       OR: [
-        // PUBLIC: visible if grade matches student's grade or no grade restriction
+        // PUBLIC: Paper.grade is required (non-nullable), so just match exact grade
+        // If student has no grade, show all PUBLIC papers
         studentGrade
-          ? { visibility: "PUBLIC", OR: [{ grade: null }, { grade: studentGrade }] }
+          ? { visibility: "PUBLIC", grade: studentGrade }
           : { visibility: "PUBLIC" },
         // STUDENTS_ONLY: visible only to students assigned to the creating teacher
         { visibility: "STUDENTS_ONLY", createdById: { in: assignedTeacherIds } },
@@ -352,6 +353,7 @@ export async function getPaperById(id: string) {
     passPercentage: paper.passPercentage,
     instructions: paper.instructions,
     createdBy: `${paper.createdBy.firstName ?? ""} ${paper.createdBy.lastName ?? ""}`.trim() || "Teacher",
+    createdAt: paper.createdAt,
   };
 }
 
