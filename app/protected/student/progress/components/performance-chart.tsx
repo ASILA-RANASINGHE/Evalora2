@@ -3,21 +3,25 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Legend,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer,
 } from "recharts";
-import type { ScoreDataPoint } from "@/lib/student-progress-mock-data";
+import type { PerformanceDataPoint } from "@/lib/actions/analytics";
 
-const SUBJECT_COLORS: Record<string, string> = {
-  overall: "#7c3aed",
-  history: "#6366f1",
-  mathematics: "#2563eb",
-  science: "#10b981",
-  english: "#f59e0b",
-};
+const PALETTE = [
+  "#6366f1", "#2563eb", "#10b981", "#f59e0b", "#ef4444",
+  "#8b5cf6", "#06b6d4", "#84cc16", "#f97316",
+];
 
 const TIME_RANGES = ["Weekly", "Monthly", "All"] as const;
 
-export function PerformanceChart({ data }: { data: ScoreDataPoint[] }) {
+export function PerformanceChart({
+  data,
+  subjects = [],
+}: {
+  data: PerformanceDataPoint[];
+  subjects?: string[];
+}) {
+  const allKeys = ["overall", ...subjects];
   const [range, setRange] = useState<(typeof TIME_RANGES)[number]>("All");
   const [activeLines, setActiveLines] = useState<Set<string>>(new Set(["overall"]));
 
@@ -36,10 +40,32 @@ export function PerformanceChart({ data }: { data: ScoreDataPoint[] }) {
     });
   };
 
-  const subjects = ["overall", "history", "mathematics", "science", "english"];
+  const colorFor = (key: string) => {
+    if (key === "overall") return "#7c3aed";
+    const idx = subjects.indexOf(key);
+    return PALETTE[idx % PALETTE.length];
+  };
+
+  const labelFor = (key: string) =>
+    key === "overall"
+      ? "Overall"
+      : key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+  if (data.length === 0) {
+    return (
+      <Card className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/10 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5">
+        <CardHeader>
+          <CardTitle className="text-lg">Performance Over Time</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-40 text-muted-foreground text-sm">
+          No attempt data yet. Complete quizzes or papers to see your progress here.
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <Card>
+    <Card className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/10 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg">Performance Over Time</CardTitle>
         <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg">
@@ -58,18 +84,18 @@ export function PerformanceChart({ data }: { data: ScoreDataPoint[] }) {
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap gap-2 mb-4">
-          {subjects.map((s) => (
+          {allKeys.map((key) => (
             <button
-              key={s}
-              onClick={() => toggleLine(s)}
+              key={key}
+              onClick={() => toggleLine(key)}
               className={`px-3 py-1 text-xs font-medium rounded-full border transition-all ${
-                activeLines.has(s)
+                activeLines.has(key)
                   ? "border-transparent text-white"
                   : "border-gray-200 text-gray-500 bg-white"
               }`}
-              style={activeLines.has(s) ? { backgroundColor: SUBJECT_COLORS[s] } : undefined}
+              style={activeLines.has(key) ? { backgroundColor: colorFor(key) } : undefined}
             >
-              {s.charAt(0).toUpperCase() + s.slice(1)}
+              {labelFor(key)}
             </button>
           ))}
         </div>
@@ -82,15 +108,21 @@ export function PerformanceChart({ data }: { data: ScoreDataPoint[] }) {
             <Tooltip
               contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "12px" }}
             />
-            <ReferenceLine y={75} stroke="#ef4444" strokeDasharray="8 4" label={{ value: "Target 75%", position: "right", fontSize: 11, fill: "#ef4444" }} />
-            {subjects.map((s) =>
-              activeLines.has(s) ? (
+            <ReferenceLine
+              y={75}
+              stroke="#ef4444"
+              strokeDasharray="8 4"
+              label={{ value: "Target 75%", position: "right", fontSize: 11, fill: "#ef4444" }}
+            />
+            {allKeys.map((key) =>
+              activeLines.has(key) ? (
                 <Line
-                  key={s}
+                  key={key}
                   type="monotone"
-                  dataKey={s}
-                  stroke={SUBJECT_COLORS[s]}
-                  strokeWidth={s === "overall" ? 3 : 2}
+                  dataKey={key}
+                  name={labelFor(key)}
+                  stroke={colorFor(key)}
+                  strokeWidth={key === "overall" ? 3 : 2}
                   dot={{ r: 4, strokeWidth: 2 }}
                   activeDot={{ r: 6 }}
                 />

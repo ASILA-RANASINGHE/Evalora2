@@ -196,6 +196,7 @@ export default function ExamInterface({
   const [paper, setPaper] = useState<ExamPaperData | null>(null);
   const [attemptId, setAttemptId] = useState<string>("");
   const [questions, setQuestions] = useState<QuestionState[]>([]);
+  const [examLoadError, setExamLoadError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [totalTime, setTotalTime] = useState(0);
@@ -220,6 +221,7 @@ export default function ExamInterface({
 
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activityTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasSubmittedRef = useRef(false);
 
   // ── Load exam ──────────────────────────────────────────────────────────────
 
@@ -275,6 +277,7 @@ export default function ExamInterface({
       setScreen("exam");
     } catch (err) {
       console.error(err);
+      setExamLoadError(err instanceof Error ? err.message : "Failed to load the exam. Please try again.");
     }
   }
 
@@ -286,7 +289,6 @@ export default function ExamInterface({
       setTimeRemaining((t) => {
         if (t <= 1) {
           clearInterval(interval);
-          handleTimerExpired();
           return 0;
         }
         return t - 1;
@@ -299,9 +301,12 @@ export default function ExamInterface({
     return () => clearInterval(interval);
   }, [screen, currentIndex]);
 
-  async function handleTimerExpired() {
-    await doSubmit();
-  }
+  // Trigger auto-submit when timer hits zero (separate from the interval setter)
+  useEffect(() => {
+    if (timeRemaining === 0 && screen === "exam") {
+      doSubmit();
+    }
+  }, [timeRemaining]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Online/offline detection ───────────────────────────────────────────────
 
@@ -427,6 +432,8 @@ export default function ExamInterface({
   // ── Submit ─────────────────────────────────────────────────────────────────
 
   async function doSubmit() {
+    if (hasSubmittedRef.current) return;
+    hasSubmittedRef.current = true;
     setScreen("processing");
     const answers: Record<string, string> = {};
     const flagged: string[] = [];
@@ -456,6 +463,7 @@ export default function ExamInterface({
     } catch (err) {
       clearInterval(stepInterval);
       console.error(err);
+      hasSubmittedRef.current = false;
       setScreen("exam");
       alert("Submission failed. Please try again.");
     }
@@ -501,10 +509,28 @@ export default function ExamInterface({
   // ── Loading ────────────────────────────────────────────────────────────────
   if (screen === "loading") {
     return (
-      <div className="fixed inset-0 z-50 bg-white flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto" />
-          <p className="text-lg font-medium text-gray-700">Loading exam...</p>
+      <div className="fixed inset-0 z-50 bg-white flex items-center justify-center p-4">
+        <div className="text-center space-y-4 max-w-md">
+          {examLoadError ? (
+            <>
+              <XCircle className="h-12 w-12 text-red-500 mx-auto" />
+              <p className="text-lg font-semibold text-red-700">Failed to Load Exam</p>
+              <p className="text-sm text-red-600">{examLoadError}</p>
+              <div className="flex gap-3 justify-center">
+                <Button onClick={() => { setExamLoadError(null); loadExam(false); }} className="bg-purple-600 hover:bg-purple-700">
+                  Try Again
+                </Button>
+                <Button variant="outline" onClick={() => router.push("/protected/student/papers")}>
+                  <Home className="h-4 w-4 mr-2" /> Back to Papers
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto" />
+              <p className="text-lg font-medium text-gray-700">Loading exam...</p>
+            </>
+          )}
         </div>
       </div>
     );
@@ -823,64 +849,69 @@ export default function ExamInterface({
     const currentReview = filtered[reviewIndex];
 
     return (
-      <div className="fixed inset-0 z-50 bg-gray-50 overflow-auto">
-        <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setScreen("results")}
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" /> Back to Results
-            </Button>
-            <h1 className="font-bold text-xl">Answer Review</h1>
-            <div />
+      <div className="fixed top-16 inset-x-0 bottom-0 z-50 bg-gray-50 overflow-auto">
+        {/* Sticky header bar */}
+        <div className="sticky top-0 z-10 bg-white border-b shadow-sm px-4 py-3">
+          <div className="max-w-4xl mx-auto flex flex-col gap-3">
+            {/* Back button + title */}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setScreen("results")}
+                className="shrink-0"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" /> Back to Results
+              </Button>
+              <h1 className="font-bold text-lg">Answer Review</h1>
+            </div>
+            {/* Filter tabs + jump dropdown */}
+            <div className="flex gap-2 flex-wrap items-center">
+              {(["all", "correct", "incorrect", "partial", "flagged"] as ReviewFilter[]).map(
+                (f) => (
+                  <button
+                    key={f}
+                    onClick={() => { setReviewFilter(f); setReviewIndex(0); }}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${
+                      reviewFilter === f
+                        ? "bg-purple-600 text-white"
+                        : "bg-gray-100 hover:bg-gray-200 text-gray-600"
+                    }`}
+                  >
+                    {f === "all"
+                      ? `All (${results.questionResults.length})`
+                      : f === "correct"
+                        ? `Correct (${results.questionResults.filter((r) => r.isCorrect).length})`
+                        : f === "incorrect"
+                          ? `Incorrect (${results.questionResults.filter((r) => !r.isCorrect && !r.isPartial).length})`
+                          : f === "partial"
+                            ? `Partial (${results.questionResults.filter((r) => r.isPartial).length})`
+                            : `Flagged (${questions.filter((q) => q.isFlagged).length})`}
+                  </button>
+                )
+              )}
+              {/* Jump to question */}
+              <select
+                className="px-3 py-1.5 rounded-lg text-sm border bg-white text-gray-600 ml-auto"
+                value={reviewIndex}
+                onChange={(e) => setReviewIndex(Number(e.target.value))}
+              >
+                {filtered.map((r, i) => {
+                  const label = r.mainQuestionNumber != null
+                    ? `Q${r.mainQuestionNumber}${r.subLabel ? `(${r.subLabel})` : ""}${r.subSubLabel ? `(${r.subSubLabel})` : ""}`
+                    : `Q${r.questionNumber}`;
+                  return (
+                    <option key={r.questionId} value={i}>
+                      {label} – {r.questionType}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
           </div>
+        </div>
 
-          {/* Filter tabs */}
-          <div className="flex gap-2 flex-wrap">
-            {(["all", "correct", "incorrect", "partial", "flagged"] as ReviewFilter[]).map(
-              (f) => (
-                <button
-                  key={f}
-                  onClick={() => { setReviewFilter(f); setReviewIndex(0); }}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${
-                    reviewFilter === f
-                      ? "bg-purple-600 text-white"
-                      : "bg-white border hover:bg-gray-50 text-gray-600"
-                  }`}
-                >
-                  {f === "all"
-                    ? `All (${results.questionResults.length})`
-                    : f === "correct"
-                      ? `Correct (${results.questionResults.filter((r) => r.isCorrect).length})`
-                      : f === "incorrect"
-                        ? `Incorrect (${results.questionResults.filter((r) => !r.isCorrect && !r.isPartial).length})`
-                        : f === "partial"
-                          ? `Partial (${results.questionResults.filter((r) => r.isPartial).length})`
-                          : `Flagged (${questions.filter((q) => q.isFlagged).length})`}
-                </button>
-              )
-            )}
-            {/* Jump to question */}
-            <select
-              className="px-3 py-1.5 rounded-lg text-sm border bg-white text-gray-600 ml-auto"
-              value={reviewIndex}
-              onChange={(e) => setReviewIndex(Number(e.target.value))}
-            >
-              {filtered.map((r, i) => {
-                const label = r.mainQuestionNumber != null
-                  ? `Q${r.mainQuestionNumber}${r.subLabel ? `(${r.subLabel})` : ""}${r.subSubLabel ? `(${r.subSubLabel})` : ""}`
-                  : `Q${r.questionNumber}`;
-                return (
-                  <option key={r.questionId} value={i}>
-                    {label} – {r.questionType}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
+        <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
 
           {filtered.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
@@ -1680,15 +1711,25 @@ export default function ExamInterface({
                 <Trash2 className="h-3.5 w-3.5" />
                 Clear
               </Button>
-              <Button
-                size="sm"
-                className="flex-1 bg-purple-600 hover:bg-purple-700 gap-1.5"
-                onClick={handleNext}
-                disabled={currentIndex === questions.length - 1}
-              >
-                Next
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
+              {currentIndex === questions.length - 1 ? (
+                <Button
+                  size="sm"
+                  className="flex-1 bg-green-600 hover:bg-green-700 gap-1.5"
+                  onClick={() => setScreen("submit_confirm")}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Submit Exam
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 gap-1.5"
+                  onClick={handleNext}
+                >
+                  Next
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              )}
             </div>
             {currentIndex > 0 && (
               <Button

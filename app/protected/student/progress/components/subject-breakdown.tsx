@@ -8,7 +8,7 @@ import type { SubjectScore } from "@/lib/student-progress-mock-data";
 
 export function SubjectBreakdown({ data }: { data: SubjectScore[] }) {
   return (
-    <Card>
+    <Card className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/10 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5">
       <CardHeader>
         <CardTitle className="text-lg">Subject Comparison</CardTitle>
         <CardDescription>Your score vs class average by subject</CardDescription>

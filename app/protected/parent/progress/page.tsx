@@ -14,6 +14,7 @@ import { StudyTimeChart } from "./components/study-time-chart";
 import { ProgressChart } from "./components/progress-chart";
 import { childProgressData, defaultChildId } from "@/lib/parent-progress-mock-data";
 import { TrendingUp, BookOpen, Activity, AlertTriangle } from "lucide-react";
+import { DownloadParentProgressPDF } from "./components/download-pdf-button";
 
 export default function ParentProgressPage() {
   const searchParams = useSearchParams();
@@ -24,11 +25,14 @@ export default function ParentProgressPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h2 className="font-space-grotesk text-2xl font-bold">Learning Progress</h2>
-        <p className="text-muted-foreground text-sm mt-1">
-          Monitor {d.childInfo.name}&apos;s academic journey and study habits
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="font-space-grotesk text-2xl font-bold">Learning Progress</h2>
+          <p className="text-muted-foreground text-sm mt-1">
+            Monitor {d.childInfo.name}&apos;s academic journey and study habits
+          </p>
+        </div>
+        <DownloadParentProgressPDF data={d} />
       </div>
 
       {/* Child Summary — always visible */}

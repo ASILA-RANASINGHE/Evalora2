@@ -45,8 +45,8 @@ export default function ParentDashboard() {
     <div className="space-y-6">
       {/* Welcome */}
       <div>
-        <h2 className="font-space-grotesk text-2xl font-bold">Good morning, David</h2>
-        <p className="text-muted-foreground mt-1">Here&apos;s how your children are doing</p>
+        <h2 className="font-space-grotesk text-2xl font-bold">Good morning, Ranjith</h2>
+        <p className="text-muted-foreground mt-1">Here&apos;s how Lia is doing</p>
       </div>
 
       {/* Child Selector */}
@@ -64,8 +64,8 @@ export default function ParentDashboard() {
                 onClick={() => setSelectedId(child.id)}
                 className={`text-left rounded-xl border-2 p-5 transition-all ${
                   isSelected
-                    ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20 shadow-md"
-                    : "border-border/50 bg-card/50 hover:border-purple-300 hover:shadow-sm"
+                    ? "border-purple-500 bg-purple-100/80 dark:bg-purple-900/60 backdrop-blur-md shadow-md shadow-purple-900/10"
+                    : "border-purple-200/50 bg-white/60 dark:bg-purple-950/40 backdrop-blur-sm hover:border-purple-300 hover:shadow-sm"
                 }`}
               >
                 <div className="flex items-start gap-4">
@@ -103,7 +103,7 @@ export default function ParentDashboard() {
       </div>
 
       {/* Progress Summary for selected child */}
-      <Card className="border-purple-200 dark:border-purple-800/50 shadow-sm bg-gradient-to-br from-purple-50/50 to-indigo-50/30 dark:from-purple-900/10 dark:to-indigo-900/5">
+      <Card className="border-purple-200 dark:border-purple-800 bg-purple-100/80 dark:bg-purple-900/40 backdrop-blur-md shadow-xl shadow-purple-900/5 ring-1 ring-purple-500/10">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
@@ -203,7 +203,7 @@ export default function ParentDashboard() {
       <div className="grid gap-6 lg:grid-cols-7">
         {/* Performance Overview */}
         <div className="lg:col-span-4">
-          <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-sm ring-1 ring-black/5 dark:ring-white/10 h-full">
+          <Card className="border-purple-200 dark:border-purple-800 bg-purple-100/80 dark:bg-purple-900/40 backdrop-blur-md shadow-xl shadow-purple-900/5 ring-1 ring-purple-500/10 h-full">
             <CardHeader>
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-purple-500" />
@@ -256,7 +256,7 @@ export default function ParentDashboard() {
 
         {/* Upcoming Milestones */}
         <div className="lg:col-span-3">
-          <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-sm ring-1 ring-black/5 dark:ring-white/10 h-full">
+          <Card className="border-purple-200 dark:border-purple-800 bg-purple-100/80 dark:bg-purple-900/40 backdrop-blur-md shadow-xl shadow-purple-900/5 ring-1 ring-purple-500/10 h-full">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg font-semibold flex items-center gap-2">
@@ -298,7 +298,7 @@ export default function ParentDashboard() {
       </div>
 
       {/* Quick Links */}
-      <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+      <Card className="border-purple-200 dark:border-purple-800 bg-purple-100/80 dark:bg-purple-900/40 backdrop-blur-md shadow-xl shadow-purple-900/5 ring-1 ring-purple-500/10">
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-3">
             <Link
@@ -311,7 +311,7 @@ export default function ParentDashboard() {
             </Link>
             <Link
               href="/protected/parent/settings"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-muted/30 border border-border/50 hover:bg-muted/60 transition-colors text-sm font-medium group"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-purple-50/50 dark:bg-purple-900/20 border border-purple-200/50 dark:border-purple-800/50 hover:bg-purple-100/80 dark:hover:bg-purple-900/40 transition-colors text-sm font-medium group"
             >
               Account Settings
               <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />

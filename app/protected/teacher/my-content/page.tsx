@@ -1,7 +1,9 @@
+import { connection } from "next/server";
 import { getMyContent } from "@/lib/actions/my-content";
 import { ContentTabs } from "./content-tabs";
 
 export default async function MyContentPage() {
+  await connection();
   const content = await getMyContent();
 
   return (

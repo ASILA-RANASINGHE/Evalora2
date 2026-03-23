@@ -71,7 +71,11 @@ function QuizCard({ quiz }: { quiz: Quiz }) {
 
 export default async function SubjectQuizzesPage({ params }: { params: Promise<{ subject: string }> }) {
   const { subject } = await params;
-  const subjectName = subject.charAt(0).toUpperCase() + subject.slice(1);
+  // Decode slug: "civic-education" → "Civic Education"
+  const subjectName = subject
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
   const { adminContent, teacherContent } = await getQuizzesBySubject(subjectName);
 
   const hasContent = adminContent.length > 0 || teacherContent.length > 0;

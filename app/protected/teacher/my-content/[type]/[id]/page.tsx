@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, User, Clock, CalendarDays, FileText } from "lucide-react";
+import { ChevronLeft, Clock, CalendarDays, FileText, Pencil, Paperclip, Download } from "lucide-react";
 import { getNoteById } from "@/lib/actions/note";
 import { getShortNoteById } from "@/lib/actions/short-note";
 import { getPaperById } from "@/lib/actions/paper";
 import { getQuizDetails } from "@/lib/actions/quiz";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
+import { DeleteContentButton } from "../../delete-button";
+import { RichTextContent } from "@/components/editor/rich-text-content";
 
 function formatDate(date: Date) {
   return new Date(date).toLocaleDateString("en-US", {
@@ -21,6 +24,7 @@ export default async function ContentViewPage({
 }: {
   params: Promise<{ type: string; id: string }>;
 }) {
+  await connection();
   const { type, id } = await params;
 
   let content: any = null;
@@ -65,7 +69,12 @@ export default async function ContentViewPage({
           <ChevronLeft className="h-4 w-4" /> Back to My Content
         </Link>
         <div className="flex gap-2">
-          {/* Future: Edit/Delete buttons */}
+          <Link href={`${backLink}/${type}/${id}/edit`}>
+            <Button variant="outline" size="sm">
+              <Pencil className="h-4 w-4 mr-1" /> Edit
+            </Button>
+          </Link>
+          <DeleteContentButton type={type} id={id} title={content.title} backHref={backLink} />
         </div>
       </div>
 
@@ -112,7 +121,36 @@ export default async function ContentViewPage({
         {/* Content Body */}
         <div className="prose prose-purple max-w-none text-foreground dark:prose-invert">
           {type === "notes" || type === "short-notes" ? (
-            <div className="whitespace-pre-wrap">{content.content}</div>
+            <>
+              <RichTextContent html={content.content} className="text-gray-800" />
+              {content.attachments?.length > 0 && (
+                <div className="mt-8 pt-6 border-t not-prose">
+                  <h3 className="text-base font-semibold flex items-center gap-2 mb-3 text-foreground">
+                    <Paperclip className="h-4 w-4" /> Attachments ({content.attachments.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {content.attachments.map((a: { id: string; name: string; url: string; size: number; type: string }) => (
+                      <a
+                        key={a.id}
+                        href={a.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium group-hover:text-purple-600">{a.name}</p>
+                            <p className="text-xs text-muted-foreground">{(a.size / 1024).toFixed(1)} KB</p>
+                          </div>
+                        </div>
+                        <Download className="h-4 w-4 text-muted-foreground group-hover:text-purple-600" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           ) : null}
 
           {type === "papers" && (

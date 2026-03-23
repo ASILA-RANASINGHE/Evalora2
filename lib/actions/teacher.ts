@@ -16,7 +16,7 @@ export async function getTeacherSubjects(): Promise<string[]> {
 
   if (!teacherDetails) return [];
 
-  return [teacherDetails.subject];
+  return teacherDetails.subject.split(',').map(s => s.trim());
 }
 
 export async function getTeacherSubjectTopics(): Promise<
@@ -46,4 +46,69 @@ export async function getTeacherSubjectTopics(): Promise<
     }
   }
   return result;
+}
+
+// ─── Assign Practice ─────────────────────────────────────────────────────────
+
+export async function assignPractice(
+  studentId: string,
+  subject: string,
+  topic: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const teacher = await prisma.profile.findUnique({
+    where: { id: user.id },
+    select: { firstName: true, lastName: true },
+  });
+  const teacherName =
+    `${teacher?.firstName ?? ""} ${teacher?.lastName ?? ""}`.trim() || "Your teacher";
+
+  await prisma.notification.create({
+    data: {
+      userId: studentId,
+      title: "Practice Assigned",
+      type: "practice_assigned",
+      message: `${teacherName} has assigned you practice on "${topic}" (${subject}). Head to your quizzes and papers to get started.`,
+      data: { subject, topic, teacherId: user.id },
+    },
+  });
+
+  return { success: true };
+}
+
+// ─── Send Message ─────────────────────────────────────────────────────────────
+
+export async function sendMessageToStudent(
+  studentId: string,
+  message: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const teacher = await prisma.profile.findUnique({
+    where: { id: user.id },
+    select: { firstName: true, lastName: true },
+  });
+  const teacherName =
+    `${teacher?.firstName ?? ""} ${teacher?.lastName ?? ""}`.trim() || "Your teacher";
+
+  await prisma.notification.create({
+    data: {
+      userId: studentId,
+      title: `Message from ${teacherName}`,
+      type: "teacher_message",
+      message,
+      data: { teacherId: user.id, teacherName },
+    },
+  });
+
+  return { success: true };
 }

@@ -16,6 +16,8 @@ import {
   BrainCircuit,
   Loader2,
   Globe,
+  ImagePlus,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { subjects, subjectTopics } from "@/lib/teacher-mock-data";
@@ -24,12 +26,36 @@ import { createQuiz } from "@/lib/actions/quiz";
 const quizTypes = ["Subject", "Topic"];
 const grades = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
 
+async function compressImage(file: File, maxWidth = 1200, quality = 0.72): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxWidth) { height = Math.round((height * maxWidth) / width); width = maxWidth; }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { reject(new Error("Canvas not supported")); return; }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 interface QuizQuestion {
   id: string;
   text: string;
   points: number;
   options: string[];
   correctAnswer: string;
+  imageData?: string;
 }
 
 interface FormErrors {
@@ -67,6 +93,7 @@ export default function AdminUploadQuizzesPage() {
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [compressingImage, setCompressingImage] = useState<string | null>(null);
 
   const availableTopics = subject ? subjectTopics[subject] || [] : [];
   const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
@@ -134,6 +161,7 @@ export default function AdminUploadQuizzesPage() {
     try {
       await createQuiz({
         title,
+        grade: grade || undefined,
         subject,
         topic: topic || subject,
         type: quizType === "Topic" ? "TOPIC_BASED" : "UNIT_REVIEW",
@@ -145,6 +173,7 @@ export default function AdminUploadQuizzesPage() {
           points: q.points,
           options: q.options.filter((o) => o.trim() !== ""),
           correctAnswer: q.correctAnswer,
+          imageUrl: q.imageData || undefined,
         })),
       });
       setSubmitted(true);
@@ -327,6 +356,35 @@ export default function AdminUploadQuizzesPage() {
                           className="h-8 w-16 text-xs"
                         />
                       </div>
+                    </div>
+
+                    {/* Image upload */}
+                    <div>
+                      {q.imageData ? (
+                        <div className="relative inline-block">
+                          <img src={q.imageData} alt="Question image" className="max-h-36 rounded-lg border object-contain" />
+                          <button
+                            type="button"
+                            onClick={() => updateQuestion(q.id, { imageData: undefined })}
+                            className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                          ><X className="h-3 w-3" /></button>
+                        </div>
+                      ) : (
+                        <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground border border-dashed rounded-md px-3 py-1.5 hover:border-purple-400 transition-colors">
+                          {compressingImage === q.id ? <><Loader2 className="h-3 w-3 animate-spin" /> Compressing...</> : <><ImagePlus className="h-3 w-3" /> Attach Image (optional)</>}
+                          <input type="file" accept="image/*" className="sr-only" onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setCompressingImage(q.id);
+                            try {
+                              const data = await compressImage(file);
+                              updateQuestion(q.id, { imageData: data });
+                            } catch { alert("Failed to process image."); }
+                            finally { setCompressingImage(null); }
+                            e.target.value = "";
+                          }} />
+                        </label>
+                      )}
                     </div>
 
                     <div className="space-y-2">

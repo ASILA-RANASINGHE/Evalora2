@@ -45,10 +45,11 @@ const comingSoonSubjects = [
 export default function ShortNotesPage() {
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Short Notes</h2>
-          <p className="text-muted-foreground mt-1">Select a subject to browse short notes</p>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#4D2FB2] via-[#696FC7] to-[#B7BDF7] p-6 text-white shadow-lg">
+        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
+        <div className="relative">
+          <h2 className="text-2xl font-black tracking-tight">Short Notes 🗒️</h2>
+          <p className="text-[#B7BDF7] mt-1 text-sm font-medium">Select a subject to browse short notes</p>
         </div>
       </div>
 
@@ -58,7 +59,7 @@ export default function ShortNotesPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {workingSubjects.map((subject) => (
             <Link href={`/protected/student/short-notes/subject/${subject.name.toLowerCase().replace(/ /g, "-")}`} key={subject.name}>
-              <Card className="hover:shadow-lg transition-all hover:border-purple-500/50 cursor-pointer h-full group bg-card border-border/50">
+              <Card className="hover:shadow-lg transition-all hover:border-[#696FC7] cursor-pointer h-full group bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/10 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5 border-[#B7BDF7]/40">
                 <CardContent className="p-6 flex flex-col items-center text-center space-y-3">
                   <div className={`p-4 rounded-full ${subject.bg} ${subject.color} group-hover:scale-110 transition-transform`}>
                     <subject.icon className="h-7 w-7" />

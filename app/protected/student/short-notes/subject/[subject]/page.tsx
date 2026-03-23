@@ -52,7 +52,10 @@ function ShortNoteCard({ note }: { note: ShortNote }) {
 
 export default async function SubjectShortNotesPage({ params }: { params: Promise<{ subject: string }> }) {
   const { subject } = await params;
-  const subjectName = subject.charAt(0).toUpperCase() + subject.slice(1);
+  const subjectName = subject
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
   const { adminContent, teacherContent } = await getShortNotesBySubject(subjectName);
 
   const hasContent = adminContent.length > 0 || teacherContent.length > 0;

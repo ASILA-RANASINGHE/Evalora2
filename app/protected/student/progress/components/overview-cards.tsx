@@ -47,7 +47,7 @@ export function OverviewCards({ stats }: { stats: OverviewStats }) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => (
-        <Card key={card.title} className="border-border/50 bg-card shadow-sm hover:shadow-md transition-shadow">
+        <Card key={card.title} className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#FFFDF1] to-[#B7BDF7]/15 dark:from-[#4D2FB2]/10 dark:to-[#696FC7]/5 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className={`p-2.5 rounded-xl ${card.iconBg} ${card.iconColor}`}>

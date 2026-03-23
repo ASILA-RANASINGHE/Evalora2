@@ -5,32 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  ArrowLeft,
-  Bold,
-  Italic,
-  Underline,
-  List,
-  ListOrdered,
-  AlignLeft,
-  AlignCenter,
-  Heading2,
-  Paperclip,
-  X,
-  Upload,
-  Check,
-  Eye,
-} from "lucide-react";
+import { ArrowLeft, Paperclip, X, Upload, Check, Eye } from "lucide-react";
 import Link from "next/link";
 import { createNote } from "@/lib/actions/note";
 import { getTeacherSubjects } from "@/lib/actions/teacher";
 import { uploadFiles } from "@/lib/supabase/storage";
+import { RichTextEditor } from "@/components/editor/rich-text-editor";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const grades = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
-const EXTRA_SUBJECTS = ["Geography", "Health"];
-const ALLOWED_TYPES = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "text/plain"];
-const ALLOWED_EXTENSIONS = [".pdf", ".doc", ".docx", ".ppt", ".pptx", ".txt"];
+const EXTRA_SUBJECTS = ["English", "Geography", "Civic Education", "Health"];
+const ALLOWED_EXTENSIONS = [".pdf", ".doc", ".docx", ".ppt", ".pptx", ".txt", ".jpg", ".jpeg", ".png", ".gif", ".webp"];
 
 interface FormErrors {
   title?: string;
@@ -66,7 +51,7 @@ export default function UploadNotesPage() {
     if (!subject) newErrors.subject = "Please select a subject";
     if (!grade) newErrors.grade = "Please select a grade";
     if (!topic.trim()) newErrors.topic = "Please enter a topic";
-    if (!content.trim()) newErrors.content = "Note content is required";
+    if (!content.replace(/<[^>]*>/g, "").trim()) newErrors.content = "Note content is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -220,29 +205,17 @@ export default function UploadNotesPage() {
         <Card className="border-border/50 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Content</CardTitle>
-            <CardDescription>Write or paste your note content</CardDescription>
+            <CardDescription>Write and format your note — supports images, headings, lists, and more</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex flex-wrap gap-1 p-1 border rounded-lg bg-muted/30">
-              <ToolbarButton icon={Bold} label="Bold" />
-              <ToolbarButton icon={Italic} label="Italic" />
-              <ToolbarButton icon={Underline} label="Underline" />
-              <div className="w-px bg-border mx-1" />
-              <ToolbarButton icon={Heading2} label="Heading" />
-              <ToolbarButton icon={List} label="Bullet List" />
-              <ToolbarButton icon={ListOrdered} label="Numbered List" />
-              <div className="w-px bg-border mx-1" />
-              <ToolbarButton icon={AlignLeft} label="Align Left" />
-              <ToolbarButton icon={AlignCenter} label="Align Center" />
-            </div>
-            <textarea
+          <CardContent className="p-0">
+            <RichTextEditor
               value={content}
-              onChange={(e) => { setContent(e.target.value); if (errors.content) setErrors((p) => ({ ...p, content: undefined })); }}
+              onChange={(html) => { setContent(html); if (errors.content) setErrors((p) => ({ ...p, content: undefined })); }}
               placeholder="Start writing your notes here..."
-              rows={12}
-              className={`flex w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${errors.content ? "border-red-500" : "border-input"}`}
+              minHeight={400}
+              error={!!errors.content}
             />
-            {errors.content && <p className="text-xs text-red-500">{errors.content}</p>}
+            {errors.content && <p className="text-xs text-red-500 px-4 py-2">{errors.content}</p>}
           </CardContent>
         </Card>
 
@@ -250,7 +223,7 @@ export default function UploadNotesPage() {
         <Card className="border-border/50 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Attachments</CardTitle>
-            <CardDescription>PDF, DOCX, PPT, TXT — up to 10MB each</CardDescription>
+            <CardDescription>PDF, DOCX, PPT, TXT, Images (JPG, PNG, GIF, WebP) — up to 10MB each</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div
@@ -333,14 +306,3 @@ export default function UploadNotesPage() {
   );
 }
 
-function ToolbarButton({ icon: Icon, label }: { icon: any; label: string }) {
-  return (
-    <button
-      type="button"
-      title={label}
-      className="p-2 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-    >
-      <Icon className="h-4 w-4" />
-    </button>
-  );
-}

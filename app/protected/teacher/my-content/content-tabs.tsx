@@ -3,15 +3,22 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   FileText,
   StickyNote,
   BrainCircuit,
   ClipboardList,
   Eye,
+  Pencil,
+  Trash2,
 } from "lucide-react";
+import { deleteNote } from "@/lib/actions/note";
+import { deleteShortNote } from "@/lib/actions/short-note";
+import { deleteQuiz } from "@/lib/actions/quiz";
+import { deletePaper } from "@/lib/actions/paper";
 
 interface ContentItem {
   id: string;
@@ -61,6 +68,15 @@ function formatDate(date: Date) {
   });
 }
 
+async function handleDelete(type: string, id: string): Promise<void> {
+  switch (type) {
+    case "notes": await deleteNote(id); break;
+    case "shortNotes": await deleteShortNote(id); break;
+    case "quizzes": await deleteQuiz(id); break;
+    case "papers": await deletePaper(id); break;
+  }
+}
+
 export function ContentTabs({
   notes,
   shortNotes,
@@ -68,7 +84,9 @@ export function ContentTabs({
   papers,
 }: ContentTabsProps) {
   const [activeTab, setActiveTab] = useState<string>("notes");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const pathname = usePathname();
+  const router = useRouter();
 
   const basePath = pathname.startsWith("/protected/admin")
     ? "/protected/admin/my-content"
@@ -131,44 +149,64 @@ export function ContentTabs({
       ) : (
         <div className="grid gap-3">
           {items.map((item) => (
-            <Link
-              key={item.id}
-              href={`${basePath}/${routeMap[activeTab]}/${item.id}`}
-              className="block group"
-            >
-              <Card className="hover:border-purple-300 transition-all hover:shadow-sm">
-                <CardContent className="flex items-center justify-between p-4">
+            <Card key={item.id} className="hover:border-[#696FC7]/50 transition-all hover:shadow-sm">
+              <CardContent className="flex items-center justify-between p-4">
+                <Link
+                  href={`${basePath}/${routeMap[activeTab]}/${item.id}`}
+                  className="flex-1 min-w-0 group"
+                >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium group-hover:text-purple-700 transition-colors">
+                      <p className="font-medium group-hover:text-[#4D2FB2] transition-colors truncate">
                         {item.title}
                       </p>
-                      <Eye className="h-3 w-3 opacity-0 group-hover:opacity-100 text-purple-600 transition-opacity" />
+                      <Eye className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100 text-[#4D2FB2] transition-opacity" />
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {item.subject}
-                      {item.topic && ` \u00b7 ${item.topic}`}
-                      {item.grade && ` \u00b7 Grade ${item.grade}`}
-                      {item.questionCount != null &&
-                        ` \u00b7 ${item.questionCount} questions`}
-                      {item.totalMarks != null &&
-                        ` \u00b7 ${item.totalMarks} marks`}
+                      {item.topic && ` · ${item.topic}`}
+                      {item.grade && ` · Grade ${item.grade}`}
+                      {item.questionCount != null && ` · ${item.questionCount} questions`}
+                      {item.totalMarks != null && ` · ${item.totalMarks} marks`}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Badge
-                      variant="secondary"
-                      className={statusColors[item.status] ?? ""}
-                    >
-                      {item.status}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatDate(item.createdAt)}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+                </Link>
+                <div className="flex items-center gap-2 ml-3 shrink-0">
+                  <Badge variant="secondary" className={statusColors[item.status] ?? ""}>
+                    {item.status}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:block">
+                    {formatDate(item.createdAt)}
+                  </span>
+                  <Link href={`${basePath}/${routeMap[activeTab]}/${item.id}/edit`}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#4D2FB2]" title="Edit">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                    title="Delete"
+                    disabled={deletingId === item.id}
+                    onClick={async () => {
+                      if (!confirm(`Delete "${item.title}"? This cannot be undone.`)) return;
+                      setDeletingId(item.id);
+                      try {
+                        await handleDelete(activeTab, item.id);
+                        router.refresh();
+                      } catch (e) {
+                        alert("Failed to delete. Please try again.");
+                      } finally {
+                        setDeletingId(null);
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
