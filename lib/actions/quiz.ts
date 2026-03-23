@@ -129,6 +129,10 @@ export async function deleteQuiz(id: string) {
   if (!quiz) throw new Error("Not found");
   if (quiz.createdById !== user.id && profile?.role !== "ADMIN") throw new Error("Forbidden");
 
+  // Delete attempts first (no cascade on Quiz → QuizAttempt)
+  await prisma.quizAttempt.deleteMany({ where: { quizId: id } });
+
+  // Now safe to delete the quiz (QuizQuestions cascade automatically)
   await prisma.quiz.delete({ where: { id } });
   return { ok: true };
 }

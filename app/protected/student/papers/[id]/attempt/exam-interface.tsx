@@ -849,64 +849,69 @@ export default function ExamInterface({
     const currentReview = filtered[reviewIndex];
 
     return (
-      <div className="fixed inset-0 z-50 bg-gray-50 overflow-auto">
-        <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setScreen("results")}
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" /> Back to Results
-            </Button>
-            <h1 className="font-bold text-xl">Answer Review</h1>
-            <div />
+      <div className="fixed top-16 inset-x-0 bottom-0 z-50 bg-gray-50 overflow-auto">
+        {/* Sticky header bar */}
+        <div className="sticky top-0 z-10 bg-white border-b shadow-sm px-4 py-3">
+          <div className="max-w-4xl mx-auto flex flex-col gap-3">
+            {/* Back button + title */}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setScreen("results")}
+                className="shrink-0"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" /> Back to Results
+              </Button>
+              <h1 className="font-bold text-lg">Answer Review</h1>
+            </div>
+            {/* Filter tabs + jump dropdown */}
+            <div className="flex gap-2 flex-wrap items-center">
+              {(["all", "correct", "incorrect", "partial", "flagged"] as ReviewFilter[]).map(
+                (f) => (
+                  <button
+                    key={f}
+                    onClick={() => { setReviewFilter(f); setReviewIndex(0); }}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${
+                      reviewFilter === f
+                        ? "bg-purple-600 text-white"
+                        : "bg-gray-100 hover:bg-gray-200 text-gray-600"
+                    }`}
+                  >
+                    {f === "all"
+                      ? `All (${results.questionResults.length})`
+                      : f === "correct"
+                        ? `Correct (${results.questionResults.filter((r) => r.isCorrect).length})`
+                        : f === "incorrect"
+                          ? `Incorrect (${results.questionResults.filter((r) => !r.isCorrect && !r.isPartial).length})`
+                          : f === "partial"
+                            ? `Partial (${results.questionResults.filter((r) => r.isPartial).length})`
+                            : `Flagged (${questions.filter((q) => q.isFlagged).length})`}
+                  </button>
+                )
+              )}
+              {/* Jump to question */}
+              <select
+                className="px-3 py-1.5 rounded-lg text-sm border bg-white text-gray-600 ml-auto"
+                value={reviewIndex}
+                onChange={(e) => setReviewIndex(Number(e.target.value))}
+              >
+                {filtered.map((r, i) => {
+                  const label = r.mainQuestionNumber != null
+                    ? `Q${r.mainQuestionNumber}${r.subLabel ? `(${r.subLabel})` : ""}${r.subSubLabel ? `(${r.subSubLabel})` : ""}`
+                    : `Q${r.questionNumber}`;
+                  return (
+                    <option key={r.questionId} value={i}>
+                      {label} – {r.questionType}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
           </div>
+        </div>
 
-          {/* Filter tabs */}
-          <div className="flex gap-2 flex-wrap">
-            {(["all", "correct", "incorrect", "partial", "flagged"] as ReviewFilter[]).map(
-              (f) => (
-                <button
-                  key={f}
-                  onClick={() => { setReviewFilter(f); setReviewIndex(0); }}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${
-                    reviewFilter === f
-                      ? "bg-purple-600 text-white"
-                      : "bg-white border hover:bg-gray-50 text-gray-600"
-                  }`}
-                >
-                  {f === "all"
-                    ? `All (${results.questionResults.length})`
-                    : f === "correct"
-                      ? `Correct (${results.questionResults.filter((r) => r.isCorrect).length})`
-                      : f === "incorrect"
-                        ? `Incorrect (${results.questionResults.filter((r) => !r.isCorrect && !r.isPartial).length})`
-                        : f === "partial"
-                          ? `Partial (${results.questionResults.filter((r) => r.isPartial).length})`
-                          : `Flagged (${questions.filter((q) => q.isFlagged).length})`}
-                </button>
-              )
-            )}
-            {/* Jump to question */}
-            <select
-              className="px-3 py-1.5 rounded-lg text-sm border bg-white text-gray-600 ml-auto"
-              value={reviewIndex}
-              onChange={(e) => setReviewIndex(Number(e.target.value))}
-            >
-              {filtered.map((r, i) => {
-                const label = r.mainQuestionNumber != null
-                  ? `Q${r.mainQuestionNumber}${r.subLabel ? `(${r.subLabel})` : ""}${r.subSubLabel ? `(${r.subSubLabel})` : ""}`
-                  : `Q${r.questionNumber}`;
-                return (
-                  <option key={r.questionId} value={i}>
-                    {label} – {r.questionType}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
+        <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
 
           {filtered.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
@@ -1706,15 +1711,25 @@ export default function ExamInterface({
                 <Trash2 className="h-3.5 w-3.5" />
                 Clear
               </Button>
-              <Button
-                size="sm"
-                className="flex-1 bg-purple-600 hover:bg-purple-700 gap-1.5"
-                onClick={handleNext}
-                disabled={currentIndex === questions.length - 1}
-              >
-                Next
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
+              {currentIndex === questions.length - 1 ? (
+                <Button
+                  size="sm"
+                  className="flex-1 bg-green-600 hover:bg-green-700 gap-1.5"
+                  onClick={() => setScreen("submit_confirm")}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Submit Exam
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 gap-1.5"
+                  onClick={handleNext}
+                >
+                  Next
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              )}
             </div>
             {currentIndex > 0 && (
               <Button

@@ -243,6 +243,10 @@ export async function deletePaper(id: string) {
   if (!paper) throw new Error("Not found");
   if (paper.createdById !== user.id && profile?.role !== "ADMIN") throw new Error("Forbidden");
 
+  // Delete attempts first (ManualReviews cascade automatically from PaperAttempt)
+  await prisma.paperAttempt.deleteMany({ where: { paperId: id } });
+
+  // Now safe to delete the paper (PaperQuestions cascade automatically)
   await prisma.paper.delete({ where: { id } });
   return { ok: true };
 }
