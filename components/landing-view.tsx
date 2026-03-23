@@ -258,7 +258,7 @@ const SpotlightButton = ({ children }: { children: React.ReactNode }) => {
 };
 
 // --- Syllabus Section Component (Redesigned) ---
-const SyllabusSection = () => {
+const SyllabusSection = ({ onSubjectClick }: { onSubjectClick: (grade: number | null, subject: string) => void }) => {
   const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
 
   return (
@@ -387,6 +387,7 @@ const SyllabusSection = () => {
                       key={subject.name}
                       variants={scaleIn}
                       whileHover={{ scale: 1.03, backgroundColor: "rgba(255, 255, 255, 1)", borderColor: "#bfdbfe" }}
+                      onClick={() => onSubjectClick(selectedGrade, subject.name)}
                       className="group bg-white/60 backdrop-blur-sm p-4 rounded-xl border border-slate-200/60 transition-all cursor-pointer flex items-center gap-4 shadow-sm"
                     >
                       <div className="w-12 h-12 rounded-lg bg-slate-100 group-hover:bg-sky-50 flex items-center justify-center text-lg font-bold text-slate-400 group-hover:text-sky-600 transition-colors">
@@ -406,6 +407,25 @@ const SyllabusSection = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* PDF Modal */}
+        {pdfUrl && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white w-[90%] h-[90%] rounded-lg overflow-hidden shadow-xl relative">
+              <button onClick={() => setPdfUrl(null)} className="absolute right-4 top-4 z-40 bg-white rounded-full p-2 shadow">
+                <svg className="w-5 h-5 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+              <iframe src={pdfUrl} className="w-full h-full" />
+            </div>
+          </div>
+        )}
+
+        {/* Snackbar */}
+        {snackbar && (
+          <div className="fixed left-1/2 -translate-x-1/2 bottom-8 z-50">
+            <div className="bg-slate-900 text-white px-4 py-2 rounded-md shadow">{snackbar}</div>
+          </div>
+        )}
 
         {!selectedGrade && (
            <motion.div 
@@ -880,6 +900,9 @@ export default function LandingView({ authSection, contentSection, deployButton 
   const [hoveredNav, setHoveredNav] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [navVisible, setNavVisible] = useState(true);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [loadingPdf, setLoadingPdf] = useState(false);
+  const [snackbar, setSnackbar] = useState<string | null>(null);
   
   const { scrollY, scrollYProgress } = useScroll();
   const yHero = useTransform(scrollY, [0, 500], [0, 100]);
@@ -932,6 +955,43 @@ export default function LandingView({ authSection, contentSection, deployButton 
     }, 4000);
     return () => clearInterval(interval);
   }, []);
+
+  // Hide navbar while a PDF modal is open
+  useEffect(() => {
+    if (pdfUrl) setNavVisible(false);
+    else setNavVisible(true);
+  }, [pdfUrl]);
+
+  // Handler invoked by SyllabusSection when a subject is clicked
+  async function onSubjectClick(grade: number | null, subject: string) {
+    if (!grade) return setSnackbar('Select a grade first');
+
+    const name = subject.toLowerCase();
+    if (name === 'history') {
+      setLoadingPdf(true);
+      setSnackbar(null);
+      try {
+        const res = await fetch(`/api/syllabus?grade=${grade}&subject=history`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.url) {
+            setPdfUrl(data.url);
+            setSnackbar(null);
+            return;
+          }
+        }
+        setSnackbar('Syllabus PDF not available');
+      } catch (e) {
+        setSnackbar('Failed to fetch PDF');
+      } finally {
+        setLoadingPdf(false);
+        setTimeout(() => setSnackbar(null), 3000);
+      }
+    } else {
+      setSnackbar('Coming soon');
+      setTimeout(() => setSnackbar(null), 2000);
+    }
+  }
 
   return (
     <div 
@@ -1294,7 +1354,26 @@ export default function LandingView({ authSection, contentSection, deployButton 
         </div>
       </main>
 
-      <SyllabusSection />
+      <SyllabusSection onSubjectClick={onSubjectClick} />
+
+      {/* PDF Modal */}
+      {pdfUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white w-[90%] h-[90%] rounded-lg overflow-hidden shadow-xl relative">
+            <button onClick={() => setPdfUrl(null)} className="absolute right-4 top-4 z-40 bg-white rounded-full p-2 shadow">
+              <svg className="w-5 h-5 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            <iframe src={pdfUrl} className="w-full h-full" />
+          </div>
+        </div>
+      )}
+
+      {/* Snackbar */}
+      {snackbar && (
+        <div className="fixed left-1/2 -translate-x-1/2 bottom-8 z-50">
+          <div className="bg-slate-900 text-white px-4 py-2 rounded-md shadow">{snackbar}</div>
+        </div>
+      )}
 
       <AboutSection />
 
