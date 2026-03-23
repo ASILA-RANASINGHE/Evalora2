@@ -13,6 +13,7 @@ import {
 } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
+import { createClient } from "@/lib/supabase/client";
 import React, { useState, useEffect, useRef, MouseEvent } from "react";
 
 // --- Types & Interfaces ---
@@ -224,7 +225,7 @@ const SecurityVisual = () => (
   </div>
 );
 
-const SpotlightButton = ({ children }: { children: React.ReactNode }) => {
+const SpotlightButton = ({ children, onClick }: { children: React.ReactNode; onClick?: (e: React.MouseEvent) => void }) => {
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
@@ -238,6 +239,7 @@ const SpotlightButton = ({ children }: { children: React.ReactNode }) => {
     <div
       className="group relative border border-sky-500/30 bg-sky-600/5 overflow-hidden rounded-full px-8 py-3 transition-colors hover:bg-sky-600/10 cursor-pointer"
       onMouseMove={handleMouseMove}
+      onClick={onClick}
     >
       <motion.div
         className="pointer-events-none absolute -inset-px rounded-xl opacity-0 transition duration-300 group-hover:opacity-100"
@@ -257,7 +259,7 @@ const SpotlightButton = ({ children }: { children: React.ReactNode }) => {
 };
 
 // --- Syllabus Section Component (Redesigned) ---
-const SyllabusSection = () => {
+const SyllabusSection = ({ onSubjectClick }: { onSubjectClick: (grade: number | null, subject: string) => void }) => {
   const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
 
   return (
@@ -386,6 +388,7 @@ const SyllabusSection = () => {
                       key={subject.name}
                       variants={scaleIn}
                       whileHover={{ scale: 1.03, backgroundColor: "rgba(255, 255, 255, 1)", borderColor: "#bfdbfe" }}
+                      onClick={() => onSubjectClick(selectedGrade, subject.name)}
                       className="group bg-white/60 backdrop-blur-sm p-4 rounded-xl border border-slate-200/60 transition-all cursor-pointer flex items-center gap-4 shadow-sm"
                     >
                       <div className="w-12 h-12 rounded-lg bg-slate-100 group-hover:bg-sky-50 flex items-center justify-center text-lg font-bold text-slate-400 group-hover:text-sky-600 transition-colors">
@@ -405,6 +408,8 @@ const SyllabusSection = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        
 
         {!selectedGrade && (
            <motion.div 
@@ -573,6 +578,41 @@ const AboutSection = () => {
 };
 
 const ContactSection = () => {
+  // Contact form state (scoped to ContactSection)
+  const [category, setCategory] = useState<string>("I can't log in to my account");
+  const [contactName, setContactName] = useState<string>("");
+  const [contactEmail, setContactEmail] = useState<string>("");
+  const [contactMessage, setContactMessage] = useState<string>("");
+  const [sendingContact, setSendingContact] = useState<boolean>(false);
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (sendingContact) return;
+    setSendingContact(true);
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: contactName, email: contactEmail, category, message: contactMessage })
+      });
+
+      if (res.ok) {
+        setContactName('');
+        setContactEmail('');
+        setContactMessage('');
+        setCategory("I can't log in to my account");
+        alert("Message sent — we'll get back to you shortly.");
+      } else {
+        const text = await res.text();
+        alert('Failed to send message: ' + text);
+      }
+    } catch (err) {
+      alert('Failed to send message.');
+    } finally {
+      setSendingContact(false);
+    }
+  };
+
   return (
     <section id="contact" className="relative py-32 bg-white overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
@@ -606,11 +646,14 @@ const ContactSection = () => {
 
               <div className="grid sm:grid-cols-2 gap-4">
                  <motion.a 
-                   href="#"
+                   href="https://wa.me/+94740304576"
+                   target="_blank"
+                   rel="noopener noreferrer"
                    variants={scaleIn}
                    whileHover={{ y: -5, boxShadow: "0 10px 30px -10px rgba(14, 165, 233, 0.3)" }}
                    whileTap={{ scale: 0.98 }}
-                   className="flex flex-col p-6 bg-slate-50 rounded-2xl border border-slate-100 hover:border-sky-200 hover:bg-sky-50/50 transition-all group"
+                   className="flex flex-col p-6 bg-slate-50 rounded-2xl border border-slate-100 hover:border-sky-200 hover:bg-sky-50/50 transition-all group cursor-pointer"
+                   aria-label="WhatsApp Support (opens in new tab)"
                  >
                     <div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center mb-4 text-sky-500 group-hover:scale-110 transition-transform shadow-sm">
                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.017-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
@@ -667,48 +710,50 @@ const ContactSection = () => {
               <div className="relative z-10">
                  <h4 className="text-2xl font-bold text-slate-900 mb-6">Send us a message</h4>
                  
-                 <form className="space-y-5">
+                  <form className="space-y-5" onSubmit={handleContactSubmit}>
                     <div className="space-y-2">
-                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">I need help with...</label>
-                       <div className="relative">
-                          <select className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-medium rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all cursor-pointer hover:border-sky-300">
-                             <option>I can't log in to my account</option>
-                             <option>Payment or subscription issue</option>
-                             <option>Course content inquiry</option>
-                             <option>Technical bug report</option>
-                             <option>Other inquiry</option>
-                          </select>
-                          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
-                          </div>
-                       </div>
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">I need help with...</label>
+                      <div className="relative">
+                        <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-medium rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all cursor-pointer hover:border-sky-300">
+                          <option>I can't log in to my account</option>
+                          <option>Payment or subscription issue</option>
+                          <option>Course content inquiry</option>
+                          <option>Technical bug report</option>
+                          <option>Other inquiry</option>
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                       <div className="space-y-2">
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Name</label>
-                          <input type="text" placeholder="John Doe" className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-medium rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all placeholder:text-slate-300 hover:border-sky-300" />
-                       </div>
-                       <div className="space-y-2">
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Email</label>
-                          <input type="email" placeholder="john@example.com" className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-medium rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all placeholder:text-slate-300 hover:border-sky-300" />
-                       </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Name</label>
+                        <input value={contactName} onChange={(e) => setContactName(e.target.value)} type="text" placeholder="John Doe" className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-medium rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all placeholder:text-slate-300 hover:border-sky-300" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Email</label>
+                        <input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} type="email" placeholder="john@example.com" className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-medium rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all placeholder:text-slate-300 hover:border-sky-300" />
+                      </div>
                     </div>
 
                     <div className="space-y-2">
-                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Message Details</label>
-                       <textarea rows={4} placeholder="Describe your issue or question..." className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-medium rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all placeholder:text-slate-300 resize-none hover:border-sky-300"></textarea>
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Message Details</label>
+                      <textarea value={contactMessage} onChange={(e) => setContactMessage(e.target.value)} rows={4} placeholder="Describe your issue or question..." className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-medium rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all placeholder:text-slate-300 resize-none hover:border-sky-300"></textarea>
                     </div>
 
                     <motion.button 
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="w-full bg-sky-500 text-white font-bold rounded-xl py-4 shadow-lg shadow-sky-500/30 hover:bg-sky-600 transition-colors flex items-center justify-center gap-2 mt-2"
+                     type="submit"
+                     whileHover={{ scale: 1.02 }}
+                     whileTap={{ scale: 0.98 }}
+                     disabled={sendingContact}
+                     className="w-full bg-sky-500 text-white font-bold rounded-xl py-4 shadow-lg shadow-sky-500/30 hover:bg-sky-600 transition-colors flex items-center justify-center gap-2 mt-2 disabled:opacity-60"
                     >
-                       <span>Submit Ticket</span>
-                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                      <span>{sendingContact ? "Sending..." : "Submit Ticket"}</span>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
                     </motion.button>
-                 </form>
+                  </form>
               </div>
            </motion.div>
         </div>
@@ -839,6 +884,9 @@ export default function LandingView({ authSection, contentSection, deployButton 
   const [hoveredNav, setHoveredNav] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [navVisible, setNavVisible] = useState(true);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [loadingPdf, setLoadingPdf] = useState(false);
+  const [snackbar, setSnackbar] = useState<string | null>(null);
   
   const { scrollY, scrollYProgress } = useScroll();
   const yHero = useTransform(scrollY, [0, 500], [0, 100]);
@@ -847,6 +895,8 @@ export default function LandingView({ authSection, contentSection, deployButton 
 
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const x = (e.clientX / window.innerWidth - 0.5) * 2;
@@ -889,6 +939,57 @@ export default function LandingView({ authSection, contentSection, deployButton 
     }, 4000);
     return () => clearInterval(interval);
   }, []);
+
+  // Hide navbar while a PDF modal is open
+  useEffect(() => {
+    if (pdfUrl) setNavVisible(false);
+    else setNavVisible(true);
+  }, [pdfUrl]);
+
+  // Handler invoked by SyllabusSection when a subject is clicked
+  async function onSubjectClick(grade: number | null, subject: string) {
+    if (!grade) return setSnackbar('Select a grade first');
+
+    const name = subject.toLowerCase();
+    if (name === 'history') {
+      setLoadingPdf(true);
+      setSnackbar(null);
+      try {
+        const res = await fetch(`/api/syllabus?grade=${grade}&subject=history`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.url) {
+            openPdf(data.url);
+            setSnackbar(null);
+            return;
+          }
+        }
+        setSnackbar('Syllabus PDF not available');
+      } catch (e) {
+        setSnackbar('Failed to fetch PDF');
+      } finally {
+        setLoadingPdf(false);
+        setTimeout(() => setSnackbar(null), 3000);
+      }
+    } else {
+      setSnackbar('Coming soon');
+      setTimeout(() => setSnackbar(null), 2000);
+    }
+  }
+
+  function openPdf(url: string) {
+    setPdfUrl(url);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("pdf:open"));
+    }
+  }
+
+  function closePdf() {
+    setPdfUrl(null);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("pdf:close"));
+    }
+  }
 
   return (
     <div 
@@ -1021,24 +1122,11 @@ export default function LandingView({ authSection, contentSection, deployButton 
             <div className="flex items-center gap-3 pl-2">
               
               <div className="hidden md:block">
-                 <div className="
-                    flex items-center gap-3 bg-white/50 border border-white rounded-full px-1.5 py-1.5 pl-5 shadow-sm
-                    [&_.flex]:gap-2 [&_.flex]:items-center
-                    [&_form]:flex [&_form]:items-center
-                    [&_div]:!text-[13px] [&_div]:!font-bold [&_div]:!text-slate-500 [&_div]:!tracking-tight
-                    [&_a]:!bg-sky-500 [&_a]:!text-white [&_a]:!px-5 [&_a]:!py-2 [&_a]:!rounded-full 
-                    [&_a]:!text-xs [&_a]:!font-bold [&_a]:!shadow-md [&_a]:!shadow-sky-500/20 
-                    [&_a]:!border-none [&_a:hover]:!bg-sky-600 [&_a:hover]:!scale-105 [&_a]:!transition-all
-                    [&_button:not([type='submit'])]:!bg-sky-500 [&_button:not([type='submit'])]:!text-white 
-                    [&_button:not([type='submit'])]:!rounded-full
-                    [&_form_button]:!bg-white [&_form_button]:!text-slate-500 [&_form_button]:!text-xs 
-                    [&_form_button]:!font-bold [&_form_button]:!shadow-sm [&_form_button]:!px-4 [&_form_button]:!py-2
-                    [&_form_button]:!rounded-full
-                    [&_form_button]:!border [&_form_button]:!border-slate-200
-                    [&_form_button:hover]:!text-red-600 [&_form_button:hover]:!bg-red-50 [&_form_button:hover]:!border-red-100
-                 ">
-                   {authSection}
-                 </div>
+                <div className="flex items-center gap-3 bg-white/50 border border-white rounded-full px-1.5 py-1.5 pl-5 shadow-sm">
+                  <div className="flex items-center gap-3 max-w-[420px]">
+                    {authSection}
+                  </div>
+                </div>
               </div>
 
               <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-full">
@@ -1121,14 +1209,28 @@ export default function LandingView({ authSection, contentSection, deployButton 
               <motion.button 
                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                  className="h-14 px-8 rounded-full bg-sky-600 text-white font-bold text-base shadow-lg shadow-sky-600/30 flex items-center gap-2 hover:bg-sky-500 transition-colors"
+                 onClick={async () => {
+                   const supabase = createClient();
+                   try {
+                     const { data } = await supabase.auth.getSession();
+                     const session = data?.session;
+                     if (session) {
+                       window.location.href = "/protected/student";
+                     } else {
+                       window.location.href = "/auth/login";
+                     }
+                   } catch (e) {
+                     window.location.href = "/auth/login";
+                   }
+                 }}
               >
                  Get Started
                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
               </motion.button>
               
-              <SpotlightButton>
-                Explore Features
-              </SpotlightButton>
+              <SpotlightButton onClick={() => { setSnackbar('Coming soon'); setTimeout(() => setSnackbar(null), 2000); }}>
+                  Explore Features
+                </SpotlightButton>
             </motion.div>
 
             <motion.div 
@@ -1250,7 +1352,26 @@ export default function LandingView({ authSection, contentSection, deployButton 
         </div>
       </main>
 
-      <SyllabusSection />
+      <SyllabusSection onSubjectClick={onSubjectClick} />
+
+      {/* PDF Modal */}
+      {pdfUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white w-[90%] h-[90%] rounded-lg overflow-hidden shadow-xl relative">
+            <button onClick={() => closePdf()} className="absolute right-4 top-4 z-40 bg-white rounded-full p-2 shadow">
+              <svg className="w-5 h-5 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            <iframe src={pdfUrl} className="w-full h-full" />
+          </div>
+        </div>
+      )}
+
+      {/* Snackbar */}
+      {snackbar && (
+        <div className="fixed left-1/2 -translate-x-1/2 bottom-8 z-50">
+          <div className="bg-slate-900 text-white px-4 py-2 rounded-md shadow">{snackbar}</div>
+        </div>
+      )}
 
       <AboutSection />
 

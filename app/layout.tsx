@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Space_Grotesk, Source_Sans_3, Merriweather } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
+import FloatingChatButton from "@/components/floating-chat-button";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -58,6 +59,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <FloatingChatButton />
         </ThemeProvider>
       </body>
     </html>
