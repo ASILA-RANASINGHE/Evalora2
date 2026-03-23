@@ -86,3 +86,14 @@
   scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
   scroll-behavior: smooth !important;
 }
+
+/* Enable smooth scrolling globally, but respect users who prefer reduced motion */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

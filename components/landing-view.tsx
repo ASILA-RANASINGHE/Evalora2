@@ -225,7 +225,7 @@ const SecurityVisual = () => (
   </div>
 );
 
-const SpotlightButton = ({ children }: { children: React.ReactNode }) => {
+const SpotlightButton = ({ children, onClick }: { children: React.ReactNode; onClick?: (e: React.MouseEvent) => void }) => {
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
@@ -239,6 +239,7 @@ const SpotlightButton = ({ children }: { children: React.ReactNode }) => {
     <div
       className="group relative border border-sky-500/30 bg-sky-600/5 overflow-hidden rounded-full px-8 py-3 transition-colors hover:bg-sky-600/10 cursor-pointer"
       onMouseMove={handleMouseMove}
+      onClick={onClick}
     >
       <motion.div
         className="pointer-events-none absolute -inset-px rounded-xl opacity-0 transition duration-300 group-hover:opacity-100"
@@ -1227,9 +1228,9 @@ export default function LandingView({ authSection, contentSection, deployButton 
                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
               </motion.button>
               
-              <SpotlightButton>
-                Explore Features
-              </SpotlightButton>
+              <SpotlightButton onClick={() => { setSnackbar('Coming soon'); setTimeout(() => setSnackbar(null), 2000); }}>
+                  Explore Features
+                </SpotlightButton>
             </motion.div>
 
             <motion.div 
