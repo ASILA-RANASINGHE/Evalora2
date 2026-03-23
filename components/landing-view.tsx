@@ -763,6 +763,45 @@ const ContactSection = () => {
 };
 
 const Footer = () => {
+  const [subEmail, setSubEmail] = useState("");
+  const [subStatus, setSubStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [subMessage, setSubMessage] = useState("");
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = subEmail.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setSubStatus("error");
+      setSubMessage("Please enter a valid email address.");
+      return;
+    }
+
+    setSubStatus("loading");
+    setSubMessage("");
+
+    try {
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setSubStatus("success");
+        setSubMessage("You're subscribed! Check your inbox for a welcome email. 🎉");
+        setSubEmail("");
+      } else {
+        setSubStatus("error");
+        setSubMessage(data?.error || "Something went wrong. Please try again.");
+      }
+    } catch {
+      setSubStatus("error");
+      setSubMessage("Network error. Please try again.");
+    }
+  };
+
   return (
     <footer className="bg-slate-950 text-slate-400 py-16 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -846,21 +885,63 @@ const Footer = () => {
             <p className="text-xs text-slate-500 mb-4">
               Get the latest updates on features and releases.
             </p>
-            <form className="flex flex-col gap-3">
+            <form className="flex flex-col gap-3" onSubmit={handleSubscribe}>
                <div className="relative">
                  <input 
-                   type="email" 
-                   placeholder="Enter your email" 
-                   className="w-full bg-slate-900 border border-slate-800 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500/50 transition-colors placeholder:text-slate-600"
+                   type="email"
+                   value={subEmail}
+                   onChange={(e) => { setSubEmail(e.target.value); if (subStatus !== "idle" && subStatus !== "loading") setSubStatus("idle"); }}
+                   placeholder="Enter your email"
+                   disabled={subStatus === "loading"}
+                   className={`w-full bg-slate-900 border text-white text-sm rounded-xl px-4 py-3 focus:outline-none transition-colors placeholder:text-slate-600 disabled:opacity-60 ${
+                     subStatus === "error" 
+                       ? "border-red-500/60 focus:border-red-500/80" 
+                       : subStatus === "success" 
+                         ? "border-emerald-500/60 focus:border-emerald-500/80" 
+                         : "border-slate-800 focus:border-sky-500/50"
+                   }`}
                  />
                </div>
                <motion.button 
-                 whileHover={{ scale: 1.02 }}
-                 whileTap={{ scale: 0.98 }}
-                 className="bg-sky-600 text-white text-sm font-bold py-3 rounded-xl hover:bg-sky-500 transition-colors shadow-lg shadow-sky-900/20"
+                 type="submit"
+                 whileHover={subStatus !== "loading" ? { scale: 1.02 } : {}}
+                 whileTap={subStatus !== "loading" ? { scale: 0.98 } : {}}
+                 disabled={subStatus === "loading"}
+                 className={`text-white text-sm font-bold py-3 rounded-xl transition-colors shadow-lg flex items-center justify-center gap-2 disabled:opacity-60 ${
+                   subStatus === "success" 
+                     ? "bg-emerald-600 shadow-emerald-900/20" 
+                     : "bg-sky-600 hover:bg-sky-500 shadow-sky-900/20"
+                 }`}
                >
-                 Subscribe
+                 {subStatus === "loading" ? (
+                   <>
+                     <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                     </svg>
+                     Subscribing...
+                   </>
+                 ) : subStatus === "success" ? (
+                   <>
+                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>
+                     Subscribed!
+                   </>
+                 ) : (
+                   "Subscribe"
+                 )}
                </motion.button>
+               <AnimatePresence>
+                 {subMessage && (
+                   <motion.p
+                     initial={{ opacity: 0, y: -8 }}
+                     animate={{ opacity: 1, y: 0 }}
+                     exit={{ opacity: 0, y: -8 }}
+                     className={`text-xs font-medium ${subStatus === "error" ? "text-red-400" : "text-emerald-400"}`}
+                   >
+                     {subMessage}
+                   </motion.p>
+                 )}
+               </AnimatePresence>
             </form>
           </div>
         </div>
