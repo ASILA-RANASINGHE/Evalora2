@@ -251,7 +251,7 @@ model QuizAttempt {
   startedAt DateTime  @default(now())
   submittedAt DateTime?
 
-  quiz    Quiz    @relation(fields: [quizId], references: [id])
+  quiz    Quiz    @relation(fields: [quizId], references: [id], onDelete: Cascade)
   student Profile @relation(fields: [studentId], references: [id])
 }
 
@@ -325,7 +325,7 @@ model PaperAttempt {
   startedAt   DateTime  @default(now())
   submittedAt DateTime?
 
-  paper         Paper          @relation(fields: [paperId], references: [id])
+  paper         Paper          @relation(fields: [paperId], references: [id], onDelete: Cascade)
   student       Profile        @relation(fields: [studentId], references: [id])
   manualReviews ManualReview[]
 }

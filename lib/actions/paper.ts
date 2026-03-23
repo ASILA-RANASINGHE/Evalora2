@@ -269,27 +269,34 @@ export async function getPapersBySubjectAndTerm(
   const paperTerm = termMap[term];
   if (!paperTerm) return { adminContent: [], teacherContent: [] };
 
-  // Get student's grade for filtering
+  // Get student's grade and assigned teachers for visibility filtering
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   let studentGrade: string | null = null;
-  if (user) {
-    const sd = await prisma.studentDetails.findUnique({ where: { id: user.id }, select: { grade: true } });
-    studentGrade = sd?.grade ?? null;
-  }
+  let assignedTeacherIds: string[] = [];
 
-  // Normalize: StudentDetails stores grade as "6", content uses "Grade 6"
-  const normalizedGrade = studentGrade
-    ? (/^\d+$/.test(studentGrade) ? `Grade ${studentGrade}` : studentGrade)
-    : null;
+  if (user) {
+    const [sd, teacherLinks] = await Promise.all([
+      prisma.studentDetails.findUnique({ where: { id: user.id }, select: { grade: true } }),
+      prisma.teacherStudentLink.findMany({ where: { studentId: user.id }, select: { teacherId: true } }),
+    ]);
+    studentGrade = sd?.grade ?? null;
+    assignedTeacherIds = teacherLinks.map((l) => l.teacherId);
+  }
 
   const papers = await prisma.paper.findMany({
     where: {
       subjectId: subject.id,
       term: paperTerm,
       status: "APPROVED",
-      // Match papers for this student's grade (or papers with no grade set)
-      OR: [{ grade: normalizedGrade ?? "" }, { grade: "" }],
+      OR: [
+        // PUBLIC: visible if grade matches student's grade or no grade restriction
+        studentGrade
+          ? { visibility: "PUBLIC", OR: [{ grade: null }, { grade: studentGrade }] }
+          : { visibility: "PUBLIC" },
+        // STUDENTS_ONLY: visible only to students assigned to the creating teacher
+        { visibility: "STUDENTS_ONLY", createdById: { in: assignedTeacherIds } },
+      ],
     },
     include: {
       createdBy: { select: { role: true } },
