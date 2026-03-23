@@ -27,7 +27,7 @@ export async function createNote(input: CreateNoteInput) {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
-  const EXTRA_SUBJECTS = ["Geography", "Health"];
+  const EXTRA_SUBJECTS = ["English", "Geography", "Civic Education", "Health"];
 
   const profile = await prisma.profile.findUnique({
     where: { id: user.id },
@@ -38,7 +38,8 @@ export async function createNote(input: CreateNoteInput) {
       where: { id: user.id },
     });
     if (!teacherDetails) throw new Error("Teacher details not found");
-    if (teacherDetails.subject !== input.subject && !EXTRA_SUBJECTS.includes(input.subject)) {
+    const allowedSubjects = teacherDetails.subject.split(',').map(s => s.trim().toLowerCase());
+    if (!allowedSubjects.includes(input.subject.trim().toLowerCase()) && !EXTRA_SUBJECTS.includes(input.subject)) {
       throw new Error(`You are not authorized to upload content for "${input.subject}".`);
     }
   }
@@ -69,7 +70,51 @@ export async function createNote(input: CreateNoteInput) {
   return { id: note.id };
 }
 
+export async function deleteNote(id: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true } });
+  const note = await prisma.note.findUnique({ where: { id }, select: { createdById: true } });
+  if (!note) throw new Error("Not found");
+  if (note.createdById !== user.id && profile?.role !== "ADMIN") throw new Error("Forbidden");
+
+  await prisma.note.delete({ where: { id } });
+  return { ok: true };
+}
+
+export async function updateNote(id: string, input: { title: string; topic: string; grade?: string; content: string }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true } });
+  const note = await prisma.note.findUnique({ where: { id }, select: { createdById: true } });
+  if (!note) throw new Error("Not found");
+  if (note.createdById !== user.id && profile?.role !== "ADMIN") throw new Error("Forbidden");
+
+  await prisma.note.update({ where: { id }, data: { title: input.title, topic: input.topic, grade: input.grade || null, content: input.content } });
+  return { ok: true };
+}
+
 export async function getNotesBySubject(subjectName: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { adminContent: [], teacherContent: [] };
+
+  const [studentDetails, teacherLinks] = await Promise.all([
+    prisma.studentDetails.findUnique({ where: { id: user.id }, select: { grade: true } }),
+    prisma.teacherStudentLink.findMany({ where: { studentId: user.id }, select: { teacherId: true } }),
+  ]);
+
+  const studentGrade = studentDetails?.grade ?? null;
+  // Normalize: StudentDetails stores grade as "6", content uses "Grade 6"
+  const normalizedGrade = studentGrade
+    ? (/^\d+$/.test(studentGrade) ? `Grade ${studentGrade}` : studentGrade)
+    : null;
+  const assignedTeacherIds = teacherLinks.map((l) => l.teacherId);
+
   const subject = await prisma.subject.findFirst({
     where: { name: { equals: subjectName, mode: "insensitive" } },
   });
@@ -79,6 +124,19 @@ export async function getNotesBySubject(subjectName: string) {
     where: {
       subjectId: subject.id,
       status: "APPROVED",
+      AND: [
+        // Grade filter: match student's grade or notes with no grade restriction
+        normalizedGrade
+          ? { OR: [{ grade: null }, { grade: normalizedGrade }] }
+          : {},
+        // Visibility filter: PUBLIC or STUDENTS_ONLY from a linked teacher
+        assignedTeacherIds.length > 0
+          ? { OR: [
+              { visibility: "PUBLIC" },
+              { visibility: "STUDENTS_ONLY", createdById: { in: assignedTeacherIds } },
+            ]}
+          : { visibility: "PUBLIC" },
+      ],
     },
     include: {
       createdBy: { select: { firstName: true, lastName: true, role: true } },
@@ -117,6 +175,7 @@ export async function getNoteById(id: string) {
     id: note.id,
     title: note.title,
     subject: note.subject.name,
+    grade: note.grade,
     topic: note.topic,
     content: note.content,
     author: `${note.createdBy.firstName ?? ""} ${note.createdBy.lastName ?? ""}`.trim() || "Teacher",

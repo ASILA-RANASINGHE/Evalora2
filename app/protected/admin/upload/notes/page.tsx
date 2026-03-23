@@ -7,29 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { SUBJECTS } from "@/lib/admin-mock-data";
-import {
-  ArrowLeft,
-  Upload,
-  FileUp,
-  X,
-  Bold,
-  Italic,
-  Underline,
-  List,
-  ListOrdered,
-  AlignLeft,
-  AlignCenter,
-  Heading2,
-  Link as LinkIcon,
-  Check,
-  Loader2,
-} from "lucide-react";
+import { ArrowLeft, Upload, FileUp, X, Check, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { createNote } from "@/lib/actions/note";
 import { uploadFiles } from "@/lib/supabase/storage";
+import { RichTextEditor } from "@/components/editor/rich-text-editor";
 
 const GRADES = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
-const ACCEPTED_TYPES = ".pdf,.docx,.ppt,.pptx,.txt";
+const ACCEPTED_TYPES = ".pdf,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.webp";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export default function UploadNotesPage() {
@@ -84,9 +69,6 @@ export default function UploadNotesPage() {
     }
   };
 
-  const insertFormatting = (tag: string) => {
-    setContent((prev) => prev + tag);
-  };
 
   return (
     <div className="space-y-6">
@@ -132,45 +114,12 @@ export default function UploadNotesPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Content</CardTitle>
               </CardHeader>
-              <CardContent>
-                {/* Toolbar */}
-                <div className="mb-2 flex flex-wrap gap-1 rounded-t-md border border-b-0 bg-muted/50 p-1.5">
-                  <button type="button" onClick={() => insertFormatting("**bold**")} className="rounded p-1.5 hover:bg-muted" title="Bold">
-                    <Bold className="h-4 w-4" />
-                  </button>
-                  <button type="button" onClick={() => insertFormatting("*italic*")} className="rounded p-1.5 hover:bg-muted" title="Italic">
-                    <Italic className="h-4 w-4" />
-                  </button>
-                  <button type="button" onClick={() => insertFormatting("__underline__")} className="rounded p-1.5 hover:bg-muted" title="Underline">
-                    <Underline className="h-4 w-4" />
-                  </button>
-                  <div className="mx-1 w-px bg-border" />
-                  <button type="button" onClick={() => insertFormatting("\n## Heading\n")} className="rounded p-1.5 hover:bg-muted" title="Heading">
-                    <Heading2 className="h-4 w-4" />
-                  </button>
-                  <button type="button" onClick={() => insertFormatting("\n- item\n")} className="rounded p-1.5 hover:bg-muted" title="Bullet List">
-                    <List className="h-4 w-4" />
-                  </button>
-                  <button type="button" onClick={() => insertFormatting("\n1. item\n")} className="rounded p-1.5 hover:bg-muted" title="Numbered List">
-                    <ListOrdered className="h-4 w-4" />
-                  </button>
-                  <div className="mx-1 w-px bg-border" />
-                  <button type="button" onClick={() => insertFormatting("[link](url)")} className="rounded p-1.5 hover:bg-muted" title="Link">
-                    <LinkIcon className="h-4 w-4" />
-                  </button>
-                  <button type="button" className="rounded p-1.5 hover:bg-muted" title="Align Left">
-                    <AlignLeft className="h-4 w-4" />
-                  </button>
-                  <button type="button" className="rounded p-1.5 hover:bg-muted" title="Align Center">
-                    <AlignCenter className="h-4 w-4" />
-                  </button>
-                </div>
-                <textarea
-                  className="min-h-[250px] w-full rounded-b-md border bg-transparent p-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  placeholder="Write your note content here... (Supports Markdown)"
+              <CardContent className="p-0">
+                <RichTextEditor
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  required
+                  onChange={setContent}
+                  placeholder="Write your note content here..."
+                  minHeight={380}
                 />
               </CardContent>
             </Card>
@@ -187,7 +136,7 @@ export default function UploadNotesPage() {
                 >
                   <FileUp className="h-8 w-8 text-muted-foreground" />
                   <p className="text-sm font-medium">Click to upload or drag and drop</p>
-                  <p className="text-xs text-muted-foreground">PDF, DOCX, PPT, TXT (max 10MB)</p>
+                  <p className="text-xs text-muted-foreground">PDF, DOCX, PPT, TXT, Images (JPG, PNG, GIF, WebP) — max 10MB</p>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -287,7 +236,7 @@ export default function UploadNotesPage() {
             <Button
               type="submit"
               className="w-full bg-purple-600 hover:bg-purple-700"
-              disabled={!title || !subject || !grade || !topic || !content || saving}
+              disabled={!title || !subject || !grade || !topic || saving}
             >
               {saving ? (
                 <>

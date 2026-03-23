@@ -6,6 +6,7 @@ import type { QuizType, QuestionType } from "@/lib/generated/prisma/enums";
 
 interface CreateQuizInput {
   title: string;
+  grade?: string;
   subject: string;
   topic: string;
   type: QuizType;
@@ -17,6 +18,7 @@ interface CreateQuizInput {
     points: number;
     options: string[];
     correctAnswer: string;
+    imageUrl?: string;
   }[];
 }
 
@@ -37,7 +39,8 @@ export async function createQuiz(input: CreateQuizInput) {
       where: { id: user.id },
     });
     if (!teacherDetails) throw new Error("Teacher details not found");
-    if (teacherDetails.subject !== input.subject) {
+    const allowedSubjects = teacherDetails.subject.split(',').map(s => s.trim().toLowerCase());
+    if (!allowedSubjects.includes(input.subject.trim().toLowerCase())) {
       throw new Error(`You are not authorized to upload content for "${input.subject}".`);
     }
   }
@@ -51,6 +54,7 @@ export async function createQuiz(input: CreateQuizInput) {
   const quiz = await prisma.quiz.create({
     data: {
       title: input.title,
+      grade: input.grade ?? null,
       subjectId: subject.id,
       topic: input.topic,
       type: input.type,
@@ -66,6 +70,7 @@ export async function createQuiz(input: CreateQuizInput) {
           options: q.options.filter((o) => o.trim() !== ""),
           correctAnswer: q.correctAnswer,
           order: index,
+          imageUrl: q.imageUrl ?? null,
         })),
       },
     },
@@ -74,16 +79,113 @@ export async function createQuiz(input: CreateQuizInput) {
   return { id: quiz.id };
 }
 
+export async function updateQuiz(
+  id: string,
+  input: {
+    title: string;
+    topic: string;
+    duration: number;
+    visibility: string;
+    questions: { text: string; type: QuestionType; points: number; options: string[]; correctAnswer: string }[];
+  }
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const quiz = await prisma.quiz.findUnique({ where: { id }, select: { createdById: true } });
+  if (!quiz) throw new Error("Not found");
+  if (quiz.createdById !== user.id) throw new Error("Forbidden");
+
+  // Delete old questions and recreate
+  await prisma.quizQuestion.deleteMany({ where: { quizId: id } });
+  await prisma.quiz.update({
+    where: { id },
+    data: {
+      title: input.title,
+      topic: input.topic,
+      duration: input.duration,
+      visibility: input.visibility === "PUBLIC" ? "PUBLIC" : "STUDENTS_ONLY",
+      questions: {
+        create: input.questions.map((q, i) => ({
+          text: q.text,
+          type: q.type,
+          points: q.points,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          order: i,
+        })),
+      },
+    },
+  });
+  return { ok: true };
+}
+
+export async function deleteQuiz(id: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true } });
+  const quiz = await prisma.quiz.findUnique({ where: { id }, select: { createdById: true } });
+  if (!quiz) throw new Error("Not found");
+  if (quiz.createdById !== user.id && profile?.role !== "ADMIN") throw new Error("Forbidden");
+
+  // Delete attempts first (no cascade on Quiz → QuizAttempt)
+  await prisma.quizAttempt.deleteMany({ where: { quizId: id } });
+
+  // Now safe to delete the quiz (QuizQuestions cascade automatically)
+  await prisma.quiz.delete({ where: { id } });
+  return { ok: true };
+}
+
 export async function getQuizzesBySubject(subjectName: string) {
   const subject = await prisma.subject.findFirst({
     where: { name: { equals: subjectName, mode: "insensitive" } },
   });
   if (!subject) return { adminContent: [], teacherContent: [] };
 
+  // Get current user + their grade
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let studentGrade: string | null = null;
+  let attempts: { quizId: string; score: number | null }[] = [];
+  let assignedTeacherIds: string[] = [];
+
+  if (user) {
+    const [studentDetails, userAttempts, teacherLinks] = await Promise.all([
+      prisma.studentDetails.findUnique({ where: { id: user.id }, select: { grade: true } }),
+      prisma.quizAttempt.findMany({ where: { studentId: user.id }, select: { quizId: true, score: true } }),
+      prisma.teacherStudentLink.findMany({ where: { studentId: user.id }, select: { teacherId: true } }),
+    ]);
+    studentGrade = studentDetails?.grade ?? null;
+    attempts = userAttempts;
+    assignedTeacherIds = teacherLinks.map((l) => l.teacherId);
+  }
+
+  // Normalize: StudentDetails stores grade as "6", content uses "Grade 6"
+  const normalizedGrade = studentGrade
+    ? (/^\d+$/.test(studentGrade) ? `Grade ${studentGrade}` : studentGrade)
+    : null;
+
   const quizzes = await prisma.quiz.findMany({
     where: {
       subjectId: subject.id,
       status: "APPROVED",
+      AND: [
+        // Grade filter: match student's grade or quizzes with no grade restriction
+        normalizedGrade
+          ? { OR: [{ grade: null }, { grade: normalizedGrade }] }
+          : {},
+        // Visibility filter: PUBLIC or STUDENTS_ONLY from a linked teacher
+        assignedTeacherIds.length > 0
+          ? { OR: [
+              { visibility: "PUBLIC" },
+              { visibility: "STUDENTS_ONLY", createdById: { in: assignedTeacherIds } },
+            ]}
+          : { visibility: "PUBLIC" },
+      ],
     },
     include: {
       _count: { select: { questions: true } },
@@ -91,20 +193,6 @@ export async function getQuizzesBySubject(subjectName: string) {
     },
     orderBy: { createdAt: "desc" },
   });
-
-  // Get current user's attempts
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  let attempts: { quizId: string; score: number | null }[] = [];
-  if (user) {
-    attempts = await prisma.quizAttempt.findMany({
-      where: { studentId: user.id },
-      select: { quizId: true, score: true },
-    });
-  }
 
   const attemptMap = new Map(attempts.map((a) => [a.quizId, a.score]));
 
@@ -198,6 +286,321 @@ export async function getQuizDetails(id: string) {
       options: q.options,
       correctAnswer: q.correctAnswer, // INCLUDE ANSWER
     })),
+  };
+}
+
+// ─── Quiz Dashboard Data ──────────────────────────────────────────────────────
+
+export interface QuizDashboardStats {
+  quizzesTaken: number;
+  avgScore: number;
+  timeSpentHours: number;
+  timeSpentMins: number;
+  timeThisWeekMin: number;
+  improvement: number; // percentage point change, recent 5 vs previous 5
+  percentileLabel: string;
+}
+
+export interface QuizSubjectCard {
+  subjectName: string;
+  slug: string;
+  totalQuizzes: number;
+  completedQuizzes: number;
+  topicCount: number;
+}
+
+export interface RecommendedQuiz {
+  id: string;
+  title: string;
+  subject: string;
+  topic: string;
+  duration: number;
+  questionCount: number;
+  reason: string;
+  reasonType: "weak" | "stale" | "new" | "practice_assigned";
+}
+
+export interface QuizDashboardData {
+  stats: QuizDashboardStats;
+  availableSubjects: QuizSubjectCard[];
+  comingSoonSubjects: string[];
+  recommended: RecommendedQuiz[];
+}
+
+// Predefined Sri Lankan school subject list
+const ALL_KNOWN_SUBJECTS = [
+  "Sinhala", "Mathematics", "Science", "Buddhism", "ICT",
+  "Commerce", "PTS", "Art", "Music", "Drama", "Tamil",
+  "Islam", "Hinduism", "Agriculture", "Technical Drawing",
+];
+
+export async function getQuizDashboardData(): Promise<QuizDashboardData | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  // Get student's grade for filtering
+  const studentDetails = await prisma.studentDetails.findUnique({
+    where: { id: user.id },
+    select: { grade: true },
+  });
+  const studentGrade = studentDetails?.grade ?? null;
+  // Normalize: StudentDetails stores grade as "6", content uses "Grade 6"
+  const normalizedGrade = studentGrade
+    ? (/^\d+$/.test(studentGrade) ? `Grade ${studentGrade}` : studentGrade)
+    : null;
+
+  const teacherLinks = await prisma.teacherStudentLink.findMany({
+    where: { studentId: user.id },
+    select: { teacherId: true },
+  });
+  const dashboardTeacherIds = teacherLinks.map((l) => l.teacherId);
+
+  const [allAttempts, allQuizzes, totalAttemptors, notifications] = await Promise.all([
+    prisma.quizAttempt.findMany({
+      where: { studentId: user.id, submittedAt: { not: null } },
+      include: { quiz: { include: { subject: true } } },
+      orderBy: { submittedAt: "desc" },
+    }),
+    prisma.quiz.findMany({
+      where: {
+        status: "APPROVED",
+        AND: [
+          normalizedGrade
+            ? { OR: [{ grade: null }, { grade: normalizedGrade }] }
+            : {},
+          dashboardTeacherIds.length > 0
+            ? { OR: [
+                { visibility: "PUBLIC" },
+                { visibility: "STUDENTS_ONLY", createdById: { in: dashboardTeacherIds } },
+              ]}
+            : { visibility: "PUBLIC" },
+        ],
+      },
+      include: {
+        subject: true,
+        _count: { select: { questions: true } },
+        attempts: {
+          where: { studentId: user.id, submittedAt: { not: null } },
+          select: { score: true, submittedAt: true },
+          orderBy: { submittedAt: "desc" },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.quizAttempt.groupBy({
+      by: ["studentId"],
+      where: { submittedAt: { not: null } },
+      _count: { studentId: true },
+      orderBy: { _count: { studentId: "desc" } },
+    }),
+    prisma.notification.findMany({
+      where: { userId: user.id, type: "practice_assigned", isRead: false },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    }),
+  ]);
+
+  // ── Stats ──
+  const quizzesTaken = allAttempts.length;
+  const scores = allAttempts.map((a) => a.score ?? 0);
+  const avgScore = quizzesTaken > 0 ? Math.round(scores.reduce((s, v) => s + v, 0) / scores.length) : 0;
+
+  const timeSpentMin = allAttempts.reduce((sum, a) => sum + (a.quiz.duration ?? 0), 0);
+  const timeSpentHours = Math.floor(timeSpentMin / 60);
+  const timeSpentMins = timeSpentMin % 60;
+  const timeThisWeekMin = allAttempts
+    .filter((a) => a.submittedAt! >= sevenDaysAgo)
+    .reduce((sum, a) => sum + (a.quiz.duration ?? 0), 0);
+
+  const sortedByDate = [...allAttempts].sort((a, b) => a.submittedAt!.getTime() - b.submittedAt!.getTime());
+  const recentScores = sortedByDate.slice(-5).map((a) => a.score ?? 0);
+  const prevScores = sortedByDate.slice(-10, -5).map((a) => a.score ?? 0);
+  const improvement =
+    recentScores.length > 0 && prevScores.length > 0
+      ? Math.round(
+          (recentScores.reduce((s, v) => s + v, 0) / recentScores.length -
+            prevScores.reduce((s, v) => s + v, 0) / prevScores.length) * 10
+        ) / 10
+      : 0;
+
+  // Percentile among all students by quiz count
+  const myRank = totalAttemptors.findIndex((r) => r.studentId === user.id);
+  const percentileLabel =
+    totalAttemptors.length > 1 && myRank !== -1
+      ? `Top ${Math.max(1, Math.round(((myRank + 1) / totalAttemptors.length) * 100))}% of class`
+      : quizzesTaken > 0
+      ? "Keep going!"
+      : "Start your first quiz";
+
+  // ── Available subjects ──
+  const subjectMap = new Map<
+    string,
+    { totalQuizzes: number; completedQuizzes: number; topics: Set<string> }
+  >();
+  for (const quiz of allQuizzes) {
+    const name = quiz.subject.name;
+    if (!subjectMap.has(name)) subjectMap.set(name, { totalQuizzes: 0, completedQuizzes: 0, topics: new Set() });
+    const entry = subjectMap.get(name)!;
+    entry.totalQuizzes++;
+    if (quiz.attempts.length > 0) entry.completedQuizzes++;
+    entry.topics.add(quiz.topic);
+  }
+
+  const availableSubjects: QuizSubjectCard[] = Array.from(subjectMap.entries()).map(([name, data]) => ({
+    subjectName: name,
+    slug: name.toLowerCase().replace(/\s+/g, "-"),
+    totalQuizzes: data.totalQuizzes,
+    completedQuizzes: data.completedQuizzes,
+    topicCount: data.topics.size,
+  }));
+
+  const availableSubjectNames = new Set(availableSubjects.map((s) => s.subjectName.toLowerCase()));
+  const comingSoonSubjects = ALL_KNOWN_SUBJECTS.filter(
+    (s) => !availableSubjectNames.has(s.toLowerCase())
+  );
+
+  // ── Recommended quizzes ──
+  const attemptedQuizIds = new Set(allAttempts.map((a) => a.quizId));
+  const topicScores = new Map<string, { scores: number[]; subjectName: string; lastDate: Date }>();
+  for (const a of allAttempts) {
+    const key = `${a.quiz.topic}||${a.quiz.subject.name}`;
+    if (!topicScores.has(key))
+      topicScores.set(key, { scores: [], subjectName: a.quiz.subject.name, lastDate: a.submittedAt! });
+    const entry = topicScores.get(key)!;
+    entry.scores.push(a.score ?? 0);
+    if (a.submittedAt! > entry.lastDate) entry.lastDate = a.submittedAt!;
+  }
+
+  const recommended: RecommendedQuiz[] = [];
+  const addedIds = new Set<string>();
+
+  // Priority 0: teacher-assigned practice topics
+  for (const notif of notifications) {
+    const data = notif.data as { topic?: string; subject?: string } | null;
+    if (!data?.topic) continue;
+    const match = allQuizzes.find(
+      (q) =>
+        q.topic.toLowerCase().includes(data.topic!.toLowerCase()) &&
+        !attemptedQuizIds.has(q.id) &&
+        !addedIds.has(q.id)
+    );
+    if (match) {
+      recommended.push({
+        id: match.id,
+        title: match.title,
+        subject: match.subject.name,
+        topic: match.topic,
+        duration: match.duration,
+        questionCount: match._count.questions,
+        reason: `Assigned by your teacher`,
+        reasonType: "practice_assigned",
+      });
+      addedIds.add(match.id);
+      if (recommended.length >= 3) break;
+    }
+  }
+
+  // Priority 1: weak topics (avg score < 65%)
+  if (recommended.length < 3) {
+    const weakTopics = Array.from(topicScores.entries())
+      .map(([key, v]) => ({
+        topic: key.split("||")[0],
+        subject: v.subjectName,
+        avgScore: Math.round(v.scores.reduce((s, x) => s + x, 0) / v.scores.length),
+      }))
+      .filter((t) => t.avgScore < 65)
+      .sort((a, b) => a.avgScore - b.avgScore);
+
+    for (const weak of weakTopics) {
+      const quiz = allQuizzes.find(
+        (q) =>
+          q.topic === weak.topic &&
+          q.subject.name === weak.subject &&
+          !attemptedQuizIds.has(q.id) &&
+          !addedIds.has(q.id)
+      );
+      if (quiz) {
+        recommended.push({
+          id: quiz.id,
+          title: quiz.title,
+          subject: quiz.subject.name,
+          topic: quiz.topic,
+          duration: quiz.duration,
+          questionCount: quiz._count.questions,
+          reason: `Weak area — ${weak.avgScore}% average score`,
+          reasonType: "weak",
+        });
+        addedIds.add(quiz.id);
+        if (recommended.length >= 3) break;
+      }
+    }
+  }
+
+  // Priority 2: topics not practiced in >7 days
+  if (recommended.length < 3) {
+    for (const [key, v] of topicScores) {
+      const daysSince = Math.floor((Date.now() - v.lastDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSince <= 7) continue;
+      const topic = key.split("||")[0];
+      const quiz = allQuizzes.find(
+        (q) => q.topic === topic && !attemptedQuizIds.has(q.id) && !addedIds.has(q.id)
+      );
+      if (quiz) {
+        recommended.push({
+          id: quiz.id,
+          title: quiz.title,
+          subject: quiz.subject.name,
+          topic: quiz.topic,
+          duration: quiz.duration,
+          questionCount: quiz._count.questions,
+          reason: `Not practiced in ${daysSince} day${daysSince !== 1 ? "s" : ""}`,
+          reasonType: "stale",
+        });
+        addedIds.add(quiz.id);
+        if (recommended.length >= 3) break;
+      }
+    }
+  }
+
+  // Priority 3: any unattempted quiz
+  if (recommended.length < 3) {
+    for (const quiz of allQuizzes) {
+      if (!attemptedQuizIds.has(quiz.id) && !addedIds.has(quiz.id)) {
+        recommended.push({
+          id: quiz.id,
+          title: quiz.title,
+          subject: quiz.subject.name,
+          topic: quiz.topic,
+          duration: quiz.duration,
+          questionCount: quiz._count.questions,
+          reason: "New quiz available",
+          reasonType: "new",
+        });
+        addedIds.add(quiz.id);
+        if (recommended.length >= 3) break;
+      }
+    }
+  }
+
+  return {
+    stats: {
+      quizzesTaken,
+      avgScore,
+      timeSpentHours,
+      timeSpentMins,
+      timeThisWeekMin,
+      improvement,
+      percentileLabel,
+    },
+    availableSubjects,
+    comingSoonSubjects,
+    recommended,
   };
 }
 

@@ -11,9 +11,10 @@ import { ArrowLeft, Upload, FileUp, X, Check, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { createShortNote } from "@/lib/actions/short-note";
 import { uploadFiles } from "@/lib/supabase/storage";
+import { RichTextEditor } from "@/components/editor/rich-text-editor";
 
 const GRADES = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
-const ACCEPTED_TYPES = ".pdf,.docx,.ppt,.pptx,.txt";
+const ACCEPTED_TYPES = ".pdf,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.webp";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export default function UploadShortNotesPage() {
@@ -112,14 +113,12 @@ export default function UploadShortNotesPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Content</CardTitle>
               </CardHeader>
-              <CardContent>
-                <textarea
-                  className="min-h-[180px] w-full rounded-md border bg-transparent p-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  placeholder="Write your short note content here..."
+              <CardContent className="p-0">
+                <RichTextEditor
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  rows={6}
-                  required
+                  onChange={setContent}
+                  placeholder="Write your short note content here..."
+                  minHeight={280}
                 />
               </CardContent>
             </Card>
@@ -136,7 +135,7 @@ export default function UploadShortNotesPage() {
                 >
                   <FileUp className="h-8 w-8 text-muted-foreground" />
                   <p className="text-sm font-medium">Click to upload or drag and drop</p>
-                  <p className="text-xs text-muted-foreground">PDF, DOCX, PPT, TXT (max 10MB)</p>
+                  <p className="text-xs text-muted-foreground">PDF, DOCX, PPT, TXT, Images (JPG, PNG, GIF, WebP) — max 10MB</p>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -236,7 +235,7 @@ export default function UploadShortNotesPage() {
             <Button
               type="submit"
               className="w-full bg-purple-600 hover:bg-purple-700"
-              disabled={!title || !subject || !grade || !topic || !content || saving}
+              disabled={!title || !subject || !grade || !topic || saving}
             >
               {saving ? (
                 <>

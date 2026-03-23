@@ -1,24 +1,52 @@
 import { StudentNav } from "./components/student-nav";
 import { StudentHeader } from "./components/student-header";
+import { CursorGlow } from "./components/cursor-glow";
+import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
 
-export default function StudentLayout({
+export default async function StudentLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const [progress, profile] = await Promise.all([
+    user
+      ? prisma.studentProgress.findUnique({
+          where: { studentId: user.id },
+          select: { studyStreak: true },
+        })
+      : null,
+    user
+      ? prisma.profile.findUnique({
+          where: { id: user.id },
+          select: { firstName: true, lastName: true },
+        })
+      : null,
+  ]);
+
+  const studyStreak = progress?.studyStreak ?? 0;
+  const firstName = profile?.firstName ?? "";
+  const lastName = profile?.lastName ?? "";
+  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || "?";
+  const avatarEmoji = (user?.user_metadata?.avatarEmoji as string | undefined) ?? null;
+
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <StudentHeader />
+    <div className="min-h-screen bg-background text-foreground flex flex-col relative">
+      <CursorGlow />
+      <StudentHeader streak={studyStreak} initials={initials} avatarEmoji={avatarEmoji} />
 
       {/* Navigation Bar */}
-      <div className="bg-slate-900 text-white shadow-inner">
-        <div className="container mx-auto px-4 py-2">
-            <StudentNav />
+      <div className="bg-[#4D2FB2] backdrop-blur-md border-b border-[#696FC7]/30 shadow-lg shadow-[#4D2FB2]/40">
+        <div className="flex justify-center px-4 py-3">
+          <StudentNav />
         </div>
       </div>
 
       {/* Main Content Area */}
-      <main className="container mx-auto px-4 py-8 flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <main className="container mx-auto px-4 py-8 flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
         {children}
       </main>
     </div>

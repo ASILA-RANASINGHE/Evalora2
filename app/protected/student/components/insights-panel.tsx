@@ -14,10 +14,10 @@ const CATEGORY_CONFIG = {
 
 export function InsightsPanel() {
   return (
-    <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+    <Card className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#4D2FB2]/5 via-[#FFFDF1] to-[#B7BDF7]/15 dark:from-[#4D2FB2]/20 dark:via-[#4D2FB2]/10 dark:to-[#696FC7]/5 backdrop-blur-sm shadow-sm ring-1 ring-[#B7BDF7]/30">
       <CardHeader>
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-purple-500" />
+          <Sparkles className="h-5 w-5 text-[#4D2FB2] dark:text-[#B7BDF7]" />
           Insights
         </CardTitle>
       </CardHeader>

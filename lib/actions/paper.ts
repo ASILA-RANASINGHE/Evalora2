@@ -67,7 +67,8 @@ export async function createPaper(input: CreatePaperInput) {
       where: { id: user.id },
     });
     if (!teacherDetails) throw new Error("Teacher details not found");
-    if (teacherDetails.subject !== input.subject) {
+    const allowedSubjects = teacherDetails.subject.split(',').map(s => s.trim().toLowerCase());
+    if (!allowedSubjects.includes(input.subject.trim().toLowerCase())) {
       throw new Error(`You are not authorized to upload content for "${input.subject}".`);
     }
   }
@@ -126,6 +127,130 @@ export async function createPaper(input: CreatePaperInput) {
   return { id: paper.id };
 }
 
+export async function updatePaperMetadata(
+  id: string,
+  input: {
+    title: string;
+    grade: string;
+    term: PaperTerm;
+    duration: number;
+    year?: number;
+    isModel: boolean;
+    passPercentage: number;
+    instructions?: string;
+    visibility: string;
+  }
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const paper = await prisma.paper.findUnique({ where: { id }, select: { createdById: true } });
+  if (!paper) throw new Error("Not found");
+  if (paper.createdById !== user.id) throw new Error("Forbidden");
+
+  await prisma.paper.update({
+    where: { id },
+    data: {
+      title: input.title,
+      grade: input.grade,
+      term: input.term,
+      duration: input.duration,
+      year: input.year || null,
+      isModel: input.isModel,
+      passPercentage: input.passPercentage,
+      instructions: input.instructions || null,
+      visibility: input.visibility === "PUBLIC" ? "PUBLIC" : "STUDENTS_ONLY",
+    },
+  });
+  return { ok: true };
+}
+
+export async function getPaperWithQuestions(id: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true } });
+  const paper = await prisma.paper.findUnique({
+    where: { id },
+    include: {
+      subject: { select: { name: true } },
+      questions: { orderBy: { order: "asc" } },
+    },
+  });
+  if (!paper) return null;
+  if (paper.createdById !== user.id && profile?.role !== "ADMIN") return null;
+
+  return {
+    id: paper.id,
+    title: paper.title,
+    subject: paper.subject.name,
+    term: paper.term,
+    grade: paper.grade,
+    year: paper.year,
+    duration: paper.duration,
+    isModel: paper.isModel,
+    mcqCount: paper.mcqCount,
+    mcqMarks: paper.mcqMarks,
+    essayCount: paper.essayCount,
+    essayMarks: paper.essayMarks,
+    totalMarks: paper.totalMarks,
+    passPercentage: paper.passPercentage,
+    instructions: paper.instructions,
+    visibility: paper.visibility,
+    questions: paper.questions.map((q) => ({
+      id: q.id,
+      text: q.text,
+      type: q.type,
+      points: q.points,
+      options: q.options as string[],
+      correctAnswer: q.correctAnswer,
+      order: q.order,
+    })),
+  };
+}
+
+export async function updatePaperQuestion(
+  questionId: string,
+  input: { text: string; options: string[]; correctAnswer: string }
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const question = await prisma.paperQuestion.findUnique({
+    where: { id: questionId },
+    include: { paper: { select: { createdById: true } } },
+  });
+  if (!question) throw new Error("Not found");
+  if (question.paper.createdById !== user.id) throw new Error("Forbidden");
+
+  await prisma.paperQuestion.update({
+    where: { id: questionId },
+    data: { text: input.text, options: input.options, correctAnswer: input.correctAnswer },
+  });
+  return { ok: true };
+}
+
+export async function deletePaper(id: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true } });
+  const paper = await prisma.paper.findUnique({ where: { id }, select: { createdById: true } });
+  if (!paper) throw new Error("Not found");
+  if (paper.createdById !== user.id && profile?.role !== "ADMIN") throw new Error("Forbidden");
+
+  // Delete attempts first (ManualReviews cascade automatically from PaperAttempt)
+  await prisma.paperAttempt.deleteMany({ where: { paperId: id } });
+
+  // Now safe to delete the paper (PaperQuestions cascade automatically)
+  await prisma.paper.delete({ where: { id } });
+  return { ok: true };
+}
+
 export async function getPapersBySubjectAndTerm(
   subjectName: string,
   term: string
@@ -144,11 +269,35 @@ export async function getPapersBySubjectAndTerm(
   const paperTerm = termMap[term];
   if (!paperTerm) return { adminContent: [], teacherContent: [] };
 
+  // Get student's grade and assigned teachers for visibility filtering
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  let studentGrade: string | null = null;
+  let assignedTeacherIds: string[] = [];
+
+  if (user) {
+    const [sd, teacherLinks] = await Promise.all([
+      prisma.studentDetails.findUnique({ where: { id: user.id }, select: { grade: true } }),
+      prisma.teacherStudentLink.findMany({ where: { studentId: user.id }, select: { teacherId: true } }),
+    ]);
+    studentGrade = sd?.grade ?? null;
+    assignedTeacherIds = teacherLinks.map((l) => l.teacherId);
+  }
+
   const papers = await prisma.paper.findMany({
     where: {
       subjectId: subject.id,
       term: paperTerm,
       status: "APPROVED",
+      OR: [
+        // PUBLIC: Paper.grade is required (non-nullable), so just match exact grade
+        // If student has no grade, show all PUBLIC papers
+        studentGrade
+          ? { visibility: "PUBLIC", grade: studentGrade }
+          : { visibility: "PUBLIC" },
+        // STUDENTS_ONLY: visible only to students assigned to the creating teacher
+        { visibility: "STUDENTS_ONLY", createdById: { in: assignedTeacherIds } },
+      ],
     },
     include: {
       createdBy: { select: { role: true } },
@@ -204,6 +353,7 @@ export async function getPaperById(id: string) {
     passPercentage: paper.passPercentage,
     instructions: paper.instructions,
     createdBy: `${paper.createdBy.firstName ?? ""} ${paper.createdBy.lastName ?? ""}`.trim() || "Teacher",
+    createdAt: paper.createdAt,
   };
 }
 
@@ -878,6 +1028,47 @@ export async function requestManualReview(attemptId: string, questionId: string)
       where: { id: attemptId },
       data: { flagged: [...currentFlagged, reviewKey] },
     });
+  }
+
+  // Create (or skip if already exists) a ManualReview record with denormalized question data
+  const existingReview = await prisma.manualReview.findUnique({
+    where: { attemptId_questionId: { attemptId, questionId } },
+  });
+
+  if (!existingReview) {
+    // Extract question data from the stored results JSON
+    const examResults = attempt.results as unknown as ExamResults | null;
+    const results: QuestionResult[] = examResults?.questionResults ?? [];
+    const qr = results.find((r) => r.questionId === questionId);
+
+    if (qr) {
+      // Build display label e.g. "Q1 (a)(i)"
+      let questionDisplay = "";
+      if (qr.mainQuestionNumber) {
+        questionDisplay = `Q${qr.mainQuestionNumber}`;
+        if (qr.subLabel) questionDisplay += ` (${qr.subLabel})`;
+        if (qr.subSubLabel) questionDisplay += `(${qr.subSubLabel})`;
+      } else {
+        questionDisplay = `Q${qr.questionNumber}`;
+      }
+
+      await prisma.manualReview.create({
+        data: {
+          attemptId,
+          questionId,
+          studentId: user.id,
+          questionText: qr.questionText,
+          questionType: qr.questionType,
+          questionDisplay,
+          marksAvailable: qr.marksAvailable,
+          correctAnswer: qr.correctAnswer,
+          studentAnswer: qr.studentAnswer,
+          aiMarks: qr.marksAwarded,
+          aiConfidence: qr.aiConfidence,
+          aiFeedback: qr.aiFeedback ?? "",
+        },
+      });
+    }
   }
 
   return { ok: true };

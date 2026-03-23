@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ChevronLeft, Clock, User } from "lucide-react";
 import { getShortNoteById } from "@/lib/actions/short-note";
 import { notFound } from "next/navigation";
+import { RichTextContent } from "@/components/editor/rich-text-content";
 
 export default async function ShortNoteViewerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -48,9 +49,7 @@ export default async function ShortNoteViewerPage({ params }: { params: Promise<
             </div>
           </header>
 
-          <article className="prose prose-purple max-w-none text-gray-800 whitespace-pre-wrap">
-            {note.content}
-          </article>
+          <RichTextContent html={note.content} className="text-gray-800" />
         </CardContent>
       </Card>
     </div>
