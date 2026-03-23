@@ -211,6 +211,7 @@ model Subject {
 model Quiz {
   id        String     @id @default(uuid()) @db.Uuid
   title     String
+  grade     String?    // "Grade 6", "Grade 7", … null = visible to all grades
   subjectId String     @db.Uuid
   topic     String
   type      QuizType   @default(TOPIC_BASED)

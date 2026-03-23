@@ -109,6 +109,10 @@ export async function getNotesBySubject(subjectName: string) {
   ]);
 
   const studentGrade = studentDetails?.grade ?? null;
+  // Normalize: StudentDetails stores grade as "6", content uses "Grade 6"
+  const normalizedGrade = studentGrade
+    ? (/^\d+$/.test(studentGrade) ? `Grade ${studentGrade}` : studentGrade)
+    : null;
   const assignedTeacherIds = teacherLinks.map((l) => l.teacherId);
 
   const subject = await prisma.subject.findFirst({
@@ -120,13 +124,18 @@ export async function getNotesBySubject(subjectName: string) {
     where: {
       subjectId: subject.id,
       status: "APPROVED",
-      OR: [
-        // PUBLIC: visible if grade matches student's grade or no grade restriction
-        studentGrade
-          ? { visibility: "PUBLIC", OR: [{ grade: null }, { grade: studentGrade }] }
+      AND: [
+        // Grade filter: match student's grade or notes with no grade restriction
+        normalizedGrade
+          ? { OR: [{ grade: null }, { grade: normalizedGrade }] }
+          : {},
+        // Visibility filter: PUBLIC or STUDENTS_ONLY from a linked teacher
+        assignedTeacherIds.length > 0
+          ? { OR: [
+              { visibility: "PUBLIC" },
+              { visibility: "STUDENTS_ONLY", createdById: { in: assignedTeacherIds } },
+            ]}
           : { visibility: "PUBLIC" },
-        // STUDENTS_ONLY: visible only to students assigned to the creating teacher
-        { visibility: "STUDENTS_ONLY", createdById: { in: assignedTeacherIds } },
       ],
     },
     include: {

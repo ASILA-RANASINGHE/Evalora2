@@ -18,7 +18,7 @@ import { useState } from "react";
 
 type Role = "STUDENT" | "TEACHER" | "PARENT" | "ADMIN";
 
-const GRADES = ["6", "7", "8", "9", "10", "11"];
+const GRADES = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"];
 const ALL_SUBJECTS = [
   "Mathematics", "Physics", "Chemistry", "Biology", "English Language",
   "Sinhala Language", "Tamil Language", "History", "Geography",
@@ -245,7 +245,7 @@ export function SignUpForm({
                     >
                       {GRADES.map((g) => (
                         <option key={g} value={g}>
-                          Grade {g}
+                          {g}
                         </option>
                       ))}
                     </select>

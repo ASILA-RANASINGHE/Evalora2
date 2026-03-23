@@ -265,11 +265,27 @@ export async function getPapersBySubjectAndTerm(
   const paperTerm = termMap[term];
   if (!paperTerm) return { adminContent: [], teacherContent: [] };
 
+  // Get student's grade for filtering
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  let studentGrade: string | null = null;
+  if (user) {
+    const sd = await prisma.studentDetails.findUnique({ where: { id: user.id }, select: { grade: true } });
+    studentGrade = sd?.grade ?? null;
+  }
+
+  // Normalize: StudentDetails stores grade as "6", content uses "Grade 6"
+  const normalizedGrade = studentGrade
+    ? (/^\d+$/.test(studentGrade) ? `Grade ${studentGrade}` : studentGrade)
+    : null;
+
   const papers = await prisma.paper.findMany({
     where: {
       subjectId: subject.id,
       term: paperTerm,
       status: "APPROVED",
+      // Match papers for this student's grade (or papers with no grade set)
+      OR: [{ grade: normalizedGrade ?? "" }, { grade: "" }],
     },
     include: {
       createdBy: { select: { role: true } },

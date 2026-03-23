@@ -5,8 +5,9 @@ import { Pool } from "pg";
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
 function createPrismaClient() {
-  // Use DATABASE_URL (pooler) for the Next.js app
-  const connectionString = process.env.DATABASE_URL;
+  // Prefer DIRECT_URL (port 5432) to avoid PgBouncer idle-connection timeouts.
+  // Fall back to DATABASE_URL if DIRECT_URL is not set.
+  const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error("DATABASE_URL environment variable is not set");
   }
@@ -15,10 +16,9 @@ function createPrismaClient() {
     connectionString,
     // Required for Supabase
     ssl: { rejectUnauthorized: false },
-    // Limit pool size to work better with PgBouncer
-    max: 1,
-    idleTimeoutMillis: 0,
-    connectionTimeoutMillis: 10000,
+    max: 5,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 30000,
   });
 
   const adapter = new PrismaPg(pool);

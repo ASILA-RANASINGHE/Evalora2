@@ -6,6 +6,7 @@ import type { QuizType, QuestionType } from "@/lib/generated/prisma/enums";
 
 interface CreateQuizInput {
   title: string;
+  grade?: string;
   subject: string;
   topic: string;
   type: QuizType;
@@ -53,6 +54,7 @@ export async function createQuiz(input: CreateQuizInput) {
   const quiz = await prisma.quiz.create({
     data: {
       title: input.title,
+      grade: input.grade ?? null,
       subjectId: subject.id,
       topic: input.topic,
       type: input.type,
@@ -139,10 +141,47 @@ export async function getQuizzesBySubject(subjectName: string) {
   });
   if (!subject) return { adminContent: [], teacherContent: [] };
 
+  // Get current user + their grade
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let studentGrade: string | null = null;
+  let attempts: { quizId: string; score: number | null }[] = [];
+  let assignedTeacherIds: string[] = [];
+
+  if (user) {
+    const [studentDetails, userAttempts, teacherLinks] = await Promise.all([
+      prisma.studentDetails.findUnique({ where: { id: user.id }, select: { grade: true } }),
+      prisma.quizAttempt.findMany({ where: { studentId: user.id }, select: { quizId: true, score: true } }),
+      prisma.teacherStudentLink.findMany({ where: { studentId: user.id }, select: { teacherId: true } }),
+    ]);
+    studentGrade = studentDetails?.grade ?? null;
+    attempts = userAttempts;
+    assignedTeacherIds = teacherLinks.map((l) => l.teacherId);
+  }
+
+  // Normalize: StudentDetails stores grade as "6", content uses "Grade 6"
+  const normalizedGrade = studentGrade
+    ? (/^\d+$/.test(studentGrade) ? `Grade ${studentGrade}` : studentGrade)
+    : null;
+
   const quizzes = await prisma.quiz.findMany({
     where: {
       subjectId: subject.id,
       status: "APPROVED",
+      AND: [
+        // Grade filter: match student's grade or quizzes with no grade restriction
+        normalizedGrade
+          ? { OR: [{ grade: null }, { grade: normalizedGrade }] }
+          : {},
+        // Visibility filter: PUBLIC or STUDENTS_ONLY from a linked teacher
+        assignedTeacherIds.length > 0
+          ? { OR: [
+              { visibility: "PUBLIC" },
+              { visibility: "STUDENTS_ONLY", createdById: { in: assignedTeacherIds } },
+            ]}
+          : { visibility: "PUBLIC" },
+      ],
     },
     include: {
       _count: { select: { questions: true } },
@@ -150,20 +189,6 @@ export async function getQuizzesBySubject(subjectName: string) {
     },
     orderBy: { createdAt: "desc" },
   });
-
-  // Get current user's attempts
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  let attempts: { quizId: string; score: number | null }[] = [];
-  if (user) {
-    attempts = await prisma.quizAttempt.findMany({
-      where: { studentId: user.id },
-      select: { quizId: true, score: true },
-    });
-  }
 
   const attemptMap = new Map(attempts.map((a) => [a.quizId, a.score]));
 
@@ -314,6 +339,23 @@ export async function getQuizDashboardData(): Promise<QuizDashboardData | null> 
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
+  // Get student's grade for filtering
+  const studentDetails = await prisma.studentDetails.findUnique({
+    where: { id: user.id },
+    select: { grade: true },
+  });
+  const studentGrade = studentDetails?.grade ?? null;
+  // Normalize: StudentDetails stores grade as "6", content uses "Grade 6"
+  const normalizedGrade = studentGrade
+    ? (/^\d+$/.test(studentGrade) ? `Grade ${studentGrade}` : studentGrade)
+    : null;
+
+  const teacherLinks = await prisma.teacherStudentLink.findMany({
+    where: { studentId: user.id },
+    select: { teacherId: true },
+  });
+  const dashboardTeacherIds = teacherLinks.map((l) => l.teacherId);
+
   const [allAttempts, allQuizzes, totalAttemptors, notifications] = await Promise.all([
     prisma.quizAttempt.findMany({
       where: { studentId: user.id, submittedAt: { not: null } },
@@ -321,7 +363,20 @@ export async function getQuizDashboardData(): Promise<QuizDashboardData | null> 
       orderBy: { submittedAt: "desc" },
     }),
     prisma.quiz.findMany({
-      where: { status: "APPROVED" },
+      where: {
+        status: "APPROVED",
+        AND: [
+          normalizedGrade
+            ? { OR: [{ grade: null }, { grade: normalizedGrade }] }
+            : {},
+          dashboardTeacherIds.length > 0
+            ? { OR: [
+                { visibility: "PUBLIC" },
+                { visibility: "STUDENTS_ONLY", createdById: { in: dashboardTeacherIds } },
+              ]}
+            : { visibility: "PUBLIC" },
+        ],
+      },
       include: {
         subject: true,
         _count: { select: { questions: true } },

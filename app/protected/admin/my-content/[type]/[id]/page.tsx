@@ -7,6 +7,7 @@ import { getShortNoteById } from "@/lib/actions/short-note";
 import { getPaperById } from "@/lib/actions/paper";
 import { getQuizDetails } from "@/lib/actions/quiz";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { DeleteContentButton } from "@/app/protected/teacher/my-content/delete-button";
 import { RichTextContent } from "@/components/editor/rich-text-content";
 
@@ -23,6 +24,7 @@ export default async function AdminContentViewPage({
 }: {
   params: Promise<{ type: string; id: string }>;
 }) {
+  await connection();
   const { type, id } = await params;
 
   let content: any = null;
