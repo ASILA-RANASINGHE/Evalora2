@@ -312,7 +312,7 @@ export default function ConversationPage() {
           }));
         }
 
-        const text = aiMsg.parts
+        const text = aiMsg.parts && aiMsg.parts.length > 0
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ? aiMsg.parts.filter((p: any) => p.type === "text").map((p: any) => p.text).join("")
           : (aiMsg as any).content || (aiMsg as any).text || "";

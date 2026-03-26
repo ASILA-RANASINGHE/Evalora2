@@ -2,7 +2,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles, TrendingUp, BookOpen, Clock, Users, FileText } from "lucide-react";
-import { insights } from "@/lib/student-progress-mock-data";
 
 const CATEGORY_CONFIG = {
   performance: { icon: TrendingUp, color: "text-emerald-500", dot: "bg-emerald-500" },
@@ -12,7 +11,7 @@ const CATEGORY_CONFIG = {
   notes: { icon: FileText, color: "text-cyan-500", dot: "bg-cyan-500" },
 };
 
-export function InsightsPanel() {
+export function InsightsPanel({ insights }: { insights: { category: string; message: string }[] }) {
   return (
     <Card className="border-[#B7BDF7]/40 bg-gradient-to-br from-[#4D2FB2]/5 via-[#FFFDF1] to-[#B7BDF7]/15 dark:from-[#4D2FB2]/20 dark:via-[#4D2FB2]/10 dark:to-[#696FC7]/5 backdrop-blur-sm shadow-sm ring-1 ring-[#B7BDF7]/30">
       <CardHeader>
@@ -23,7 +22,7 @@ export function InsightsPanel() {
       </CardHeader>
       <CardContent className="space-y-3">
         {insights.map((insight, i) => {
-          const config = CATEGORY_CONFIG[insight.category];
+          const config = CATEGORY_CONFIG[insight.category as keyof typeof CATEGORY_CONFIG] ?? CATEGORY_CONFIG.performance;
           const Icon = config.icon;
           return (
             <div key={i} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">

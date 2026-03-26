@@ -1,6 +1,4 @@
-"use client";
-
-import { useSearchParams } from "next/navigation";
+import { getChildProgressData, getParentDashboardData } from "@/lib/actions/analytics";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ParentOverviewCards } from "./components/overview-cards";
 import { ChildSummary } from "./components/child-summary";
@@ -12,15 +10,51 @@ import { WeakAreasPanel } from "./components/weak-areas-panel";
 import { PeerComparison } from "./components/peer-comparison";
 import { StudyTimeChart } from "./components/study-time-chart";
 import { ProgressChart } from "./components/progress-chart";
-import { childProgressData, defaultChildId } from "@/lib/parent-progress-mock-data";
 import { TrendingUp, BookOpen, Activity, AlertTriangle } from "lucide-react";
 import { DownloadParentProgressPDF } from "./components/download-pdf-button";
 
-export default function ParentProgressPage() {
-  const searchParams = useSearchParams();
-  const childIdParam = searchParams.get("child");
-  const childId = childIdParam ? parseInt(childIdParam) : defaultChildId;
-  const d = childProgressData[childId] ?? childProgressData[defaultChildId];
+interface Props {
+  searchParams: Promise<{ child?: string }>;
+}
+
+export default async function ParentProgressPage({ searchParams }: Props) {
+  const { child: childParam } = await searchParams;
+
+  // If no child param, get the first linked child from the parent dashboard
+  let studentId = childParam ?? null;
+
+  if (!studentId) {
+    const dashboardData = await getParentDashboardData();
+    studentId = dashboardData?.children[0]?.id ?? null;
+  }
+
+  if (!studentId) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="font-space-grotesk text-2xl font-bold">Learning Progress</h2>
+          <p className="text-muted-foreground text-sm mt-1">
+            No linked students found. Please contact your school to link your children.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const d = await getChildProgressData(studentId);
+
+  if (!d) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="font-space-grotesk text-2xl font-bold">Learning Progress</h2>
+          <p className="text-muted-foreground text-sm mt-1">
+            Unable to load progress data for this student. Please go back and try again.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

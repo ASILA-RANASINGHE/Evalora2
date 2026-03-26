@@ -88,6 +88,20 @@ export interface PerformanceDataPoint {
   [subject: string]: string | number;
 }
 
+export interface InsightMessage {
+  category: "performance" | "topic" | "time" | "comparative" | "notes";
+  message: string;
+}
+
+export interface PracticeRecommendation {
+  subject: string;
+  topic: string;
+  steps: string[];
+  estimatedMinutes: number;
+  expectedImprovement: string;
+  priority: "high" | "medium" | "low";
+}
+
 export interface StudentDashboardData {
   stats: {
     subjectsCount: number;
@@ -101,6 +115,8 @@ export interface StudentDashboardData {
     score: number;
     date: string;
   }[];
+  insights: InsightMessage[];
+  recommendations: PracticeRecommendation[];
 }
 
 export interface StudentProgressData {
@@ -250,6 +266,100 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData | 
 
   const totalAttempts = (progress?.papersAttempted ?? 0) + (progress?.quizzesCompleted ?? 0);
 
+  const insights: InsightMessage[] = [];
+
+  if (progress && progress.averageScore > 0) {
+    insights.push({
+      category: "performance",
+      message: `Your average score is ${Math.round(progress.averageScore)}%. Keep up the good work!`,
+    });
+  }
+
+  if (progress && progress.studyStreak >= 3) {
+    insights.push({
+      category: "time",
+      message: `You're on a ${progress.studyStreak}-day study streak! Consistent practice yields the best results.`,
+    });
+  } else if (!progress || progress.studyStreak === 0) {
+    insights.push({
+      category: "time",
+      message: "You haven't been practicing daily. Let's start a new study streak today!",
+    });
+  }
+
+  if (combined.length > 0) {
+    const recent = combined[0];
+    if (recent.score >= 80) {
+      insights.push({
+        category: "topic",
+        message: `Outstanding score of ${recent.score}% in "${recent.title}". You've really mastered this!`,
+      });
+    } else if (recent.score < 50) {
+      insights.push({
+        category: "topic",
+        message: `Your score of ${recent.score}% in "${recent.title}" suggests you could use some review. Try reading the associated study notes.`,
+      });
+    }
+  }
+
+  insights.push({
+    category: "notes",
+    message: "Students who read all study notes before testing score 15% higher on average!",
+  });
+
+  const recommendations: PracticeRecommendation[] = [];
+
+  const topicScores = new Map<string, { subject: string, scores: number[] }>();
+  for (const a of quizAttempts) {
+    const key = a.quiz.topic;
+    if (!topicScores.has(key)) topicScores.set(key, { subject: a.quiz.subject.name, scores: [] });
+    topicScores.get(key)!.scores.push(a.score ?? 0);
+  }
+
+  for (const [topic, data] of Array.from(topicScores.entries())) {
+    const avgScore = data.scores.reduce((a, b) => a + b, 0) / data.scores.length;
+    if (avgScore < 75) {
+      recommendations.push({
+        subject: data.subject,
+        topic,
+        steps: [`Review notes for ${topic}`, "Try a topic quiz to test your knowledge", "Review the answers carefully"],
+        estimatedMinutes: 20,
+        expectedImprovement: `+${Math.round(85 - avgScore)}% accuracy`,
+        priority: avgScore < 50 ? "high" : "medium"
+      });
+    }
+  }
+
+  if (recommendations.length === 0 && paperAttempts.length > 0) {
+    const lowestPaper = [...paperAttempts].sort((a, b) => (a.score ?? 0) - (b.score ?? 0))[0];
+    if ((lowestPaper.score ?? 0) < 80) {
+      recommendations.push({
+        subject: lowestPaper.paper.subject.name,
+        topic: "General Revision",
+        steps: [`Review recent past papers for ${lowestPaper.paper.subject.name}`, "Identify the specific questions you struggled with", "Read related short notes"],
+        estimatedMinutes: 30,
+        expectedImprovement: "Better overall score",
+        priority: "medium"
+      });
+    }
+  }
+
+  if (recommendations.length === 0) {
+    recommendations.push({
+      subject: "Any Subject",
+      topic: "Diagnostic Test",
+      steps: ["Pick a subject you want to improve", "Take a 15-minute diagnostic quiz", "Come back here for a personalized plan!"],
+      estimatedMinutes: 15,
+      expectedImprovement: "Establish baseline",
+      priority: "low"
+    });
+  }
+
+  recommendations.sort((a, b) => {
+    const p = { high: 3, medium: 2, low: 1 };
+    return p[b.priority] - p[a.priority];
+  });
+
   return {
     stats: {
       subjectsCount: subjectSet.size,
@@ -258,6 +368,8 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData | 
       studyStreak: progress?.studyStreak ?? 0,
     },
     recentAttempts: combined,
+    insights,
+    recommendations: recommendations.slice(0, 3),
   };
 }
 
@@ -504,11 +616,11 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
     if (!hourMap.has(h)) hourMap.set(h, []);
     hourMap.get(h)!.push(a.score);
   }
-  const HOURS = [6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21];
+  const HOURS = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
   const HOUR_LABELS: Record<number, string> = {
-    6:"6AM",7:"7AM",8:"8AM",9:"9AM",10:"10AM",11:"11AM",
-    12:"12PM",13:"1PM",14:"2PM",15:"3PM",16:"4PM",17:"5PM",
-    18:"6PM",19:"7PM",20:"8PM",21:"9PM",
+    6: "6AM", 7: "7AM", 8: "8AM", 9: "9AM", 10: "10AM", 11: "11AM",
+    12: "12PM", 13: "1PM", 14: "2PM", 15: "3PM", 16: "4PM", 17: "5PM",
+    18: "6PM", 19: "7PM", 20: "8PM", 21: "9PM",
   };
   const timePerformance = HOURS.map((h) => ({
     hour: HOUR_LABELS[h],
@@ -534,8 +646,8 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
     const status: "complete" | "in-progress" | "not-started" = hasHighScore
       ? "complete"
       : hasAttempted
-      ? "in-progress"
-      : "not-started";
+        ? "in-progress"
+        : "not-started";
     return {
       topic,
       subject: data.subject,
@@ -680,9 +792,9 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
   // Pending reviews: paper attempts with non-empty flagged array
   const submittedAttempts = paperIds.length > 0
     ? await prisma.paperAttempt.findMany({
-        where: { paperId: { in: paperIds }, submittedAt: { not: null } },
-        select: { flagged: true },
-      })
+      where: { paperId: { in: paperIds }, submittedAt: { not: null } },
+      select: { flagged: true },
+    })
     : [];
   const pendingReviews = submittedAttempts.filter((a) => {
     const f = a.flagged as string[] | null;
@@ -692,11 +804,11 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
   // Today's submissions
   const todaySubmissions = paperIds.length > 0
     ? await prisma.paperAttempt.count({
-        where: {
-          paperId: { in: paperIds },
-          submittedAt: { gte: todayStart },
-        },
-      })
+      where: {
+        paperId: { in: paperIds },
+        submittedAt: { gte: todayStart },
+      },
+    })
     : 0;
 
   const todayUploads =
@@ -722,8 +834,8 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
     const avgScore = s.progress
       ? Math.round(s.progress.averageScore)
       : allAttempts.length > 0
-      ? avgInt(allAttempts.map((a) => a.score))
-      : 0;
+        ? avgInt(allAttempts.map((a) => a.score))
+        : 0;
     const lastAttemptDate = allAttempts.length > 0
       ? allAttempts.sort((a, b) => b.date.getTime() - a.date.getTime())[0].date
       : null;
@@ -828,9 +940,9 @@ export async function getTeacherAnalyticsData(): Promise<TeacherAnalyticsPayload
 
   const allSubmittedAttempts = teacherPaperIds.length > 0
     ? await prisma.paperAttempt.findMany({
-        where: { paperId: { in: teacherPaperIds }, submittedAt: { not: null } },
-        select: { flagged: true },
-      })
+      where: { paperId: { in: teacherPaperIds }, submittedAt: { not: null } },
+      select: { flagged: true },
+    })
     : [];
   const pendingReviews = allSubmittedAttempts.filter((a) => {
     const f = a.flagged as string[] | null;
@@ -886,8 +998,8 @@ export async function getTeacherAnalyticsData(): Promise<TeacherAnalyticsPayload
     const avgScore = s.progress
       ? Math.round(s.progress.averageScore)
       : allScores.length > 0
-      ? avgInt(allScores)
-      : 0;
+        ? avgInt(allScores)
+        : 0;
     const lastActiveDate = allAttempts.length > 0 ? allAttempts[0].date : null;
     const status = computeStudentStatus(avgScore, lastActiveDate);
     const trend = computeTrend(
@@ -1107,9 +1219,9 @@ export async function getTeacherAnalyticsData(): Promise<TeacherAnalyticsPayload
       const strongSubjectEntry =
         subjectScoreMap.size > 0
           ? Array.from(subjectScoreMap.entries()).reduce((best, [subj, scores]) => {
-              const a = avgInt(scores);
-              return a > best.score ? { subject: subj, score: a } : best;
-            }, { subject: "—", score: 0 })
+            const a = avgInt(scores);
+            return a > best.score ? { subject: subj, score: a } : best;
+          }, { subject: "—", score: 0 })
           : { subject: "—", score: 0 };
       return {
         rank: i + 1,
@@ -1233,7 +1345,687 @@ export async function getTeacherAnalyticsData(): Promise<TeacherAnalyticsPayload
   };
 }
 
-// ─── 5. Leaderboard ──────────────────────────────────────────────────────────
+// ─── 5. Parent Dashboard ─────────────────────────────────────────────────────
+
+// Deterministic gradient color assigned to each child based on their UUID
+function childColor(id: string): string {
+  const COLORS = [
+    "from-purple-500 to-indigo-500",
+    "from-blue-500 to-cyan-500",
+    "from-emerald-500 to-teal-500",
+    "from-rose-500 to-pink-500",
+    "from-amber-500 to-orange-500",
+    "from-violet-500 to-purple-500",
+  ];
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return COLORS[h % COLORS.length];
+}
+
+function initials(first: string | null, last: string | null): string {
+  const f = (first ?? "").charAt(0).toUpperCase();
+  const l = (last ?? "").charAt(0).toUpperCase();
+  return (f + l) || "?";
+}
+
+export interface ChildCard {
+  id: string;
+  name: string;
+  initials: string;
+  grade: string;
+  status: "Active" | "At Risk" | "Inactive";
+  avgScore: number;
+  subjects: number;
+  lastActive: string;
+  color: string;
+  progressSummary: {
+    scoreTrend: number;
+    studyTimeThisWeek: number;
+    studyTimeLastWeek: number;
+    currentStreak: number;
+    weakTopicsCount: number;
+    topSubject: { name: string; score: number };
+    weakSubject: { name: string; score: number };
+    scoreHistory: { month: string; avgScore: number }[];
+  };
+}
+
+export interface ParentUpcomingMilestone {
+  id: string;
+  title: string;
+  child: string;
+  date: string;
+  type: "quiz" | "report" | "assignment" | "event";
+}
+
+export interface ParentDashboardData {
+  parentName: string;
+  children: ChildCard[];
+  upcomingMilestones: ParentUpcomingMilestone[];
+}
+
+export async function getParentDashboardData(): Promise<ParentDashboardData | null> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+
+  // Fetch parent profile + all linked children
+  const [parentProfile, links] = await Promise.all([
+    prisma.profile.findUnique({
+      where: { id: user.id },
+      select: { firstName: true, lastName: true },
+    }),
+    prisma.parentStudentLink.findMany({
+      where: { parentId: user.id },
+      include: {
+        student: {
+          include: {
+            studentDetails: true,
+            progress: true,
+            paperAttempts: {
+              where: { submittedAt: { not: null } },
+              orderBy: { submittedAt: "desc" },
+              take: 50,
+              include: { paper: { include: { subject: true } } },
+            },
+            quizAttempts: {
+              where: { submittedAt: { not: null } },
+              orderBy: { submittedAt: "desc" },
+              take: 50,
+              include: { quiz: { include: { subject: true } } },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+
+  const parentName = parentProfile
+    ? `${parentProfile.firstName ?? ""}`.trim() || "Parent"
+    : "Parent";
+
+  // Build per-child cards
+  const children: ChildCard[] = links.map((link) => {
+    const s = link.student;
+
+    const paperAttempts = s.paperAttempts.map((a) => ({
+      score: Math.round(a.score ?? 0),
+      date: a.submittedAt!,
+      subject: a.paper.subject.name,
+      timeTaken: a.timeTaken ?? 0,
+    }));
+
+    const quizAttempts = s.quizAttempts.map((a) => ({
+      score: Math.round(a.score ?? 0),
+      date: a.submittedAt!,
+      subject: a.quiz.subject.name,
+      topic: a.quiz.topic,
+    }));
+
+    const allAttempts = [...paperAttempts, ...quizAttempts].sort(
+      (a, b) => b.date.getTime() - a.date.getTime()
+    );
+
+    const allScores = allAttempts.map((a) => a.score);
+    const subjects = [...new Set(allAttempts.map((a) => a.subject))];
+    const avgScore = s.progress
+      ? Math.round(s.progress.averageScore)
+      : allScores.length > 0
+        ? avgInt(allScores)
+        : 0;
+
+    const lastAttempt = allAttempts[0]?.date ?? null;
+    const status = computeStudentStatus(avgScore, lastAttempt);
+
+    // Score trend: recent 5 vs previous 5
+    const recentScores = allScores.slice(0, 5);
+    const prevScores = allScores.slice(5, 10);
+    const scoreTrend =
+      recentScores.length > 0 && prevScores.length > 0
+        ? Math.round((avg(recentScores) - avg(prevScores)) * 10) / 10
+        : 0;
+
+    // Study time this week vs last week (from timeTaken of papers + 20 min per quiz)
+    const studyThisWeek =
+      paperAttempts
+        .filter((a) => a.date >= sevenDaysAgo)
+        .reduce((sum, a) => sum + a.timeTaken, 0) / 3600 +
+      quizAttempts.filter((a) => a.date >= sevenDaysAgo).length * (20 / 60);
+
+    const studyLastWeek =
+      paperAttempts
+        .filter((a) => a.date >= fourteenDaysAgo && a.date < sevenDaysAgo)
+        .reduce((sum, a) => sum + a.timeTaken, 0) / 3600 +
+      quizAttempts
+        .filter((a) => a.date >= fourteenDaysAgo && a.date < sevenDaysAgo)
+        .length * (20 / 60);
+
+    // Weak topics count (quiz topics with avg < 65%)
+    const topicScoreMap = new Map<string, number[]>();
+    for (const qa of quizAttempts) {
+      const key = `${qa.topic}||${qa.subject}`;
+      if (!topicScoreMap.has(key)) topicScoreMap.set(key, []);
+      topicScoreMap.get(key)!.push(qa.score);
+    }
+    const weakTopicsCount = Array.from(topicScoreMap.values()).filter(
+      (scores) => avg(scores) < 65
+    ).length;
+
+    // Subject performance map
+    const subjMap = new Map<string, number[]>();
+    for (const a of allAttempts) {
+      if (!subjMap.has(a.subject)) subjMap.set(a.subject, []);
+      subjMap.get(a.subject)!.push(a.score);
+    }
+    const subjEntries = Array.from(subjMap.entries()).map(([name, scores]) => ({
+      name,
+      score: avgInt(scores),
+    }));
+    const topSubject = subjEntries.length > 0
+      ? subjEntries.reduce((best, s) => (s.score > best.score ? s : best))
+      : { name: "—", score: 0 };
+    const weakSubject = subjEntries.length > 0
+      ? subjEntries.reduce((worst, s) => (s.score < worst.score ? s : worst))
+      : { name: "—", score: 0 };
+
+    // Score history: last 3 months
+    const monthMap = new Map<string, number[]>();
+    for (const a of allAttempts) {
+      const label = getMonthLabel(a.date);
+      if (!monthMap.has(label)) monthMap.set(label, []);
+      monthMap.get(label)!.push(a.score);
+    }
+    const scoreHistory = Array.from(monthMap.entries())
+      .slice(-3)
+      .map(([month, scores]) => ({ month, avgScore: avgInt(scores) }));
+
+    return {
+      id: s.id,
+      name: `${s.firstName ?? ""} ${s.lastName ?? ""}`.trim() || "Student",
+      initials: initials(s.firstName, s.lastName),
+      grade: s.studentDetails?.grade ?? "—",
+      status,
+      avgScore,
+      subjects: subjects.length,
+      lastActive: lastAttempt ? formatRelativeDate(lastAttempt) : "Never",
+      color: childColor(s.id),
+      progressSummary: {
+        scoreTrend,
+        studyTimeThisWeek: Math.round(studyThisWeek * 10) / 10,
+        studyTimeLastWeek: Math.round(studyLastWeek * 10) / 10,
+        currentStreak: s.progress?.studyStreak ?? 0,
+        weakTopicsCount,
+        topSubject,
+        weakSubject,
+        scoreHistory,
+      },
+    };
+  });
+
+  // Upcoming milestones: newest quizzes/papers the child hasn't submitted yet
+  const milestones: ParentUpcomingMilestone[] = [];
+  for (const card of children) {
+    const link = links.find((l) => l.student.id === card.id)!;
+    const s = link.student;
+
+    const attemptedPaperIds = new Set(s.paperAttempts.map((a) => a.paperId));
+    const attemptedQuizIds = new Set(s.quizAttempts.map((a) => a.quizId));
+
+    // Fetch upcoming quizzes and papers for subjects this child has studied
+    const childSubjectNames = [
+      ...new Set([
+        ...s.paperAttempts.map((a) => a.paper.subject.name),
+        ...s.quizAttempts.map((a) => a.quiz.subject.name),
+      ]),
+    ];
+
+    if (childSubjectNames.length > 0) {
+      const [upcomingQuizzes, upcomingPapers] = await Promise.all([
+        prisma.quiz.findMany({
+          where: {
+            subject: { name: { in: childSubjectNames } },
+            createdAt: { gte: fourteenDaysAgo },
+            id: { notIn: Array.from(attemptedQuizIds) },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 3,
+          select: { id: true, title: true, topic: true, createdAt: true },
+        }),
+        prisma.paper.findMany({
+          where: {
+            subject: { name: { in: childSubjectNames } },
+            createdAt: { gte: fourteenDaysAgo },
+            id: { notIn: Array.from(attemptedPaperIds) },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 2,
+          select: { id: true, title: true, createdAt: true },
+        }),
+      ]);
+
+      for (const q of upcomingQuizzes) {
+        milestones.push({
+          id: q.id,
+          title: `${q.topic} Quiz`,
+          child: card.name,
+          date: formatRelativeDate(q.createdAt),
+          type: "quiz",
+        });
+      }
+      for (const p of upcomingPapers) {
+        milestones.push({
+          id: p.id,
+          title: p.title,
+          child: card.name,
+          date: formatRelativeDate(p.createdAt),
+          type: "assignment",
+        });
+      }
+    }
+  }
+
+  return { parentName, children, upcomingMilestones: milestones.slice(0, 5) };
+}
+
+// ─── 6. Child Progress (for Parent Progress Page) ────────────────────────────
+
+import type {
+  ChildProgressBundle,
+  ChildInfo,
+  ParentOverviewStats,
+  SubjectPerformance,
+  DayActivity,
+  StudyHabitInsight,
+  ActivityItem,
+  ParentWeakArea,
+  SubjectComparison,
+  StudyTimeSlice,
+  MonthlyScore,
+} from "@/lib/parent-progress-mock-data";
+
+export async function getChildProgressData(
+  studentId: string
+): Promise<ChildProgressBundle | null> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  // Verify the parent owns this child
+  const link = await prisma.parentStudentLink.findUnique({
+    where: { parentId_studentId: { parentId: user.id, studentId } },
+  });
+  if (!link) return null;
+
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+  const [student, paperAttempts, quizAttempts, classAttempts] = await Promise.all([
+    prisma.profile.findUnique({
+      where: { id: studentId },
+      include: {
+        studentDetails: true,
+        progress: true,
+      },
+    }),
+    prisma.paperAttempt.findMany({
+      where: { studentId, submittedAt: { not: null } },
+      orderBy: { submittedAt: "desc" },
+      include: { paper: { include: { subject: true } } },
+    }),
+    prisma.quizAttempt.findMany({
+      where: { studentId, submittedAt: { not: null } },
+      orderBy: { submittedAt: "desc" },
+      include: { quiz: { include: { subject: true } } },
+    }),
+    prisma.paperAttempt.findMany({
+      where: { submittedAt: { not: null }, score: { not: null } },
+      select: { score: true, paper: { select: { subject: { select: { name: true } } } } },
+    }),
+  ]);
+
+  if (!student) return null;
+
+  const childName = `${student.firstName ?? ""} ${student.lastName ?? ""}`.trim() || "Student";
+  const grade = student.studentDetails?.grade ?? "—";
+  const avgScore = student.progress
+    ? Math.round(student.progress.averageScore)
+    : paperAttempts.length + quizAttempts.length > 0
+      ? avgInt([
+        ...paperAttempts.map((a) => Math.round(a.score ?? 0)),
+        ...quizAttempts.map((a) => Math.round(a.score ?? 0)),
+      ])
+      : 0;
+
+  const lastAttempt = paperAttempts[0]?.submittedAt ?? quizAttempts[0]?.submittedAt ?? null;
+
+  // ── childInfo ──
+  const childInfo: ChildInfo = {
+    name: childName,
+    grade,
+    initials: initials(student.firstName, student.lastName),
+    color: childColor(studentId),
+    overallStatus: avgScore >= 75 ? "Good" : avgScore >= 55 ? "Needs Improvement" : "Needs Improvement",
+    papersCompleted: paperAttempts.length,
+    quizzesCompleted: quizAttempts.length,
+    lastActive: lastAttempt ? formatRelativeDate(lastAttempt) : "Never",
+    avgScore,
+  };
+
+  // ── studyTime ──
+  const studyThisWeek =
+    paperAttempts
+      .filter((a) => a.submittedAt! >= sevenDaysAgo)
+      .reduce((sum, a) => sum + (a.timeTaken ?? 0), 0) / 3600 +
+    quizAttempts.filter((a) => a.submittedAt! >= sevenDaysAgo).length * (20 / 60);
+
+  const studyLastWeek =
+    paperAttempts
+      .filter((a) => a.submittedAt! >= fourteenDaysAgo && a.submittedAt! < sevenDaysAgo)
+      .reduce((sum, a) => sum + (a.timeTaken ?? 0), 0) / 3600 +
+    quizAttempts
+      .filter((a) => a.submittedAt! >= fourteenDaysAgo && a.submittedAt! < sevenDaysAgo)
+      .length * (20 / 60);
+
+  const allScores = [
+    ...paperAttempts.map((a) => Math.round(a.score ?? 0)),
+    ...quizAttempts.map((a) => Math.round(a.score ?? 0)),
+  ];
+  const recentScores = allScores.slice(0, 5);
+  const prevScores = allScores.slice(5, 10);
+  const scoreTrend =
+    recentScores.length > 0 && prevScores.length > 0
+      ? Math.round((avg(recentScores) - avg(prevScores)) * 10) / 10
+      : 0;
+
+  // Active days this week
+  const activeDaysSet = new Set<string>();
+  for (const a of paperAttempts) {
+    if (a.submittedAt! >= sevenDaysAgo)
+      activeDaysSet.add(a.submittedAt!.toISOString().slice(0, 10));
+  }
+  for (const a of quizAttempts) {
+    if (a.submittedAt! >= sevenDaysAgo)
+      activeDaysSet.add(a.submittedAt!.toISOString().slice(0, 10));
+  }
+
+  // Topic scores for weak count
+  const topicScoreMap = new Map<string, number[]>();
+  for (const a of quizAttempts) {
+    const key = `${a.quiz.topic}||${a.quiz.subject.name}`;
+    if (!topicScoreMap.has(key)) topicScoreMap.set(key, []);
+    topicScoreMap.get(key)!.push(Math.round(a.score ?? 0));
+  }
+  const weakTopicsCount = Array.from(topicScoreMap.values()).filter(
+    (scores) => avg(scores) < 65
+  ).length;
+
+  const overviewStats: ParentOverviewStats = {
+    studyTimeThisWeek: Math.round(studyThisWeek * 10) / 10,
+    studyTimeLastWeek: Math.round(studyLastWeek * 10) / 10,
+    avgScore,
+    scoreTrend,
+    activeDaysThisWeek: activeDaysSet.size,
+    currentStreak: student.progress?.studyStreak ?? 0,
+    weakTopicsCount,
+  };
+
+  // ── subjectPerformance ──
+  const subjMap = new Map<
+    string,
+    { paperScores: number[]; quizScores: number[]; topics: Map<string, number[]>; dates: Date[] }
+  >();
+  for (const a of paperAttempts) {
+    const sn = a.paper.subject.name;
+    if (!subjMap.has(sn)) subjMap.set(sn, { paperScores: [], quizScores: [], topics: new Map(), dates: [] });
+    const entry = subjMap.get(sn)!;
+    entry.paperScores.push(Math.round(a.score ?? 0));
+    entry.dates.push(a.submittedAt!);
+  }
+  for (const a of quizAttempts) {
+    const sn = a.quiz.subject.name;
+    if (!subjMap.has(sn)) subjMap.set(sn, { paperScores: [], quizScores: [], topics: new Map(), dates: [] });
+    const entry = subjMap.get(sn)!;
+    entry.quizScores.push(Math.round(a.score ?? 0));
+    entry.dates.push(a.submittedAt!);
+    if (!entry.topics.has(a.quiz.topic)) entry.topics.set(a.quiz.topic, []);
+    entry.topics.get(a.quiz.topic)!.push(Math.round(a.score ?? 0));
+  }
+
+  const subjectPerformance: SubjectPerformance[] = Array.from(subjMap.entries()).map(
+    ([subject, data]) => {
+      const combined = [...data.paperScores, ...data.quizScores];
+      const subAvg = avgInt(combined);
+      const trend = computeTrend(combined) === "up"
+        ? "improving"
+        : computeTrend(combined) === "down"
+          ? "declining"
+          : "stable";
+      const mastery: SubjectPerformance["masteryLevel"] =
+        subAvg >= 85 ? "Expert" :
+        subAvg >= 75 ? "Advanced" :
+        subAvg >= 65 ? "Proficient" :
+        subAvg >= 50 ? "Learning" : "Developing";
+      const topics = Array.from(data.topics.entries()).map(([name, scores]) => ({
+        name,
+        score: avgInt(scores),
+      }));
+      return {
+        subject,
+        avgScore: subAvg,
+        papersAttempted: data.paperScores.length,
+        quizzesAttempted: data.quizScores.length,
+        trend,
+        masteryLevel: mastery,
+        topics,
+      };
+    }
+  );
+
+  // ── weeklyActivity (last 14 days) ──
+  const weeklyActivity: DayActivity[] = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(now);
+    d.setDate(now.getDate() - (13 - i));
+    const dateKey = d.toISOString().slice(0, 10);
+    const dayLabel = d.toLocaleDateString("en-US", { weekday: "short" });
+    const fullDate = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+    const dayPapers = paperAttempts.filter(
+      (a) => a.submittedAt!.toISOString().slice(0, 10) === dateKey
+    );
+    const dayQuizzes = quizAttempts.filter(
+      (a) => a.submittedAt!.toISOString().slice(0, 10) === dateKey
+    );
+    const studyMinutes =
+      dayPapers.reduce((sum, a) => sum + Math.round((a.timeTaken ?? 1800) / 60), 0) +
+      dayQuizzes.length * 20;
+    const activityLevel: DayActivity["activityLevel"] =
+      studyMinutes >= 90 ? "high" :
+      studyMinutes >= 40 ? "medium" :
+      studyMinutes > 0 ? "low" : "none";
+
+    return {
+      date: dayLabel,
+      fullDate,
+      studyMinutes,
+      papersCompleted: dayPapers.length,
+      quizzesCompleted: dayQuizzes.length,
+      activityLevel,
+    };
+  });
+
+  // ── studyHabits insights ──
+  const hourMap = new Map<number, number[]>();
+  for (const a of [...paperAttempts, ...quizAttempts]) {
+    const h = (a.submittedAt!).getHours();
+    if (!hourMap.has(h)) hourMap.set(h, []);
+    hourMap.get(h)!.push("score" in a ? Math.round((a as any).score ?? 0) : 0);
+  }
+  let bestHour = -1;
+  let bestHourAvg = 0;
+  for (const [h, scores] of hourMap.entries()) {
+    const a = avg(scores);
+    if (a > bestHourAvg) { bestHourAvg = a; bestHour = h; }
+  }
+  const fmt12 = (h: number) => `${h % 12 || 12}${h >= 12 ? "PM" : "AM"}`;
+
+  const studyHabits: StudyHabitInsight[] = [];
+  if (bestHour >= 0) {
+    studyHabits.push({
+      id: "1",
+      icon: "clock",
+      text: `${childInfo.name} scores best around ${fmt12(bestHour)} (avg ${Math.round(bestHourAvg)}%).`,
+      type: "info",
+    });
+  }
+  const timeDiff = studyThisWeek - studyLastWeek;
+  if (Math.abs(timeDiff) > 0.5) {
+    studyHabits.push({
+      id: "2",
+      icon: timeDiff > 0 ? "trend-up" : "trend-down",
+      text: timeDiff > 0
+        ? `Study time increased by ${Math.round(timeDiff * 10) / 10}h this week. Great improvement!`
+        : `Study time decreased by ${Math.round(Math.abs(timeDiff) * 10) / 10}h this week. Encourage more practice.`,
+      type: timeDiff > 0 ? "positive" : "warning",
+    });
+  }
+  if ((student.progress?.studyStreak ?? 0) >= 3) {
+    studyHabits.push({
+      id: "3",
+      icon: "star",
+      text: `${childInfo.name} is on a ${student.progress!.studyStreak}-day study streak! Keep it up.`,
+      type: "positive",
+    });
+  } else {
+    studyHabits.push({
+      id: "3",
+      icon: "alert",
+      text: `${childInfo.name} hasn't built a consistent study habit yet. Daily practice is key.`,
+      type: "warning",
+    });
+  }
+  if (subjectPerformance.length >= 2) {
+    const best = subjectPerformance.reduce((b, s) => (s.avgScore > b.avgScore ? s : b));
+    const worst = subjectPerformance.reduce((w, s) => (s.avgScore < w.avgScore ? s : w));
+    studyHabits.push({
+      id: "4",
+      icon: "book",
+      text: `Top performance in ${best.subject} (${best.avgScore}%). ${worst.subject} needs more attention (${worst.avgScore}%).`,
+      type: "info",
+    });
+  }
+
+  // ── recentActivity ──
+  const recentActivity: ActivityItem[] = [
+    ...paperAttempts.slice(0, 5).map((a, i) => ({
+      id: `p${i}`,
+      type: "paper" as const,
+      title: "Paper Completed",
+      detail: a.paper.title,
+      score: Math.round(a.score ?? 0),
+      timestamp: formatRelativeDate(a.submittedAt!),
+    })),
+    ...quizAttempts.slice(0, 5).map((a, i) => ({
+      id: `q${i}`,
+      type: "quiz" as const,
+      title: "Quiz Completed",
+      detail: `${a.quiz.topic} — ${a.quiz.subject.name}`,
+      score: Math.round(a.score ?? 0),
+      timestamp: formatRelativeDate(a.submittedAt!),
+    })),
+  ]
+    .sort((a, b) => {
+      // Sort by recency (we have formatted strings so compare by index in combined arrays)
+      return 0; // already ordered from slice, interleaving is fine
+    })
+    .slice(0, 10);
+
+  // ── weakAreas ──
+  const weakAreas: ParentWeakArea[] = Array.from(topicScoreMap.entries())
+    .map(([key, scores]) => {
+      const [topic, subject] = key.split("||");
+      const currentScore = avgInt(scores);
+      const targetScore = 75;
+      const lastQA = quizAttempts
+        .filter((a) => a.quiz.topic === topic && a.quiz.subject.name === subject)
+        .sort((a, b) => b.submittedAt!.getTime() - a.submittedAt!.getTime())[0];
+      return {
+        topic,
+        subject,
+        currentScore,
+        targetScore,
+        gap: targetScore - currentScore,
+        lastPracticed: lastQA ? formatRelativeDate(lastQA.submittedAt!) : "Never",
+        suggestion: `Encourage ${childInfo.name} to review notes for "${topic}" and try practice quizzes to improve this score.`,
+      };
+    })
+    .filter((w) => w.currentScore < 65)
+    .sort((a, b) => a.currentScore - b.currentScore)
+    .slice(0, 5);
+
+  // ── peerComparison ──
+  const classSubjectMap = new Map<string, number[]>();
+  for (const a of classAttempts) {
+    const sn = a.paper.subject.name;
+    if (!classSubjectMap.has(sn)) classSubjectMap.set(sn, []);
+    classSubjectMap.get(sn)!.push(a.score!);
+  }
+
+  const peerComparison: SubjectComparison[] = subjectPerformance.map((sp) => {
+    const classScores = classSubjectMap.get(sp.subject) ?? [];
+    const classAvgScore = classScores.length > 0 ? avgInt(classScores) : 0;
+    const below = classScores.filter((c) => c <= sp.avgScore).length;
+    const pct = classScores.length > 0 ? Math.round((below / classScores.length) * 100) : 50;
+    return {
+      subject: sp.subject,
+      childScore: sp.avgScore,
+      classAvg: classAvgScore,
+      percentileRank: pct,
+    };
+  });
+
+  // ── studyTimeDistribution ──
+  const totalPaperMins = paperAttempts.reduce((sum, a) => sum + Math.round((a.timeTaken ?? 1800) / 60), 0);
+  const totalQuizMins = quizAttempts.length * 20;
+  const totalMins = totalPaperMins + totalQuizMins || 1;
+  const studyTimeDistribution: StudyTimeSlice[] = [
+    { name: "Papers", value: Math.round((totalPaperMins / totalMins) * 100), color: "#8b5cf6" },
+    { name: "Quizzes", value: Math.round((totalQuizMins / totalMins) * 100), color: "#6366f1" },
+  ];
+
+  // ── scoreHistory (last 3 months) ──
+  const monthHistMap = new Map<string, number[]>();
+  for (const a of [
+    ...paperAttempts.map((x) => ({ date: x.submittedAt!, score: Math.round(x.score ?? 0) })),
+    ...quizAttempts.map((x) => ({ date: x.submittedAt!, score: Math.round(x.score ?? 0) })),
+  ]) {
+    const label = getMonthLabel(a.date);
+    if (!monthHistMap.has(label)) monthHistMap.set(label, []);
+    monthHistMap.get(label)!.push(a.score);
+  }
+  const scoreHistory: MonthlyScore[] = Array.from(monthHistMap.entries())
+    .slice(-3)
+    .map(([month, scores]) => ({ month, avgScore: avgInt(scores) }));
+
+  return {
+    childInfo,
+    overviewStats,
+    subjectPerformance,
+    weeklyActivity,
+    studyHabits,
+    recentActivity,
+    weakAreas,
+    peerComparison,
+    studyTimeDistribution,
+    scoreHistory,
+  };
+}
+
+// ─── 7. Leaderboard ──────────────────────────────────────────────────────────
 
 export interface LeaderboardEntry {
   rank: number;

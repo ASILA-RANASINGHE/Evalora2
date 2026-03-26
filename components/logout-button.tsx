@@ -18,7 +18,8 @@ export function LogoutButton({ variant = "ghost", size = "sm", className, iconOn
   const logout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/auth/login");
+    // router.push("/auth/login");
+    window.location.href = "/auth/login";
   };
 
   return (
