@@ -3,8 +3,6 @@
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function avg(arr: number[]): number {
   if (!arr.length) return 0;
   return Math.round((arr.reduce((s, v) => s + v, 0) / arr.length) * 10) / 10;
@@ -80,8 +78,6 @@ function topicStrength(accuracy: number): "Strong" | "Average" | "Weak" {
   return "Weak";
 }
 
-// ─── Exported Types ──────────────────────────────────────────────────────────
-
 export interface PerformanceDataPoint {
   date: string;
   overall: number;
@@ -132,7 +128,7 @@ export interface StudentProgressData {
     percentile: number;
   };
   scoreHistory: PerformanceDataPoint[];
-  chartSubjects: string[]; // subject keys used in PerformanceDataPoint
+  chartSubjects: string[];
   heatmapData: { date: string; minutes: number }[];
   subjectScores: {
     subject: string;
@@ -206,13 +202,10 @@ export interface TeacherDashboardData {
   };
 }
 
-// Uses the same interfaces as teacher-mock-data.ts for component compatibility
 export interface TeacherAnalyticsPayload {
   students: import("@/lib/teacher-mock-data").Student[];
   analytics: import("@/lib/teacher-mock-data").TeacherAnalyticsData;
 }
-
-// ─── 1. Student Dashboard ────────────────────────────────────────────────────
 
 export async function getStudentDashboardData(): Promise<StudentDashboardData | null> {
   const supabase = await createClient();
@@ -373,8 +366,6 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData | 
   };
 }
 
-// ─── 2. Student Progress ─────────────────────────────────────────────────────
-
 export async function getStudentProgressData(): Promise<StudentProgressData | null> {
   const supabase = await createClient();
   const {
@@ -410,7 +401,6 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
       }),
     ]);
 
-  // ── Overview stats ──
   const papersDone = paperAttempts.length + quizAttempts.length;
   const papersWeekly =
     paperAttempts.filter((a) => a.submittedAt! >= sevenDaysAgo).length +
@@ -432,7 +422,6 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
   const percentile =
     totalStudents > 0 ? Math.round(((totalStudents - rank) / totalStudents) * 100) : 0;
 
-  // ── Score history (last 12 weeks) ──
   const weekMap = new Map<string, { scores: number[]; bySubject: Record<string, number[]> }>();
   const allAttempts = [
     ...paperAttempts.map((a) => ({
@@ -473,7 +462,6 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
 
   const chartSubjects = allSubjects.map((s) => s.toLowerCase().replace(/\s+/g, "_"));
 
-  // ── Heatmap (84 days) ──
   const heatmapMap = new Map<string, number>();
   for (const a of paperAttempts) {
     const date = a.submittedAt!.toISOString().slice(0, 10);
@@ -490,13 +478,11 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
     return { date, minutes: heatmapMap.get(date) ?? 0 };
   });
 
-  // ── Subject scores ──
   const mySubjectMap = new Map<string, number[]>();
   for (const a of allAttempts) {
     if (!mySubjectMap.has(a.subject)) mySubjectMap.set(a.subject, []);
     mySubjectMap.get(a.subject)!.push(a.score);
   }
-  // Class avg: all completed paper attempts for each subject
   const classAttempts = await prisma.paperAttempt.findMany({
     where: { submittedAt: { not: null }, score: { not: null } },
     select: { score: true, paper: { select: { subject: { select: { name: true } } } } },
@@ -515,7 +501,6 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
     papersAttempted: scores.length,
   }));
 
-  // ── Topic mastery (from quiz attempts) ──
   const topicMap = new Map<
     string,
     { scores: number[]; subject: string; lastDate: Date }
@@ -535,12 +520,11 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
       topic,
       subject: data.subject,
       accuracy,
-      questionsAttempted: data.scores.length * 10, // approximate
+      questionsAttempted: data.scores.length * 10,
       status: topicStatus(accuracy),
     };
   });
 
-  // ── Question type stats (from paper attempt results JSON) ──
   const qtMap: Record<string, { attempted: number; correct: number }> = {};
   const TYPE_COLORS: Record<string, string> = {
     MCQ: "#7c3aed",
@@ -578,7 +562,6 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
     color: TYPE_COLORS[type] ?? "#7c3aed",
   }));
 
-  // ── Weak areas (topics with accuracy < 65%) ──
   const weakAreas = topicMastery
     .filter((t) => t.accuracy < 65)
     .sort((a, b) => a.accuracy - b.accuracy)
@@ -596,7 +579,6 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
       };
     });
 
-  // ── Comparative data (your score vs class avg + percentile per subject) ──
   const comparativeData = subjectScores.map((s) => {
     const classScores = classSubjectMap.get(s.subject) ?? [];
     const below = classScores.filter((c) => c <= s.yourScore).length;
@@ -609,7 +591,6 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
     };
   });
 
-  // ── Time analytics (group by hour of day) ──
   const hourMap = new Map<number, number[]>();
   for (const a of allAttempts) {
     const h = a.date.getHours();
@@ -627,14 +608,12 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
     avgScore: hourMap.has(h) ? avgInt(hourMap.get(h)!) : 0,
   })).filter((h) => h.avgScore > 0);
 
-  // ── Notes engagement (available notes per topic) ──
   const noteTopicMap = new Map<string, { count: number; subject: string }>();
   for (const n of notes) {
     const key = `${n.topic}||${n.subject.name}`;
     if (!noteTopicMap.has(key)) noteTopicMap.set(key, { count: 0, subject: n.subject.name });
     noteTopicMap.get(key)!.count++;
   }
-  // Cross-reference with quiz attempts to estimate engagement
   const attemptedTopics = new Set(quizAttempts.map((a) => `${a.quiz.topic}||${a.quiz.subject.name}`));
   const highScoreTopics = new Set(
     quizAttempts.filter((a) => (a.score ?? 0) >= 75).map((a) => `${a.quiz.topic}||${a.quiz.subject.name}`)
@@ -659,10 +638,8 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
     };
   });
 
-  // ── Risk alerts ──
   const riskAlerts: StudentProgressData["riskAlerts"] = [];
 
-  // Critical: topics with accuracy < 50%
   for (const w of weakAreas.filter((x) => x.accuracy < 50).slice(0, 2)) {
     riskAlerts.push({
       level: "critical",
@@ -671,7 +648,6 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
       action: "Practice Now",
     });
   }
-  // Warning: topics 50–64% accuracy
   for (const w of weakAreas.filter((x) => x.accuracy >= 50 && x.accuracy < 65).slice(0, 2)) {
     riskAlerts.push({
       level: "warning",
@@ -680,7 +656,6 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
       action: "Review Topics",
     });
   }
-  // Inactive warning
   if (papersWeekly === 0 && papersDone > 0) {
     riskAlerts.push({
       level: "warning",
@@ -689,7 +664,6 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
       action: "Start a Quiz",
     });
   }
-  // On-track: topics >= 80%
   for (const t of topicMastery.filter((x) => x.accuracy >= 80).slice(0, 2)) {
     riskAlerts.push({
       level: "on-track",
@@ -698,7 +672,6 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
       action: "Keep Going",
     });
   }
-  // Score trend positive
   if (scoreTrend > 2) {
     riskAlerts.push({
       level: "on-track",
@@ -734,8 +707,6 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
   };
 }
 
-// ─── 3. Teacher Dashboard ────────────────────────────────────────────────────
-
 export async function getTeacherDashboardData(): Promise<TeacherDashboardData | null> {
   const supabase = await createClient();
   const {
@@ -747,7 +718,6 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  // Get linked students
   const links = await prisma.teacherStudentLink.findMany({
     where: { teacherId: user.id },
     include: {
@@ -772,7 +742,6 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
     },
   });
 
-  // Teacher's papers & quizzes for pending reviews & uploads
   const [teacherPapers, teacherQuizzes] = await Promise.all([
     prisma.paper.findMany({
       where: { createdById: user.id },
@@ -789,7 +758,6 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
     teacherPapers.filter((p) => p.createdAt >= sevenDaysAgo).length +
     teacherQuizzes.filter((q) => q.createdAt >= sevenDaysAgo).length;
 
-  // Pending reviews: paper attempts with non-empty flagged array
   const submittedAttempts = paperIds.length > 0
     ? await prisma.paperAttempt.findMany({
       where: { paperId: { in: paperIds }, submittedAt: { not: null } },
@@ -801,7 +769,6 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
     return Array.isArray(f) && f.length > 0;
   }).length;
 
-  // Today's submissions
   const todaySubmissions = paperIds.length > 0
     ? await prisma.paperAttempt.count({
       where: {
@@ -815,7 +782,6 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
     teacherPapers.filter((p) => p.createdAt >= todayStart).length +
     teacherQuizzes.filter((q) => q.createdAt >= todayStart).length;
 
-  // Build student rows
   const studentRows = links.map((link) => {
     const s = link.student;
     const allAttempts = [
@@ -868,8 +834,6 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
   };
 }
 
-// ─── 4. Teacher Analytics ────────────────────────────────────────────────────
-
 export async function getTeacherAnalyticsData(): Promise<TeacherAnalyticsPayload | null> {
   const supabase = await createClient();
   const {
@@ -879,7 +843,6 @@ export async function getTeacherAnalyticsData(): Promise<TeacherAnalyticsPayload
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  // Get all linked students with full data
   const links = await prisma.teacherStudentLink.findMany({
     where: { teacherId: user.id },
     include: {
@@ -930,7 +893,6 @@ export async function getTeacherAnalyticsData(): Promise<TeacherAnalyticsPayload
     };
   }
 
-  // Pending reviews
   const teacherPaperIds = (
     await prisma.paper.findMany({
       where: { createdById: user.id },
@@ -949,7 +911,6 @@ export async function getTeacherAnalyticsData(): Promise<TeacherAnalyticsPayload
     return Array.isArray(f) && f.length > 0;
   }).length;
 
-  // Build per-student data
   type StudentData = {
     id: number;
     uuid: string;
