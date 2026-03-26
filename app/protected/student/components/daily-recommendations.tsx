@@ -3,7 +3,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Target, Clock, TrendingUp } from "lucide-react";
-import { practiceRecommendations } from "@/lib/student-progress-mock-data";
+
+export interface PracticeRecommendation {
+  subject: string;
+  topic: string;
+  steps: string[];
+  estimatedMinutes: number;
+  expectedImprovement: string;
+  priority: "high" | "medium" | "low";
+}
 
 const PRIORITY_STYLES = {
   high: "bg-red-500",
@@ -11,7 +19,7 @@ const PRIORITY_STYLES = {
   low: "bg-emerald-500",
 };
 
-export function DailyRecommendations() {
+export function DailyRecommendations({ recommendations }: { recommendations: PracticeRecommendation[] }) {
   return (
     <Card className="border-[#696FC7]/35 bg-gradient-to-br from-[#FFFDF1] via-[#B7BDF7]/10 to-[#696FC7]/10 dark:from-[#4D2FB2]/15 dark:via-[#696FC7]/10 dark:to-[#4D2FB2]/5 backdrop-blur-sm shadow-sm ring-1 ring-[#696FC7]/25">
       <CardHeader>
@@ -21,7 +29,7 @@ export function DailyRecommendations() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {practiceRecommendations.map((rec, i) => (
+        {recommendations.map((rec, i) => (
           <div key={i} className="p-3 border border-[#B7BDF7]/40 bg-white/60 dark:bg-[#4D2FB2]/10 rounded-lg space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">

@@ -153,7 +153,7 @@ export default async function StudentDashboard() {
           </Card>
 
           {/* Insights */}
-          <InsightsPanel />
+          <InsightsPanel insights={data?.insights ?? []} />
         </div>
 
         {/* Side Column */}
@@ -181,7 +181,7 @@ export default async function StudentDashboard() {
           </div>
 
           {/* Daily Practice Plan */}
-          <DailyRecommendations />
+          <DailyRecommendations recommendations={data?.recommendations ?? []} />
 
           {/* Achievements */}
           <Card className="overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm shadow-sm">
@@ -282,9 +282,8 @@ function PerformanceItem({
         </div>
         <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${
-              score >= 80 ? "bg-emerald-500" : score >= 60 ? "bg-amber-500" : "bg-red-500"
-            }`}
+            className={`h-full rounded-full transition-all duration-500 ${score >= 80 ? "bg-emerald-500" : score >= 60 ? "bg-amber-500" : "bg-red-500"
+              }`}
             style={{ width: `${score}%` }}
           />
         </div>
@@ -333,9 +332,8 @@ function AchievementIcon({
   return (
     <div
       title={active ? `${label} — Unlocked! 🎉` : `${label} — Keep going to unlock!`}
-      className={`flex flex-col items-center justify-center p-3 gap-1 transition-all hover:bg-muted/50 ${
-        active ? "opacity-100" : "opacity-25 grayscale"
-      }`}
+      className={`flex flex-col items-center justify-center p-3 gap-1 transition-all hover:bg-muted/50 ${active ? "opacity-100" : "opacity-25 grayscale"
+        }`}
     >
       <span className={`text-3xl transform transition-transform cursor-default ${active ? "hover:scale-125 drop-shadow-sm" : ""}`}>
         {icon}

@@ -1253,7 +1253,7 @@ export default function ExamInterface({
   if (!paper || !question) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-gray-50 dark:bg-zinc-950 flex flex-col overflow-hidden">
       {/* ── Offline Banner ── */}
       {!isOnline && (
         <div className="bg-yellow-500 text-white text-sm px-4 py-2 flex items-center gap-2 justify-center z-10">
@@ -1277,9 +1277,9 @@ export default function ExamInterface({
       )}
 
       {/* ── Sticky Exam Header ── */}
-      <header className="bg-white border-b shadow-sm px-4 py-3 flex items-center gap-4 shrink-0">
+      <header className="bg-white dark:bg-zinc-900 border-b dark:border-zinc-800 shadow-sm px-4 py-3 flex items-center gap-4 shrink-0">
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm text-gray-800 truncate">{paper.title}</p>
+          <p className="font-semibold text-sm text-gray-800 dark:text-gray-200 truncate">{paper.title}</p>
           <p className="text-xs text-muted-foreground">{paper.subject}</p>
         </div>
 
@@ -1322,7 +1322,7 @@ export default function ExamInterface({
       </header>
 
       {/* ── Progress Bar ── */}
-      <div className="bg-white border-b px-4 py-2 shrink-0">
+      <div className="bg-white dark:bg-zinc-900 border-b dark:border-zinc-800 px-4 py-2 shrink-0">
         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
           <span className="flex items-center gap-2">
             <span
@@ -1359,7 +1359,7 @@ export default function ExamInterface({
       {/* ── Main Content ── */}
       <div className="flex-1 overflow-hidden flex">
         {/* LEFT PANEL - Question */}
-        <div className="flex-[3] overflow-y-auto p-6 border-r bg-white">
+        <div className="flex-[3] overflow-y-auto p-6 border-r dark:border-zinc-800 bg-white dark:bg-zinc-950">
           <div className="max-w-2xl space-y-5">
             {/* Question label + marks badges */}
             <div className="flex items-center gap-3 flex-wrap">
@@ -1454,7 +1454,7 @@ export default function ExamInterface({
               </div>
             )}
 
-            <p className="text-base leading-relaxed font-medium text-gray-800 whitespace-pre-wrap">
+            <p className="text-base leading-relaxed font-medium text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
               {question.text}
             </p>
 
@@ -1472,11 +1472,11 @@ export default function ExamInterface({
         </div>
 
         {/* RIGHT PANEL - Answer + Nav */}
-        <div className="flex-[2] overflow-y-auto flex flex-col bg-gray-50">
+        <div className="flex-[2] overflow-y-auto flex flex-col bg-gray-50 dark:bg-zinc-900">
           <div className="flex-1 p-5 space-y-5">
             {/* Answer input */}
-            <div className="bg-white rounded-xl border p-5 space-y-4">
-              <p className="text-sm font-semibold text-gray-700">Your Answer</p>
+            <div className="bg-white dark:bg-zinc-950 rounded-xl border dark:border-zinc-800 p-5 space-y-4">
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Your Answer</p>
 
               {question.type === "MCQ" ? (
                 <RadioGroup
@@ -1493,8 +1493,8 @@ export default function ExamInterface({
                         key={`mcq-opt-${oi}`}
                         className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
                           selected
-                            ? "border-purple-500 bg-purple-50"
-                            : "border-gray-200 hover:border-purple-300 hover:bg-purple-50/50"
+                            ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30"
+                            : "border-gray-200 dark:border-zinc-700 hover:border-purple-300 hover:bg-purple-50/50 dark:hover:bg-purple-900/20"
                         }`}
                         onClick={() => handleAnswer(opt)}
                       >
@@ -1502,7 +1502,7 @@ export default function ExamInterface({
                           className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 transition-colors ${
                             selected
                               ? "bg-purple-600 text-white"
-                              : "bg-gray-100 text-gray-600"
+                              : "bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400"
                           }`}
                         >
                           {label}
@@ -1527,9 +1527,9 @@ export default function ExamInterface({
                         className={`w-full p-4 rounded-xl border-2 text-left font-semibold text-lg transition-all flex items-center gap-3 ${
                           selected
                             ? option === "True"
-                              ? "border-green-500 bg-green-50 text-green-700"
-                              : "border-red-500 bg-red-50 text-red-700"
-                            : "border-gray-200 hover:border-purple-300 hover:bg-purple-50/50 text-gray-700"
+                              ? "border-green-500 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                              : "border-red-500 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+                            : "border-gray-200 dark:border-zinc-700 hover:border-purple-300 hover:bg-purple-50/50 dark:hover:bg-purple-900/20 text-gray-700 dark:text-gray-300"
                         }`}
                       >
                         <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
@@ -1553,7 +1553,7 @@ export default function ExamInterface({
                       <div className="leading-relaxed text-base flex flex-wrap items-center gap-1">
                         {parts.map((part, pi) => (
                           <React.Fragment key={pi}>
-                            <span className="text-gray-800">{part}</span>
+                            <span className="text-gray-800 dark:text-gray-200">{part}</span>
                             {pi < parts.length - 1 && (
                               <input
                                 type="text"
@@ -1564,7 +1564,7 @@ export default function ExamInterface({
                                   );
                                   handleAnswer(newValues.join("|"));
                                 }}
-                                className="border-b-2 border-purple-400 bg-transparent text-center text-sm font-medium focus:outline-none focus:border-purple-600 px-2 min-w-[80px] max-w-[150px]"
+                                className="border-b-2 border-purple-400 dark:border-purple-500 bg-transparent text-center text-sm font-medium focus:outline-none focus:border-purple-600 dark:focus:border-purple-400 px-2 min-w-[80px] max-w-[150px] dark:text-gray-100"
                                 placeholder={`blank ${pi + 1}`}
                               />
                             )}
@@ -1586,7 +1586,7 @@ export default function ExamInterface({
                       <div className="leading-relaxed text-base flex flex-wrap items-center gap-1">
                         {parts.map((part, pi) => (
                           <React.Fragment key={pi}>
-                            <span className="text-gray-800">{part}</span>
+                            <span className="text-gray-800 dark:text-gray-200">{part}</span>
                             {pi < parts.length - 1 && (
                               <div className="flex flex-wrap gap-1 inline-flex">
                                 {(question.options[pi] ? question.options[pi].split("|") : []).map((opt, oi) => {
@@ -1604,7 +1604,7 @@ export default function ExamInterface({
                                       className={`px-2 py-0.5 rounded-full border text-sm font-medium transition-colors ${
                                         selected
                                           ? "bg-purple-600 border-purple-600 text-white"
-                                          : "border-gray-300 hover:border-purple-400 text-gray-700"
+                                          : "border-gray-300 dark:border-zinc-700 hover:border-purple-400 dark:hover:border-purple-500 text-gray-700 dark:text-gray-300"
                                       }`}
                                     >
                                       {opt}
@@ -1644,7 +1644,7 @@ export default function ExamInterface({
                         const currentMatch = studentPairs[aItem] || "";
                         return (
                           <div key={ai} className="grid grid-cols-2 gap-2 items-center">
-                            <div className="text-sm text-gray-800 font-medium bg-blue-50 rounded-lg px-3 py-2 border border-blue-100">
+                            <div className="text-sm text-gray-800 dark:text-gray-200 font-medium bg-blue-50 dark:bg-blue-900/30 rounded-lg px-3 py-2 border border-blue-100 dark:border-blue-800/50">
                               {aItem}
                             </div>
                             <select
@@ -1654,7 +1654,7 @@ export default function ExamInterface({
                                 const answer = columnAItems.map(a => `${a}::${updated[a] || ""}`).join("|");
                                 handleAnswer(answer);
                               }}
-                              className="h-9 rounded-lg border border-gray-300 text-sm px-2 bg-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                              className="h-9 rounded-lg border border-gray-300 dark:border-zinc-700 text-sm px-2 bg-white dark:bg-zinc-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-400 dark:focus:ring-purple-500"
                             >
                               <option value="">— select —</option>
                               {allBOptions.map((opt, oi) => (
@@ -1674,7 +1674,7 @@ export default function ExamInterface({
                     placeholder="Write your answer here. Press Enter to start a new paragraph..."
                     value={question.studentAnswer}
                     onChange={(e) => handleAnswer(e.target.value)}
-                    className="min-h-[220px] text-sm leading-relaxed"
+                    className="min-h-[220px] text-sm leading-relaxed bg-white dark:bg-zinc-900 border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   />
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span className="text-blue-600 font-medium">
@@ -1745,7 +1745,7 @@ export default function ExamInterface({
           </div>
 
           {/* Question Navigation Grid */}
-          <div className="p-5 border-t bg-white shrink-0">
+          <div className="p-5 border-t dark:border-zinc-800 bg-white dark:bg-zinc-950 shrink-0">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
               Questions
             </p>
@@ -1778,7 +1778,7 @@ export default function ExamInterface({
                                 ? "bg-yellow-400 text-white"
                                 : isAns
                                   ? "bg-green-500 text-white"
-                                  : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                                  : "bg-gray-200 dark:bg-zinc-800 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-zinc-700"
                           }`}
                         >
                           {label}{typeTag}
@@ -1815,7 +1815,7 @@ export default function ExamInterface({
                                 ? "bg-yellow-400 text-white"
                                 : isAns
                                   ? "bg-green-500 text-white"
-                                  : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                                  : "bg-gray-200 dark:bg-zinc-800 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-zinc-700"
                           }`}
                         >
                           {label}

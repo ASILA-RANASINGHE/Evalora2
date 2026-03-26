@@ -88,6 +88,20 @@ export interface PerformanceDataPoint {
   [subject: string]: string | number;
 }
 
+export interface InsightMessage {
+  category: "performance" | "topic" | "time" | "comparative" | "notes";
+  message: string;
+}
+
+export interface PracticeRecommendation {
+  subject: string;
+  topic: string;
+  steps: string[];
+  estimatedMinutes: number;
+  expectedImprovement: string;
+  priority: "high" | "medium" | "low";
+}
+
 export interface StudentDashboardData {
   stats: {
     subjectsCount: number;
@@ -101,6 +115,8 @@ export interface StudentDashboardData {
     score: number;
     date: string;
   }[];
+  insights: InsightMessage[];
+  recommendations: PracticeRecommendation[];
 }
 
 export interface StudentProgressData {
@@ -250,6 +266,100 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData | 
 
   const totalAttempts = (progress?.papersAttempted ?? 0) + (progress?.quizzesCompleted ?? 0);
 
+  const insights: InsightMessage[] = [];
+
+  if (progress && progress.averageScore > 0) {
+    insights.push({
+      category: "performance",
+      message: `Your average score is ${Math.round(progress.averageScore)}%. Keep up the good work!`,
+    });
+  }
+
+  if (progress && progress.studyStreak >= 3) {
+    insights.push({
+      category: "time",
+      message: `You're on a ${progress.studyStreak}-day study streak! Consistent practice yields the best results.`,
+    });
+  } else if (!progress || progress.studyStreak === 0) {
+    insights.push({
+      category: "time",
+      message: "You haven't been practicing daily. Let's start a new study streak today!",
+    });
+  }
+
+  if (combined.length > 0) {
+    const recent = combined[0];
+    if (recent.score >= 80) {
+      insights.push({
+        category: "topic",
+        message: `Outstanding score of ${recent.score}% in "${recent.title}". You've really mastered this!`,
+      });
+    } else if (recent.score < 50) {
+      insights.push({
+        category: "topic",
+        message: `Your score of ${recent.score}% in "${recent.title}" suggests you could use some review. Try reading the associated study notes.`,
+      });
+    }
+  }
+
+  insights.push({
+    category: "notes",
+    message: "Students who read all study notes before testing score 15% higher on average!",
+  });
+
+  const recommendations: PracticeRecommendation[] = [];
+
+  const topicScores = new Map<string, { subject: string, scores: number[] }>();
+  for (const a of quizAttempts) {
+    const key = a.quiz.topic;
+    if (!topicScores.has(key)) topicScores.set(key, { subject: a.quiz.subject.name, scores: [] });
+    topicScores.get(key)!.scores.push(a.score ?? 0);
+  }
+
+  for (const [topic, data] of Array.from(topicScores.entries())) {
+    const avgScore = data.scores.reduce((a, b) => a + b, 0) / data.scores.length;
+    if (avgScore < 75) {
+      recommendations.push({
+        subject: data.subject,
+        topic,
+        steps: [`Review notes for ${topic}`, "Try a topic quiz to test your knowledge", "Review the answers carefully"],
+        estimatedMinutes: 20,
+        expectedImprovement: `+${Math.round(85 - avgScore)}% accuracy`,
+        priority: avgScore < 50 ? "high" : "medium"
+      });
+    }
+  }
+
+  if (recommendations.length === 0 && paperAttempts.length > 0) {
+    const lowestPaper = [...paperAttempts].sort((a, b) => (a.score ?? 0) - (b.score ?? 0))[0];
+    if ((lowestPaper.score ?? 0) < 80) {
+      recommendations.push({
+        subject: lowestPaper.paper.subject.name,
+        topic: "General Revision",
+        steps: [`Review recent past papers for ${lowestPaper.paper.subject.name}`, "Identify the specific questions you struggled with", "Read related short notes"],
+        estimatedMinutes: 30,
+        expectedImprovement: "Better overall score",
+        priority: "medium"
+      });
+    }
+  }
+
+  if (recommendations.length === 0) {
+    recommendations.push({
+      subject: "Any Subject",
+      topic: "Diagnostic Test",
+      steps: ["Pick a subject you want to improve", "Take a 15-minute diagnostic quiz", "Come back here for a personalized plan!"],
+      estimatedMinutes: 15,
+      expectedImprovement: "Establish baseline",
+      priority: "low"
+    });
+  }
+
+  recommendations.sort((a, b) => {
+    const p = { high: 3, medium: 2, low: 1 };
+    return p[b.priority] - p[a.priority];
+  });
+
   return {
     stats: {
       subjectsCount: subjectSet.size,
@@ -258,6 +368,8 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData | 
       studyStreak: progress?.studyStreak ?? 0,
     },
     recentAttempts: combined,
+    insights,
+    recommendations: recommendations.slice(0, 3),
   };
 }
 
@@ -504,11 +616,11 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
     if (!hourMap.has(h)) hourMap.set(h, []);
     hourMap.get(h)!.push(a.score);
   }
-  const HOURS = [6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21];
+  const HOURS = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
   const HOUR_LABELS: Record<number, string> = {
-    6:"6AM",7:"7AM",8:"8AM",9:"9AM",10:"10AM",11:"11AM",
-    12:"12PM",13:"1PM",14:"2PM",15:"3PM",16:"4PM",17:"5PM",
-    18:"6PM",19:"7PM",20:"8PM",21:"9PM",
+    6: "6AM", 7: "7AM", 8: "8AM", 9: "9AM", 10: "10AM", 11: "11AM",
+    12: "12PM", 13: "1PM", 14: "2PM", 15: "3PM", 16: "4PM", 17: "5PM",
+    18: "6PM", 19: "7PM", 20: "8PM", 21: "9PM",
   };
   const timePerformance = HOURS.map((h) => ({
     hour: HOUR_LABELS[h],
@@ -534,8 +646,8 @@ export async function getStudentProgressData(): Promise<StudentProgressData | nu
     const status: "complete" | "in-progress" | "not-started" = hasHighScore
       ? "complete"
       : hasAttempted
-      ? "in-progress"
-      : "not-started";
+        ? "in-progress"
+        : "not-started";
     return {
       topic,
       subject: data.subject,
@@ -680,9 +792,9 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
   // Pending reviews: paper attempts with non-empty flagged array
   const submittedAttempts = paperIds.length > 0
     ? await prisma.paperAttempt.findMany({
-        where: { paperId: { in: paperIds }, submittedAt: { not: null } },
-        select: { flagged: true },
-      })
+      where: { paperId: { in: paperIds }, submittedAt: { not: null } },
+      select: { flagged: true },
+    })
     : [];
   const pendingReviews = submittedAttempts.filter((a) => {
     const f = a.flagged as string[] | null;
@@ -692,11 +804,11 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
   // Today's submissions
   const todaySubmissions = paperIds.length > 0
     ? await prisma.paperAttempt.count({
-        where: {
-          paperId: { in: paperIds },
-          submittedAt: { gte: todayStart },
-        },
-      })
+      where: {
+        paperId: { in: paperIds },
+        submittedAt: { gte: todayStart },
+      },
+    })
     : 0;
 
   const todayUploads =
@@ -722,8 +834,8 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
     const avgScore = s.progress
       ? Math.round(s.progress.averageScore)
       : allAttempts.length > 0
-      ? avgInt(allAttempts.map((a) => a.score))
-      : 0;
+        ? avgInt(allAttempts.map((a) => a.score))
+        : 0;
     const lastAttemptDate = allAttempts.length > 0
       ? allAttempts.sort((a, b) => b.date.getTime() - a.date.getTime())[0].date
       : null;
@@ -828,9 +940,9 @@ export async function getTeacherAnalyticsData(): Promise<TeacherAnalyticsPayload
 
   const allSubmittedAttempts = teacherPaperIds.length > 0
     ? await prisma.paperAttempt.findMany({
-        where: { paperId: { in: teacherPaperIds }, submittedAt: { not: null } },
-        select: { flagged: true },
-      })
+      where: { paperId: { in: teacherPaperIds }, submittedAt: { not: null } },
+      select: { flagged: true },
+    })
     : [];
   const pendingReviews = allSubmittedAttempts.filter((a) => {
     const f = a.flagged as string[] | null;
@@ -886,8 +998,8 @@ export async function getTeacherAnalyticsData(): Promise<TeacherAnalyticsPayload
     const avgScore = s.progress
       ? Math.round(s.progress.averageScore)
       : allScores.length > 0
-      ? avgInt(allScores)
-      : 0;
+        ? avgInt(allScores)
+        : 0;
     const lastActiveDate = allAttempts.length > 0 ? allAttempts[0].date : null;
     const status = computeStudentStatus(avgScore, lastActiveDate);
     const trend = computeTrend(
@@ -1107,9 +1219,9 @@ export async function getTeacherAnalyticsData(): Promise<TeacherAnalyticsPayload
       const strongSubjectEntry =
         subjectScoreMap.size > 0
           ? Array.from(subjectScoreMap.entries()).reduce((best, [subj, scores]) => {
-              const a = avgInt(scores);
-              return a > best.score ? { subject: subj, score: a } : best;
-            }, { subject: "—", score: 0 })
+            const a = avgInt(scores);
+            return a > best.score ? { subject: subj, score: a } : best;
+          }, { subject: "—", score: 0 })
           : { subject: "—", score: 0 };
       return {
         rank: i + 1,
