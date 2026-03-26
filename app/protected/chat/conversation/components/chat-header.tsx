@@ -1,6 +1,7 @@
 "use client";
 
 import { Download, BookOpen, PanelRightOpen, PanelRightClose, GraduationCap, BrainCircuit } from "lucide-react";
+import Link from "next/link";
 
 interface ChatHeaderProps {
   referenceOpen: boolean;
@@ -42,8 +43,8 @@ export function ChatHeader({
 
       <div className="flex items-center gap-2">
         {/* Test My Knowledge */}
-        <button
-          onClick={quizModeActive ? onEndQuiz : onStartQuiz}
+        <Link
+          href="/protected/student/quizzes"
           className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
             quizModeActive
               ? "bg-amber-50 text-amber-600 ring-1 ring-amber-200"
@@ -55,7 +56,7 @@ export function ChatHeader({
           <span className="hidden sm:inline">
             {quizModeActive ? "End Quiz" : "Test My Knowledge"}
           </span>
-        </button>
+        </Link>
 
         <button
           onClick={onToggleStudyTools}
