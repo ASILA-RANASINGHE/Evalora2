@@ -103,9 +103,11 @@ function ChatTestPageInner() {
                       : "bg-white text-slate-700 border border-slate-200 rounded-bl-md shadow-sm"
                   }`}
                 >
-                  {m.parts
-                    ?.filter((p) => p.type === "text")
-                    .map((p, i) => <span key={i}>{p.text}</span>) ?? ""}
+                  {m.parts && m.parts.length > 0
+                    ? m.parts
+                        .filter((p) => p.type === "text")
+                        .map((p, i) => <span key={i}>{p.text}</span>)
+                    : (m as any).content}
                 </div>
               </div>
             ))}
